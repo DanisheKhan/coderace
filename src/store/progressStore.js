@@ -48,6 +48,7 @@ export const useProgressStore = create((set, get) => ({
       status: 'not_started',
       revisit: false,
       revisit_count: 0,
+      solve_method: null,
       brute_force: false,
       approach: false,
       optimized: false,
@@ -62,43 +63,52 @@ export const useProgressStore = create((set, get) => ({
     if (existingIndex > -1) {
       oldRow = progress[existingIndex];
       let revisit_count = oldRow.revisit_count || 0;
-      if ((updates.revisit === true && !oldRow.revisit) || (updates.status === 'revisit' && oldRow.status !== 'revisit')) {
+      if (updates.revisit_count !== undefined) {
+        revisit_count = updates.revisit_count;
+      } else if ((updates.revisit === true && !oldRow.revisit) || (updates.status === 'revisit' && oldRow.status !== 'revisit')) {
         revisit_count += 1;
       }
       newRow = { ...oldRow, ...updates, revisit_count, updated_at: new Date().toISOString() };
       newProgress[existingIndex] = newRow;
     } else {
-      if (updates.revisit === true || updates.status === 'revisit') {
-        newRow.revisit_count = 1;
-      }
+      let revisit_count = updates.revisit_count !== undefined ? updates.revisit_count : (updates.revisit === true || updates.status === 'revisit' ? 1 : 0);
+      newRow = { ...newRow, ...updates, revisit_count, updated_at: new Date().toISOString() };
       newProgress.push(newRow);
     }
 
     // Optimistic update
     set({ progress: newProgress });
 
-    try {
+    try {the 
       // Sync to database
+      const payload = {
+        user_id: userId,
+        question_id: questionId,
+        status:      newRow.status,
+        revisit:     newRow.revisit,
+        revisit_count: newRow.revisit_count,
+        solve_method: newRow.solve_method,
+        brute_force: newRow.brute_force,
+        approach:    newRow.approach,
+        optimized:   newRow.optimized,
+        notes:       newRow.notes,
+        solution_link: newRow.solution_link,
+        updated_at:  newRow.updated_at,
+      };
+
       const { error } = await supabase
         .from('user_progress')
-        .upsert(
-          {
-            user_id: userId,
-            question_id: questionId,
-            status:      newRow.status,
-            revisit:     newRow.revisit,
-            revisit_count: newRow.revisit_count,
-            brute_force: newRow.brute_force,
-            approach:    newRow.approach,
-            optimized:   newRow.optimized,
-            notes:       newRow.notes,
-            solution_link: newRow.solution_link,
-            updated_at:  newRow.updated_at,
-          },
-          { onConflict: 'user_id,question_id' }
-        );
+        .upsert(payload, { onConflict: 'user_id,question_id' });
 
-      if (error) throw error;
+      if (error) {
+        // If DB schema doesn't have solve_method column yet, retry without it
+        if (error.message?.includes('solve_method') || error.code === 'PGRST204') {
+          delete payload.solve_method;
+          await supabase.from('user_progress').upsert(payload, { onConflict: 'user_id,question_id' });
+        } else {
+          throw error;
+        }
+      }
     } catch (err) {
       console.error('Failed to sync progress to database, reverting...', err.message);
       // Revert optimistic update

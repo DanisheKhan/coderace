@@ -9,6 +9,7 @@ import {
   Bookmark, BookmarkCheck, FileText,
   Zap, Brain, Rocket, Link2, Trash2, CheckCircle2,
   Clock, AlertCircle, RotateCcw, Circle,
+  Sparkles, Copy, Lightbulb, Eye,
 } from 'lucide-react';
 
 // ── Portal Dropdown ──────────────────────────────────────────────────────────
@@ -66,14 +67,12 @@ const STATUS_OPTIONS = [
   { value: 'not_started', label: 'Todo',      icon: Circle,       color: 'text-zinc-400', dot: 'bg-zinc-500' },
   { value: 'attempted',   label: 'Attempted', icon: Clock,        color: 'text-amber-400', dot: 'bg-amber-400' },
   { value: 'done',        label: 'Done',      icon: CheckCircle2, color: 'text-emerald-400', dot: 'bg-emerald-400' },
-  { value: 'revisit',     label: 'Revisit',   icon: RotateCcw,    color: 'text-rose-400', dot: 'bg-rose-400' },
 ];
 
 const statusPillStyles = {
   not_started: 'bg-zinc-800/60 text-zinc-400 border-zinc-700/40 hover:border-zinc-600/60',
   attempted:   'bg-amber-500/10 text-amber-400 border-amber-500/25 hover:border-amber-500/50',
   done:        'bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:border-emerald-500/50',
-  revisit:     'bg-rose-500/10 text-rose-400 border-rose-500/25 hover:border-rose-500/50',
 };
 
 const StatusCell = ({ status, onChange }) => {
@@ -180,10 +179,19 @@ const StepToggle = ({ value, onChange, icon: Icon, activeColor, activeBg, label 
   </button>
 );
 
+// ── Solve Source Options ──────────────────────────────────────────────────────
+const SOLVE_METHODS = [
+  { id: 'gpt',      label: 'AI / GPT',    icon: Sparkles,  color: 'text-violet-400', activeBg: 'bg-violet-500/12 border-violet-500/35' },
+  { id: 'copy',     label: 'Copy-Paste', icon: Copy,      color: 'text-rose-400',   activeBg: 'bg-rose-500/12 border-rose-500/35' },
+  { id: 'hint',     label: 'Hint Used',  icon: Lightbulb, color: 'text-amber-400',  activeBg: 'bg-amber-500/12 border-amber-500/35' },
+  { id: 'solution', label: 'Ans Seen',   icon: Eye,       color: 'text-sky-400',    activeBg: 'bg-sky-500/12 border-sky-500/35' },
+];
+
 // ── Row context menu ──────────────────────────────────────────────────────────
-const RowMenu = ({ question, prog, bruteForce, approach, optimized, onStepChange, onOpenNotes, onRevisit, onClearProgress }) => {
+const RowMenu = ({ question, prog, bruteForce, approach, optimized, onStepChange, onOpenNotes, onIncrementRevisit, onToggleRevisit, onSolveMethodChange, onClearProgress }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const solveMethod = prog?.solve_method || null;
 
   useEffect(() => {
     if (!open) return;
@@ -217,6 +225,62 @@ const RowMenu = ({ question, prog, bruteForce, approach, optimized, onStepChange
             </div>
           </div>
 
+          {/* How Solved Tags */}
+          <div className="px-3 py-2.5 border-b border-[#1f1f23] mb-1">
+            <span className="section-label block mb-2">How Solved?</span>
+            <div className="grid grid-cols-2 gap-1.5">
+              {SOLVE_METHODS.map(m => {
+                const Icon = m.icon;
+                const isActive = solveMethod === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => onSolveMethodChange(isActive ? null : m.id)}
+                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-xxs font-semibold transition-all cursor-pointer select-none active:scale-95 ${
+                      isActive
+                        ? `${m.activeBg} ${m.color} shadow-sm`
+                        : 'border-[#252528] bg-zinc-950/40 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/40'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? m.color : 'text-zinc-600'}`} />
+                    <span>{m.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Revisit Action */}
+          <div className="px-3 py-2.5 border-b border-[#1f1f23] my-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="section-label">Revisit Tracker</span>
+              {(prog?.revisit_count || 0) > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/25 text-[9px] font-mono font-bold text-rose-400 select-none" title={`Revisited ${prog.revisit_count} time(s)`}>
+                  ↺ {prog.revisit_count}×
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => { onIncrementRevisit(); setOpen(false); }}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/50 transition-all cursor-pointer select-none active:scale-95"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Mark Revisited (+1)</span>
+              </button>
+              {prog?.revisit && (
+                <button
+                  onClick={() => { onToggleRevisit(false); setOpen(false); }}
+                  className="px-2 py-1.5 text-xs font-semibold rounded-lg border border-zinc-800 text-zinc-500 hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                  title="Remove Revisit Flag"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+
           <button
             onClick={() => { onOpenNotes(); setOpen(false); }}
             className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 transition-colors cursor-pointer text-left"
@@ -243,18 +307,6 @@ const RowMenu = ({ question, prog, bruteForce, approach, optimized, onStepChange
               <ExternalLink className="w-3.5 h-3.5 text-zinc-600" /> Open Problem ↗
             </a>
           )}
-
-          <div className="h-px bg-[#1f1f23] my-1" />
-
-          <button
-            onClick={() => { onRevisit(!revisit); setOpen(false); }}
-            className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 transition-colors cursor-pointer text-left"
-          >
-            {revisit
-              ? <BookmarkCheck className="w-3.5 h-3.5 text-rose-400" />
-              : <Bookmark className="w-3.5 h-3.5 text-zinc-600" />}
-            {revisit ? 'Remove Revisit Flag' : 'Flag for Revisit'}
-          </button>
 
           <div className="h-px bg-[#1f1f23] my-1" />
 
@@ -320,7 +372,6 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'not_started', label: 'Todo',      dot: 'bg-zinc-500' },
   { value: 'attempted',   label: 'Attempted', dot: 'bg-amber-400' },
   { value: 'done',        label: 'Done',      dot: 'bg-emerald-400' },
-  { value: 'revisit',     label: 'Revisit',   dot: 'bg-rose-400' },
 ];
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -379,10 +430,23 @@ const MySheetPage = () => {
     else if (val === 'both')        upsertProgress(profile.id, qId, { brute_force: true, optimized: true });
   };
   const handleStep = (qId, field, val) => { if (profile) upsertProgress(profile.id, qId, { [field]: val }); };
-  const handleRevisit = (qId, val) => { if (profile) upsertProgress(profile.id, qId, { revisit: val }); };
+  const handleSolveMethod = (qId, method) => {
+    if (!profile) return;
+    upsertProgress(profile.id, qId, { solve_method: method });
+  };
+  const handleIncrementRevisit = (qId) => {
+    if (!profile) return;
+    const prog = progressMap[qId] || {};
+    const currentCount = prog.revisit_count || 0;
+    upsertProgress(profile.id, qId, {
+      revisit: true,
+      revisit_count: currentCount + 1,
+    });
+  };
+  const handleToggleRevisit = (qId, val) => { if (profile) upsertProgress(profile.id, qId, { revisit: val }); };
   const handleClearProgress = (qId) => {
     if (!profile) return;
-    upsertProgress(profile.id, qId, { status: 'not_started', brute_force: false, approach: false, optimized: false, revisit: false, notes: '', solution_link: '' });
+    upsertProgress(profile.id, qId, { status: 'not_started', brute_force: false, approach: false, optimized: false, revisit: false, revisit_count: 0, notes: '', solution_link: '' });
   };
 
   const openNotes = q => {
@@ -602,14 +666,14 @@ const MySheetPage = () => {
                                 topicRendered++;
 
                                 const rowBg =
-                                  isSurprise          ? 'bg-violet-950/25' :
-                                  status === 'done'   ? 'bg-emerald-950/10' :
-                                  status === 'attempted' ? 'bg-amber-950/8' :
-                                  status === 'revisit'   ? 'bg-rose-950/8' : '';
+                                  isSurprise             ? 'bg-violet-950/25' :
+                                  revisit                ? 'bg-rose-950/15' :
+                                  status === 'done'      ? 'bg-emerald-950/10' :
+                                  status === 'attempted' ? 'bg-amber-950/8' : '';
 
                                 const borderL =
                                   isSurprise ? 'border-l-2 border-l-violet-500' :
-                                  revisit    ? 'border-l-2 border-l-rose-500/50' : '';
+                                  revisit    ? 'border-l-2 border-l-rose-500' : '';
 
                                 rows.push(
                                   <tr
@@ -662,9 +726,27 @@ const MySheetPage = () => {
                                             <ExternalLink className="w-3 h-3" />
                                           </a>
                                         )}
-                                        {revisitCount > 0 && (
-                                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-[9px] font-bold text-rose-400 select-none" title={`Revisited ${revisitCount}×`}>
-                                            ↺{revisitCount}
+                                        {/* Solve Method Badge Symbol */}
+                                        {prog.solve_method && (() => {
+                                          const m = SOLVE_METHODS.find(sm => sm.id === prog.solve_method);
+                                          if (!m) return null;
+                                          const Icon = m.icon;
+                                          return (
+                                            <span
+                                              key={m.id}
+                                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-mono font-bold select-none transition-all ${m.activeBg} ${m.color}`}
+                                              title={`Solved method: ${m.label}`}
+                                            >
+                                              <Icon className="w-3 h-3" />
+                                              <span>{m.label}</span>
+                                            </span>
+                                          );
+                                        })()}
+                                        {/* Active Revisit Badge */}
+                                        {revisit && (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-[10px] font-mono font-bold text-rose-400 select-none shadow-sm shadow-rose-950/30">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                                            <span>REVISIT{revisitCount > 1 ? ` · ${revisitCount}×` : ''}</span>
                                           </span>
                                         )}
                                       </div>
@@ -692,7 +774,9 @@ const MySheetPage = () => {
                                         bruteForce={bruteForce} approach={approach} optimized={optimized}
                                         onStepChange={(field, val) => handleStep(q.id, field, val)}
                                         onOpenNotes={() => openNotes(q)}
-                                        onRevisit={v => handleRevisit(q.id, v)}
+                                        onIncrementRevisit={() => handleIncrementRevisit(q.id)}
+                                        onToggleRevisit={v => handleToggleRevisit(q.id, v)}
+                                        onSolveMethodChange={m => handleSolveMethod(q.id, m)}
                                         onClearProgress={() => handleClearProgress(q.id)}
                                       />
                                     </td>
