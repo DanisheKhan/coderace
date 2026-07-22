@@ -47,6 +47,7 @@ export const useProgressStore = create((set, get) => ({
       question_id: questionId,
       status: 'not_started',
       revisit: false,
+      revisit_count: 0,
       brute_force: false,
       approach: false,
       optimized: false,
@@ -60,9 +61,16 @@ export const useProgressStore = create((set, get) => ({
 
     if (existingIndex > -1) {
       oldRow = progress[existingIndex];
-      newRow = { ...oldRow, ...updates, updated_at: new Date().toISOString() };
+      let revisit_count = oldRow.revisit_count || 0;
+      if ((updates.revisit === true && !oldRow.revisit) || (updates.status === 'revisit' && oldRow.status !== 'revisit')) {
+        revisit_count += 1;
+      }
+      newRow = { ...oldRow, ...updates, revisit_count, updated_at: new Date().toISOString() };
       newProgress[existingIndex] = newRow;
     } else {
+      if (updates.revisit === true || updates.status === 'revisit') {
+        newRow.revisit_count = 1;
+      }
       newProgress.push(newRow);
     }
 
@@ -79,6 +87,7 @@ export const useProgressStore = create((set, get) => ({
             question_id: questionId,
             status:      newRow.status,
             revisit:     newRow.revisit,
+            revisit_count: newRow.revisit_count,
             brute_force: newRow.brute_force,
             approach:    newRow.approach,
             optimized:   newRow.optimized,

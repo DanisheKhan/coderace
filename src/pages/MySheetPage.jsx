@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuestions } from '../contexts/QuestionsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useProgressStore } from '../store/progressStore';
@@ -6,53 +7,180 @@ import {
   Search, ExternalLink, ChevronDown, ChevronUp,
   Shuffle, Save, X, Code, MoreHorizontal,
   Bookmark, BookmarkCheck, FileText,
-  Zap, Brain, Rocket, Link2, Trash2,
+  Zap, Brain, Rocket, Link2, Trash2, CheckCircle2,
+  Clock, AlertCircle, RotateCcw, Circle,
 } from 'lucide-react';
 
-// ── Star Rating ──
+// ── Portal Dropdown ──────────────────────────────────────────────────────────
+const PortalDropdown = ({ anchor, open, children, onClose }) => {
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const portalRef = useRef(null);
+
+  useEffect(() => {
+    if (!open || !anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    // Use fixed positioning — no scroll offset needed
+    setPos({
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+    });
+  }, [open, anchor]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      // Don't close when clicking the trigger button
+      if (anchor && anchor.contains(e.target)) return;
+      // Don't close when clicking INSIDE the portal dropdown panel
+      if (portalRef.current && portalRef.current.contains(e.target)) return;
+      onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open, onClose, anchor]);
+
+  if (!open) return null;
+  return createPortal(
+    <div
+      ref={portalRef}
+      style={{ position: 'fixed', top: pos.top, left: pos.left, minWidth: pos.width, zIndex: 9999 }}
+      className="animate-fadeIn"
+    >
+      {children}
+    </div>,
+    document.body
+  );
+};
+
+// ── Stars ────────────────────────────────────────────────────────────────────
 const Stars = ({ n }) => (
-  <span className="tracking-tight text-xs text-amber-500 select-none">
-    {'★'.repeat(n)}
-    <span className="text-zinc-700">{'☆'.repeat(5 - n)}</span>
+  <span className="tracking-tight text-xs select-none">
+    <span className="text-amber-400">{'★'.repeat(n)}</span>
+    <span className="text-zinc-700">{'★'.repeat(5 - n)}</span>
   </span>
 );
 
-// ── Status Badge / Select ──
-const statusStyles = {
-  not_started: 'bg-zinc-800/60 text-zinc-400 border-zinc-700/40',
-  attempted:   'bg-amber-500/8 text-amber-400 border-amber-500/20',
-  done:        'bg-emerald-500/8 text-emerald-400 border-emerald-500/20',
-  revisit:     'bg-rose-500/8 text-rose-400 border-rose-500/20',
+// ── Status Dropdown ──────────────────────────────────────────────────────────
+const STATUS_OPTIONS = [
+  { value: 'not_started', label: 'Todo',      icon: Circle,       color: 'text-zinc-400', dot: 'bg-zinc-500' },
+  { value: 'attempted',   label: 'Attempted', icon: Clock,        color: 'text-amber-400', dot: 'bg-amber-400' },
+  { value: 'done',        label: 'Done',      icon: CheckCircle2, color: 'text-emerald-400', dot: 'bg-emerald-400' },
+  { value: 'revisit',     label: 'Revisit',   icon: RotateCcw,    color: 'text-rose-400', dot: 'bg-rose-400' },
+];
+
+const statusPillStyles = {
+  not_started: 'bg-zinc-800/60 text-zinc-400 border-zinc-700/40 hover:border-zinc-600/60',
+  attempted:   'bg-amber-500/10 text-amber-400 border-amber-500/25 hover:border-amber-500/50',
+  done:        'bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:border-emerald-500/50',
+  revisit:     'bg-rose-500/10 text-rose-400 border-rose-500/25 hover:border-rose-500/50',
 };
 
-const StatusCell = ({ status, onChange }) => (
-  <select
-    value={status}
-    onChange={e => onChange(e.target.value)}
-    className={`border px-2.5 py-1 text-xs rounded-full font-medium focus:outline-none cursor-pointer transition-all ${statusStyles[status] || statusStyles.not_started}`}
-  >
-    <option value="not_started">Todo</option>
-    <option value="attempted">Attempted</option>
-    <option value="done">Done</option>
-    <option value="revisit">Revisit</option>
-  </select>
-);
+const StatusCell = ({ status, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const cur = STATUS_OPTIONS.find(o => o.value === status) || STATUS_OPTIONS[0];
 
-// ── Step toggle ──
-const StepToggle = ({ value, onChange, icon: Icon, activeColor, label }) => (
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-all cursor-pointer select-none ${statusPillStyles[status] || statusPillStyles.not_started}`}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cur.dot}`} />
+        {cur.label}
+        <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <PortalDropdown anchor={ref.current} open={open} onClose={() => setOpen(false)}>
+        <div className="bg-[#111113] border border-[#2a2a2e] rounded-xl shadow-2xl shadow-black/60 py-1 overflow-hidden" style={{ minWidth: 148 }}>
+          {STATUS_OPTIONS.map(opt => {
+            const Icon = opt.icon;
+            const isActive = opt.value === status;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => { onChange(opt.value); setOpen(false); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors text-left ${
+                  isActive ? `${opt.color} bg-white/5` : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? opt.color : 'text-zinc-600'}`} />
+                {opt.label}
+                {isActive && <span className="ml-auto text-zinc-600">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      </PortalDropdown>
+    </div>
+  );
+};
+
+// ── Approach Dropdown ─────────────────────────────────────────────────────────
+const APPROACH_OPTIONS = [
+  { value: 'none',        label: 'Todo',       dot: 'bg-zinc-500',    pill: 'bg-zinc-800/60 text-zinc-400 border-zinc-700/40 hover:border-zinc-600/60' },
+  { value: 'brute_force', label: 'Brute Force', dot: 'bg-amber-400',   pill: 'bg-amber-500/10 text-amber-400 border-amber-500/25 hover:border-amber-500/50' },
+  { value: 'optimized',   label: 'Optimal',    dot: 'bg-emerald-400', pill: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:border-emerald-500/50' },
+  { value: 'both',        label: 'Both',       dot: 'bg-violet-400',  pill: 'bg-violet-500/10 text-violet-400 border-violet-500/25 hover:border-violet-500/50' },
+];
+
+const ApproachCell = ({ bruteForce, optimized, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const value = bruteForce && optimized ? 'both' : bruteForce ? 'brute_force' : optimized ? 'optimized' : 'none';
+  const cur = APPROACH_OPTIONS.find(o => o.value === value) || APPROACH_OPTIONS[0];
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-all cursor-pointer select-none ${cur.pill}`}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cur.dot}`} />
+        {cur.label}
+        <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <PortalDropdown anchor={ref.current} open={open} onClose={() => setOpen(false)}>
+        <div className="bg-[#111113] border border-[#2a2a2e] rounded-xl shadow-2xl shadow-black/60 py-1 overflow-hidden" style={{ minWidth: 148 }}>
+          {APPROACH_OPTIONS.map(opt => {
+            const isActive = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => { onChange(opt.value); setOpen(false); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors text-left ${
+                  isActive ? 'text-zinc-200 bg-white/5' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full shrink-0 ${opt.dot}`} />
+                {opt.label}
+                {isActive && <span className="ml-auto text-zinc-600">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      </PortalDropdown>
+    </div>
+  );
+};
+
+// ── Step Toggle ───────────────────────────────────────────────────────────────
+const StepToggle = ({ value, onChange, icon: Icon, activeColor, activeBg, label }) => (
   <button
     onClick={() => onChange(!value)}
     title={label}
-    className="flex flex-col items-center gap-0.5 p-1.5 rounded cursor-pointer transition-all"
+    className={`flex flex-col items-center gap-1 p-2 rounded-lg cursor-pointer transition-all ${
+      value ? `${activeBg} ring-1 ring-inset ${activeColor.replace('text-', 'ring-')}/30` : 'hover:bg-zinc-800/60'
+    }`}
   >
-    <Icon className={`w-3.5 h-3.5 transition-colors ${value ? activeColor : 'text-zinc-700 hover:text-zinc-500'}`} />
-    <span className={`text-[9px] font-semibold uppercase tracking-wide leading-none transition-colors ${value ? activeColor : 'text-zinc-700'}`}>
+    <Icon className={`w-3.5 h-3.5 transition-colors ${value ? activeColor : 'text-zinc-600'}`} />
+    <span className={`text-[9px] font-bold uppercase tracking-wide leading-none transition-colors ${value ? activeColor : 'text-zinc-700'}`}>
       {label}
     </span>
   </button>
 );
 
-// ── Row context menu ──
+// ── Row context menu ──────────────────────────────────────────────────────────
 const RowMenu = ({ question, prog, bruteForce, approach, optimized, onStepChange, onOpenNotes, onRevisit, onClearProgress }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -71,48 +199,48 @@ const RowMenu = ({ question, prog, bruteForce, approach, optimized, onStepChange
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(v => !v)}
-        className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/70 cursor-pointer transition-colors"
+        className={`p-1.5 rounded-lg cursor-pointer transition-all ${open ? 'text-zinc-200 bg-zinc-800' : 'text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/70'}`}
         title="More options"
       >
         <MoreHorizontal className="w-4 h-4" />
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-1 w-52 bg-[#111113] border border-[#1f1f23] rounded-xl shadow-2xl shadow-black/40 overflow-hidden py-1" style={{ top: '100%' }}>
+        <div className="absolute right-0 z-50 mt-1.5 w-56 bg-[#111113] border border-[#252528] rounded-xl shadow-2xl shadow-black/60 overflow-hidden py-1.5" style={{ top: '100%' }}>
           {/* Solution steps */}
-          <div className="px-3 py-2.5 border-b border-[#1f1f23]">
+          <div className="px-3 py-2.5 border-b border-[#1f1f23] mb-1">
             <span className="section-label block mb-2">Solution Steps</span>
-            <div className="flex items-center justify-around bg-zinc-950/60 px-1 py-1 rounded-lg border border-zinc-800/60">
-              <StepToggle value={bruteForce} onChange={v => onStepChange('brute_force', v)} icon={Zap}    activeColor="text-amber-400" label="Brute" />
-              <StepToggle value={approach}   onChange={v => onStepChange('approach', v)}   icon={Brain}   activeColor="text-sky-400"   label="Think" />
-              <StepToggle value={optimized}  onChange={v => onStepChange('optimized', v)}  icon={Rocket}  activeColor="text-emerald-400" label="Optim" />
+            <div className="grid grid-cols-3 gap-1 bg-zinc-950/70 p-1 rounded-lg border border-zinc-800/50">
+              <StepToggle value={bruteForce} onChange={v => onStepChange('brute_force', v)} icon={Zap}    activeColor="text-amber-400"   activeBg="bg-amber-500/10"   label="Brute" />
+              <StepToggle value={approach}   onChange={v => onStepChange('approach', v)}   icon={Brain}   activeColor="text-sky-400"     activeBg="bg-sky-500/10"     label="Think" />
+              <StepToggle value={optimized}  onChange={v => onStepChange('optimized', v)}  icon={Rocket}  activeColor="text-emerald-400" activeBg="bg-emerald-500/10" label="Optim" />
             </div>
           </div>
 
-          {/* Notes */}
           <button
             onClick={() => { onOpenNotes(); setOpen(false); }}
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800/60 hover:text-white transition-colors cursor-pointer text-left"
+            className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 transition-colors cursor-pointer text-left"
           >
-            <FileText className={`w-4 h-4 ${hasNotes ? 'text-violet-400' : 'text-zinc-500'}`} />
+            <FileText className={`w-3.5 h-3.5 ${hasNotes ? 'text-violet-400' : 'text-zinc-600'}`} />
             {hasNotes ? 'Edit Notes / Solution' : 'Add Notes / Solution'}
+            {hasNotes && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-500" />}
           </button>
 
           {prog?.solution_link && (
             <a
               href={prog.solution_link} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800/60 hover:text-white transition-colors cursor-pointer"
+              className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 transition-colors cursor-pointer"
             >
-              <Link2 className="w-4 h-4 text-zinc-500" /> Open My Solution
+              <Link2 className="w-3.5 h-3.5 text-zinc-600" /> Open My Solution
             </a>
           )}
 
           {question.link && (
             <a
               href={question.link} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800/60 hover:text-white transition-colors cursor-pointer"
+              className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 transition-colors cursor-pointer"
             >
-              <ExternalLink className="w-4 h-4 text-zinc-500" /> Open Problem ↗
+              <ExternalLink className="w-3.5 h-3.5 text-zinc-600" /> Open Problem ↗
             </a>
           )}
 
@@ -120,11 +248,11 @@ const RowMenu = ({ question, prog, bruteForce, approach, optimized, onStepChange
 
           <button
             onClick={() => { onRevisit(!revisit); setOpen(false); }}
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800/60 hover:text-white transition-colors cursor-pointer text-left"
+            className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 transition-colors cursor-pointer text-left"
           >
             {revisit
-              ? <BookmarkCheck className="w-4 h-4 text-rose-400" />
-              : <Bookmark className="w-4 h-4 text-zinc-500" />}
+              ? <BookmarkCheck className="w-3.5 h-3.5 text-rose-400" />
+              : <Bookmark className="w-3.5 h-3.5 text-zinc-600" />}
             {revisit ? 'Remove Revisit Flag' : 'Flag for Revisit'}
           </button>
 
@@ -132,9 +260,9 @@ const RowMenu = ({ question, prog, bruteForce, approach, optimized, onStepChange
 
           <button
             onClick={() => { onClearProgress(); setOpen(false); }}
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-400 hover:bg-rose-500/8 transition-colors cursor-pointer text-left"
+            className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-rose-400/80 hover:bg-rose-500/8 hover:text-rose-300 transition-colors cursor-pointer text-left"
           >
-            <Trash2 className="w-4 h-4" /> Reset Progress
+            <Trash2 className="w-3.5 h-3.5" /> Reset Progress
           </button>
         </div>
       )}
@@ -142,7 +270,60 @@ const RowMenu = ({ question, prog, bruteForce, approach, optimized, onStepChange
   );
 };
 
-// ── Main Page ──
+// ── Filter Select (custom) ────────────────────────────────────────────────────
+const FilterSelect = ({ value, onChange, options, placeholder }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const cur = options.find(o => o.value === value);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="inline-flex items-center gap-2 px-3 py-2 text-xs rounded-lg glass-input text-zinc-300 cursor-pointer transition-all select-none whitespace-nowrap"
+      >
+        {cur?.label || placeholder}
+        <ChevronDown className={`w-3 h-3 text-zinc-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <PortalDropdown anchor={ref.current} open={open} onClose={() => setOpen(false)}>
+        <div className="bg-[#111113] border border-[#2a2a2e] rounded-xl shadow-2xl shadow-black/60 py-1 overflow-hidden" style={{ minWidth: 160 }}>
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-xs cursor-pointer transition-colors text-left ${
+                opt.value === value ? 'text-violet-400 bg-violet-500/8' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'
+              }`}
+            >
+              {opt.dot && <span className={`w-1.5 h-1.5 rounded-full ${opt.dot}`} />}
+              {opt.label}
+              {opt.value === value && <span className="ml-auto text-zinc-600 text-[10px]">✓</span>}
+            </button>
+          ))}
+        </div>
+      </PortalDropdown>
+    </div>
+  );
+};
+
+const DIFFICULTY_OPTIONS = [
+  { value: 'All', label: 'All Difficulties' },
+  { value: '1', label: '★☆☆☆☆  Easy' },
+  { value: '2', label: '★★☆☆☆  Easy+' },
+  { value: '3', label: '★★★☆☆  Medium' },
+  { value: '4', label: '★★★★☆  Hard' },
+  { value: '5', label: '★★★★★  Expert' },
+];
+
+const STATUS_FILTER_OPTIONS = [
+  { value: 'All',         label: 'All Statuses' },
+  { value: 'not_started', label: 'Todo',      dot: 'bg-zinc-500' },
+  { value: 'attempted',   label: 'Attempted', dot: 'bg-amber-400' },
+  { value: 'done',        label: 'Done',      dot: 'bg-emerald-400' },
+  { value: 'revisit',     label: 'Revisit',   dot: 'bg-rose-400' },
+];
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 const MySheetPage = () => {
   const { questions, loading: qLoading } = useQuestions();
   const { profile } = useAuth();
@@ -190,6 +371,13 @@ const MySheetPage = () => {
   }, [filteredQuestions]);
 
   const handleStatus = (qId, ns) => { if (profile) upsertProgress(profile.id, qId, { status: ns }); };
+  const handleApproach = (qId, val) => {
+    if (!profile) return;
+    if (val === 'none')        upsertProgress(profile.id, qId, { brute_force: false, optimized: false });
+    else if (val === 'brute_force') upsertProgress(profile.id, qId, { brute_force: true, optimized: false });
+    else if (val === 'optimized')   upsertProgress(profile.id, qId, { brute_force: false, optimized: true });
+    else if (val === 'both')        upsertProgress(profile.id, qId, { brute_force: true, optimized: true });
+  };
   const handleStep = (qId, field, val) => { if (profile) upsertProgress(profile.id, qId, { [field]: val }); };
   const handleRevisit = (qId, val) => { if (profile) upsertProgress(profile.id, qId, { revisit: val }); };
   const handleClearProgress = (qId) => {
@@ -229,33 +417,43 @@ const MySheetPage = () => {
   }
 
   const totalDone = progress.filter(p => p.user_id === profile?.id && p.status === 'done').length;
+  const totalPct  = questions.length ? Math.round((totalDone / questions.length) * 100) : 0;
 
   return (
-    <div className="space-y-4 pb-8">
-      {/* Header */}
+    <div className="space-y-4 pb-10">
+      {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-zinc-100 tracking-tight">DSA Master Sheet</h1>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            {totalDone} / {questions.length} solved
-          </p>
+          <div className="flex items-center gap-3 mt-1.5">
+            <div className="w-32 h-1.5 bg-zinc-800/80 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${totalPct}%`,
+                  background: 'linear-gradient(90deg, #7c3aed, #a78bfa)',
+                }}
+              />
+            </div>
+            <span className="text-xs text-zinc-500 font-mono">{totalDone}/{questions.length} solved</span>
+          </div>
         </div>
         <button
           onClick={handleSurpriseMe}
-          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg border border-[#1f1f23] text-zinc-400 hover:border-violet-500/40 hover:text-violet-400 transition-all cursor-pointer"
+          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg border border-[#2a2a2e] text-zinc-400 hover:border-violet-500/40 hover:text-violet-400 hover:bg-violet-500/5 transition-all cursor-pointer"
         >
           <Shuffle className="w-3.5 h-3.5" />
           Surprise Me
         </button>
       </div>
 
-      {/* Surprise banner */}
+      {/* ── Surprise banner ── */}
       {surpriseQuestion && (
-        <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl border border-violet-500/20 bg-violet-500/5">
-          <div className="min-w-0">
-            <span className="section-label">Challenge → </span>
-            <span className="text-sm text-zinc-200 font-medium ml-1">{surpriseQuestion.problem_name}</span>
-            <span className="text-zinc-500 text-xs ml-2">{surpriseQuestion.topic} · {surpriseQuestion.subtopic}</span>
+        <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl border border-violet-500/25 bg-violet-500/5">
+          <div className="min-w-0 flex items-center gap-2 flex-wrap">
+            <span className="section-label text-violet-500">Challenge →</span>
+            <span className="text-sm text-zinc-200 font-medium">{surpriseQuestion.problem_name}</span>
+            <span className="text-zinc-600 text-xs">{surpriseQuestion.topic} · {surpriseQuestion.subtopic}</span>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {surpriseQuestion.link && (
@@ -271,57 +469,62 @@ const MySheetPage = () => {
         </div>
       )}
 
-      {/* Filter bar */}
+      {/* ── Filter bar ── */}
       <div className="flex flex-wrap gap-2 items-center">
+        {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600 pointer-events-none" />
           <input
             type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search problem, topic…"
             className="w-full pl-9 pr-3 py-2 text-xs rounded-lg glass-input text-zinc-200 placeholder:text-zinc-600 focus:outline-none"
           />
         </div>
-        <select
-          value={selectedDifficulty} onChange={e => setSelectedDifficulty(e.target.value)}
-          className="px-3 py-2 text-xs rounded-lg glass-input text-zinc-300 focus:outline-none cursor-pointer"
+
+        <FilterSelect
+          value={selectedDifficulty}
+          onChange={setSelectedDifficulty}
+          options={DIFFICULTY_OPTIONS}
+          placeholder="All Difficulties"
+        />
+
+        <FilterSelect
+          value={selectedStatus}
+          onChange={setSelectedStatus}
+          options={STATUS_FILTER_OPTIONS}
+          placeholder="All Statuses"
+        />
+
+        <button
+          onClick={() => setFilterRevisit(v => !v)}
+          className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs rounded-lg border cursor-pointer transition-all select-none ${
+            filterRevisit
+              ? 'border-rose-500/40 bg-rose-500/8 text-rose-400'
+              : 'glass-input text-zinc-400 hover:text-zinc-200'
+          }`}
         >
-          <option value="All">All Difficulties</option>
-          {[1, 2, 3, 4, 5].map(d => <option key={d} value={d}>{'★'.repeat(d)}{'☆'.repeat(5 - d)}</option>)}
-        </select>
-        <select
-          value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)}
-          className="px-3 py-2 text-xs rounded-lg glass-input text-zinc-300 focus:outline-none cursor-pointer"
-        >
-          <option value="All">All Statuses</option>
-          <option value="not_started">Todo</option>
-          <option value="attempted">Attempted</option>
-          <option value="done">Done</option>
-          <option value="revisit">Revisit</option>
-        </select>
-        <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer select-none">
-          <input type="checkbox" checked={filterRevisit} onChange={e => setFilterRevisit(e.target.checked)}
-            className="accent-violet-500 w-3.5 h-3.5 cursor-pointer rounded" />
+          <Bookmark className="w-3.5 h-3.5" />
           Revisit Only
-        </label>
+        </button>
       </div>
 
-      {/* Column legend */}
-      <div className="flex items-center gap-4 text-xxs text-zinc-600 pb-1">
-        <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-amber-500" /> Brute Force</span>
-        <span className="flex items-center gap-1"><Brain className="w-3 h-3 text-sky-400" /> Approach</span>
-        <span className="flex items-center gap-1"><Rocket className="w-3 h-3 text-emerald-400" /> Optimized</span>
+      {/* ── Legend ── */}
+      <div className="flex items-center gap-4 text-xxs text-zinc-600 pb-0.5">
+        <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-amber-500/70" /> Brute</span>
+        <span className="flex items-center gap-1"><Brain className="w-3 h-3 text-sky-400/70" /> Approach</span>
+        <span className="flex items-center gap-1"><Rocket className="w-3 h-3 text-emerald-400/70" /> Optimized</span>
       </div>
 
-      {/* Phase accordions */}
+      {/* ── Phase accordions ── */}
       {Object.keys(groupedByPhase).length === 0 ? (
-        <div className="text-center py-16 text-zinc-600 text-sm">No questions match your filters.</div>
+        <div className="text-center py-20 text-zinc-600 text-sm">No questions match your filters.</div>
       ) : (
         <div className="space-y-2">
           {Object.entries(groupedByPhase).map(([phase, phaseQuestions]) => {
             const isOpen = !!expandedPhases[phase];
-            const done = phaseQuestions.filter(q => progressMap[q.id]?.status === 'done').length;
+            const done  = phaseQuestions.filter(q => progressMap[q.id]?.status === 'done').length;
             const total = phaseQuestions.length;
-            const pct = total ? Math.round((done / total) * 100) : 0;
+            const pct   = total ? Math.round((done / total) * 100) : 0;
 
             const topicGroups = {};
             phaseQuestions.forEach(q => {
@@ -330,22 +533,26 @@ const MySheetPage = () => {
             });
 
             return (
-              <div key={phase} id={`phase-${phase}`} className="border border-[#1f1f23] rounded-xl overflow-hidden bg-[#0c0c0e]">
+              <div key={phase} id={`phase-${phase}`} className="border border-[#1f1f23] rounded-xl overflow-hidden" style={{ background: '#0c0c0e' }}>
                 {/* Phase header */}
                 <button
                   onClick={() => setExpandedPhases(prev => ({ ...prev, [phase]: !isOpen }))}
-                  className="w-full flex items-center justify-between px-5 py-3.5 text-left cursor-pointer hover:bg-zinc-900/30 transition-colors group"
+                  className="w-full flex items-center justify-between px-5 py-3.5 text-left cursor-pointer hover:bg-zinc-900/40 transition-colors group"
                 >
                   <div className="flex items-center gap-4 min-w-0 flex-1">
                     <span className="section-label truncate">{phase}</span>
                     <div className="flex items-center gap-2 shrink-0">
-                      <div className="w-24 h-1 bg-zinc-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-violet-500 transition-all rounded-full" style={{ width: `${pct}%` }} />
+                      <div className="w-28 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%`, background: pct === 100 ? '#10b981' : 'linear-gradient(90deg,#7c3aed,#a78bfa)' }}
+                        />
                       </div>
-                      <span className="text-xxs text-zinc-500 font-mono">{done}/{total}</span>
+                      <span className="text-xxs text-zinc-600 font-mono tabular-nums">{done}/{total}</span>
+                      {pct === 100 && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
                     </div>
                   </div>
-                  <span className="text-zinc-600 group-hover:text-zinc-400 transition-colors ml-3">
+                  <span className="text-zinc-700 group-hover:text-zinc-400 transition-colors ml-3">
                     {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </span>
                 </button>
@@ -355,20 +562,20 @@ const MySheetPage = () => {
                   <div className="overflow-x-auto border-t border-[#1f1f23]">
                     <table className="w-full border-collapse text-sm" style={{ minWidth: 820 }}>
                       <thead>
-                        <tr className="bg-zinc-900/70 text-zinc-600 font-semibold text-xxs uppercase tracking-wider">
-                          <th className="px-4 py-3 text-right w-12 border-r border-[#1f1f23]">#</th>
+                        <tr style={{ background: 'rgba(18,18,21,0.95)' }} className="text-zinc-600 font-semibold text-xxs uppercase tracking-wider">
+                          <th className="px-4 py-3 text-right w-10 border-r border-[#1f1f23]">#</th>
                           <th className="px-4 py-3 w-28 border-r border-[#1f1f23] text-left">Topic</th>
                           <th className="px-4 py-3 w-44 border-r border-[#1f1f23] text-left">Subtopic</th>
                           <th className="px-4 py-3 border-r border-[#1f1f23] text-left">Problem</th>
                           <th className="px-4 py-3 w-28 text-center border-r border-[#1f1f23]">Difficulty</th>
-                          <th className="px-4 py-3 w-28 text-center border-r border-[#1f1f23]">Status</th>
-                          <th className="px-3 py-3 w-12 text-center">···</th>
+                          <th className="px-4 py-3 w-32 text-center border-r border-[#1f1f23]">Approach</th>
+                          <th className="px-4 py-3 w-32 text-center border-r border-[#1f1f23]">Status</th>
+                          <th className="px-3 py-3 w-10 text-center">···</th>
                         </tr>
                       </thead>
                       <tbody>
                         {(() => {
                           const rows = [];
-                          let subSr = 0;
 
                           Object.entries(topicGroups).forEach(([topic, topicQs]) => {
                             const subtopicGroups = {};
@@ -382,37 +589,40 @@ const MySheetPage = () => {
 
                             Object.entries(subtopicGroups).forEach(([subtopic, stQs]) => {
                               stQs.forEach((q, qIdx) => {
-                                subSr++;
-                                const prog = progressMap[q.id] || {};
-                                const status = prog.status || 'not_started';
+                                const prog       = progressMap[q.id] || {};
+                                const status     = prog.status || 'not_started';
                                 const bruteForce = prog.brute_force || false;
-                                const approach = prog.approach || false;
-                                const optimized = prog.optimized || false;
-                                const revisit = prog.revisit || false;
+                                const approach   = prog.approach   || false;
+                                const optimized  = prog.optimized  || false;
+                                const revisit    = prog.revisit    || false;
+                                const revisitCount = prog.revisit_count || 0;
                                 const isSurprise = surpriseQuestion?.id === q.id;
                                 const isFirstTopic = topicRendered === 0;
-                                const isFirstSub = qIdx === 0;
+                                const isFirstSub   = qIdx === 0;
                                 topicRendered++;
 
                                 const rowBg =
-                                  isSurprise ? 'bg-violet-950/20' :
-                                  status === 'done' ? 'bg-emerald-950/5' :
-                                  status === 'attempted' ? 'bg-amber-950/5' :
-                                  status === 'revisit' ? 'bg-rose-950/5' : '';
+                                  isSurprise          ? 'bg-violet-950/25' :
+                                  status === 'done'   ? 'bg-emerald-950/10' :
+                                  status === 'attempted' ? 'bg-amber-950/8' :
+                                  status === 'revisit'   ? 'bg-rose-950/8' : '';
+
+                                const borderL =
+                                  isSurprise ? 'border-l-2 border-l-violet-500' :
+                                  revisit    ? 'border-l-2 border-l-rose-500/50' : '';
 
                                 rows.push(
                                   <tr
                                     key={q.id}
                                     className={[
-                                      'border-b border-[#1f1f23]/60 transition-colors',
+                                      'border-b border-[#181818] transition-all duration-150',
                                       rowBg,
-                                      isSurprise ? 'border-l-2 border-l-violet-500' : '',
-                                      revisit && !isSurprise ? 'border-l-2 border-l-rose-500/40' : '',
-                                      !isSurprise && !revisit ? 'hover:bg-zinc-900/20' : '',
+                                      borderL,
+                                      !isSurprise && !revisit ? 'hover:bg-zinc-900/30' : '',
                                     ].filter(Boolean).join(' ')}
                                   >
                                     {/* Sr No */}
-                                    <td className="px-4 py-2.5 text-right font-mono text-xxs text-zinc-600 border-r border-[#1f1f23]/50 whitespace-nowrap">
+                                    <td className="px-4 py-2.5 text-right font-mono text-xxs text-zinc-700 border-r border-[#1f1f23]/50 whitespace-nowrap">
                                       {q.sr_no}
                                     </td>
 
@@ -420,10 +630,10 @@ const MySheetPage = () => {
                                     {isFirstTopic && (
                                       <td
                                         rowSpan={topicQs.length}
-                                        className="px-3 py-3 font-medium text-xs text-zinc-400 border-r border-[#1f1f23]/50 align-middle text-center"
-                                        style={{ borderBottom: '1px solid rgba(31,31,35,0.6)' }}
+                                        className="px-3 py-3 text-xxs font-semibold text-zinc-500 border-r border-[#1f1f23]/50 align-middle text-center bg-[#0c0c0e]"
+                                        style={{ borderBottom: '1px solid rgba(31,31,35,0.5)' }}
                                       >
-                                        <span style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', display: 'inline-block', whiteSpace: 'nowrap' }}>
+                                        <span style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', display: 'inline-block', whiteSpace: 'nowrap', letterSpacing: '0.05em' }}>
                                           {topic}
                                         </span>
                                       </td>
@@ -433,8 +643,8 @@ const MySheetPage = () => {
                                     {isFirstSub && (
                                       <td
                                         rowSpan={stQs.length}
-                                        className="px-4 py-3 text-xs text-zinc-500 border-r border-[#1f1f23]/50 align-top pt-3"
-                                        style={{ borderBottom: '1px solid rgba(31,31,35,0.6)' }}
+                                        className="px-4 py-3 text-xs text-zinc-600 border-r border-[#1f1f23]/50 align-top pt-3 leading-relaxed bg-[#0c0c0e]"
+                                        style={{ borderBottom: '1px solid rgba(31,31,35,0.5)' }}
                                       >
                                         {subtopic}
                                       </td>
@@ -443,14 +653,19 @@ const MySheetPage = () => {
                                     {/* Problem name */}
                                     <td className="px-4 py-2.5 border-r border-[#1f1f23]/50">
                                       <div className="flex items-center gap-2">
-                                        <span className={`text-sm transition-colors ${status === 'done' ? 'line-through text-zinc-500' : 'text-zinc-200'}`}>
+                                        <span className={`text-sm leading-snug transition-colors ${status === 'done' ? 'line-through text-zinc-600' : 'text-zinc-200'}`}>
                                           {q.problem_name}
                                         </span>
                                         {q.link && (
                                           <a href={q.link} target="_blank" rel="noopener noreferrer"
-                                            className="shrink-0 text-zinc-600 hover:text-violet-400 transition-colors">
+                                            className="shrink-0 text-zinc-700 hover:text-violet-400 transition-colors">
                                             <ExternalLink className="w-3 h-3" />
                                           </a>
+                                        )}
+                                        {revisitCount > 0 && (
+                                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-[9px] font-bold text-rose-400 select-none" title={`Revisited ${revisitCount}×`}>
+                                            ↺{revisitCount}
+                                          </span>
                                         )}
                                       </div>
                                     </td>
@@ -460,13 +675,18 @@ const MySheetPage = () => {
                                       <Stars n={q.difficulty} />
                                     </td>
 
+                                    {/* Approach */}
+                                    <td className="px-3 py-2 text-center border-r border-[#1f1f23]/50 whitespace-nowrap">
+                                      <ApproachCell bruteForce={bruteForce} optimized={optimized} onChange={val => handleApproach(q.id, val)} />
+                                    </td>
+
                                     {/* Status */}
-                                    <td className="px-4 py-2.5 text-center border-r border-[#1f1f23]/50">
+                                    <td className="px-3 py-2 text-center border-r border-[#1f1f23]/50">
                                       <StatusCell status={status} onChange={ns => handleStatus(q.id, ns)} />
                                     </td>
 
                                     {/* Menu */}
-                                    <td className="px-2 py-2.5 text-center">
+                                    <td className="px-2 py-2 text-center">
                                       <RowMenu
                                         question={q} prog={prog}
                                         bruteForce={bruteForce} approach={approach} optimized={optimized}
@@ -494,23 +714,25 @@ const MySheetPage = () => {
         </div>
       )}
 
-      {/* Notes modal */}
+      {/* ── Notes modal ── */}
       {activeNotes && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-[#111113] border border-[#1f1f23] rounded-2xl shadow-2xl shadow-black/50 p-5">
-            <div className="flex items-start justify-between mb-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#0f0f11] border border-[#252528] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
+            {/* Modal header */}
+            <div className="flex items-start justify-between px-5 py-4 border-b border-[#1f1f23]">
               <div>
                 <h3 className="font-semibold text-zinc-100 text-sm leading-tight">{activeNotes.problem_name}</h3>
-                <p className="text-xxs text-zinc-500 mt-1">{activeNotes.topic} · {activeNotes.subtopic}</p>
+                <p className="text-xxs text-zinc-600 mt-0.5">{activeNotes.topic} · {activeNotes.subtopic}</p>
               </div>
-              <button onClick={() => setActiveNotes(null)} className="text-zinc-500 hover:text-zinc-200 cursor-pointer ml-4 p-0.5">
+              <button onClick={() => setActiveNotes(null)} className="text-zinc-600 hover:text-zinc-200 cursor-pointer ml-4 p-0.5 mt-0.5 transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3">
+            {/* Modal body */}
+            <div className="p-5 space-y-4">
               <div>
-                <label className="section-label block mb-1.5">Solution Link</label>
+                <label className="section-label block mb-2">Solution Link</label>
                 <div className="relative">
                   <Code className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
                   <input type="url" value={solutionLink} onChange={e => setSolutionLink(e.target.value)}
@@ -520,23 +742,24 @@ const MySheetPage = () => {
                 </div>
               </div>
               <div>
-                <label className="section-label block mb-1.5">Notes</label>
+                <label className="section-label block mb-2">Notes</label>
                 <textarea value={notesText} onChange={e => setNotesText(e.target.value)}
                   placeholder="Approach, complexity, edge cases…"
                   rows={6}
-                  className="w-full px-3 py-2 text-xs rounded-lg glass-input text-zinc-200 placeholder:text-zinc-600 focus:outline-none resize-none"
+                  className="w-full px-3 py-2 text-xs rounded-lg glass-input text-zinc-200 placeholder:text-zinc-600 focus:outline-none resize-none leading-relaxed"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 mt-4">
+            {/* Modal footer */}
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-[#1f1f23]">
               <button onClick={() => setActiveNotes(null)}
-                className="px-3 py-1.5 text-xs rounded-lg border border-[#1f1f23] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition-colors cursor-pointer">
+                className="px-3.5 py-2 text-xs rounded-lg border border-[#252528] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition-colors cursor-pointer">
                 Cancel
               </button>
               <button onClick={saveNotes}
-                className="px-3 py-1.5 text-xs rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors cursor-pointer flex items-center gap-1.5">
-                <Save className="w-3.5 h-3.5" /> Save
+                className="px-3.5 py-2 text-xs rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors cursor-pointer flex items-center gap-1.5">
+                <Save className="w-3.5 h-3.5" /> Save Notes
               </button>
             </div>
           </div>
