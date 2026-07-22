@@ -47,6 +47,9 @@ export const useProgressStore = create((set, get) => ({
       question_id: questionId,
       status: 'not_started',
       revisit: false,
+      brute_force: false,
+      approach: false,
+      optimized: false,
       notes: null,
       solution_link: null,
       updated_at: new Date().toISOString(),
@@ -74,11 +77,14 @@ export const useProgressStore = create((set, get) => ({
           {
             user_id: userId,
             question_id: questionId,
-            status: newRow.status,
-            revisit: newRow.revisit,
-            notes: newRow.notes,
+            status:      newRow.status,
+            revisit:     newRow.revisit,
+            brute_force: newRow.brute_force,
+            approach:    newRow.approach,
+            optimized:   newRow.optimized,
+            notes:       newRow.notes,
             solution_link: newRow.solution_link,
-            updated_at: newRow.updated_at
+            updated_at:  newRow.updated_at,
           },
           { onConflict: 'user_id,question_id' }
         );
