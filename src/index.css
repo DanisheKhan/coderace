@@ -1,130 +1,127 @@
 @import "tailwindcss";
 
 @theme {
+  /* ── Background layers ── */
   --color-brand-dark: #09090b;
-  --color-brand-surface: #121214;
-  --color-brand-border: #27272a;
-  
+  --color-brand-surface: #111113;
+  --color-brand-surface-2: #18181b;
+  --color-brand-border: #1f1f23;
+  --color-brand-border-subtle: #27272a;
+
+  /* ── Difficulty colors ── */
   --color-diff-easy: #10b981;
   --color-diff-medium: #f59e0b;
   --color-diff-hard: #ef4444;
 
+  /* ── Animations ── */
   --animate-glow: glow 2s ease-in-out infinite alternate;
+  --animate-spin-slow: spin 3s linear infinite;
 }
 
+/* ── Custom text size: xxs ── */
+.text-xxs {
+  font-size: 0.65rem;
+  line-height: 1rem;
+}
+
+/* ── Keyframes ── */
 @keyframes glow {
-  from {
-    text-shadow: 0 0 10px rgba(139, 92, 246, 0.2), 0 0 20px rgba(139, 92, 246, 0.1);
-  }
-  to {
-    text-shadow: 0 0 20px rgba(139, 92, 246, 0.5), 0 0 30px rgba(139, 92, 246, 0.3);
-  }
+  from { text-shadow: 0 0 10px rgba(139, 92, 246, 0.2), 0 0 20px rgba(139, 92, 246, 0.1); }
+  to   { text-shadow: 0 0 20px rgba(139, 92, 246, 0.5), 0 0 30px rgba(139, 92, 246, 0.3); }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #27272a; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
-::-webkit-scrollbar-track {
-  background: #09090b;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
-}
-
-/* Glassmorphism Classes */
+/* ─────────────────────────────────────────
+   GLASS PANEL — primary card surface
+──────────────────────────────────────────── */
 .glass-panel {
-  background: rgba(18, 18, 20, 0.7);
+  background: rgba(17, 17, 19, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .glass-panel-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .glass-panel-hover:hover {
-  background: rgba(24, 24, 27, 0.8);
-  border-color: rgba(139, 92, 246, 0.3);
-  box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.15);
-  transform: translateY(-2px);
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow: 0 8px 24px -8px rgba(139, 92, 246, 0.12);
+  transform: translateY(-1px);
 }
 
+/* ─────────────────────────────────────────
+   GLASS INPUT
+──────────────────────────────────────────── */
 .glass-input {
-  background: rgba(24, 24, 27, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: all 0.2s;
+  background: rgba(24, 24, 27, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .glass-input:focus {
-  background: rgba(24, 24, 27, 0.9);
-  border-color: #8b5cf6;
+  background: rgba(24, 24, 27, 0.95);
+  border-color: rgba(139, 92, 246, 0.5);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
-/* Status specific glowing backgrounds */
-.status-glow-done {
-  box-shadow: inset 0 0 12px rgba(16, 185, 129, 0.05);
-  border-color: rgba(16, 185, 129, 0.2);
+/* ─────────────────────────────────────────
+   STATUS ROW GLOWS (very subtle)
+──────────────────────────────────────────── */
+.status-glow-done     { background-color: rgba(16, 185, 129, 0.03); }
+.status-glow-attempted { background-color: rgba(245, 158, 11, 0.04); }
+.status-glow-revisit  { background-color: rgba(239, 68, 68, 0.03); }
+
+/* ─────────────────────────────────────────
+   SECTION LABEL — reusable uppercase label
+──────────────────────────────────────────── */
+.section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #52525b;
 }
 
-.status-glow-attempted {
-  box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.05);
-  border-color: rgba(245, 158, 11, 0.2);
-}
-
-/* General overrides */
+/* ─────────────────────────────────────────
+   BASE
+──────────────────────────────────────────── */
 body {
   background-color: #09090b;
-  color: #fafafa;
+  color: #f4f4f5;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Native select / option dark theming */
-select,
-option {
+/* ── Native selects ── */
+select, option {
   background-color: #18181b;
   color: #d4d4d8;
 }
 
-/* Table cells – no extra padding bleed */
-table {
-  border-collapse: collapse;
-}
+/* ── Table reset ── */
+table { border-collapse: collapse; }
 
-/* Subtle vertical writing for topic column */
-.writing-vertical {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  white-space: nowrap;
-}
-
-/* Amber-950/8 utility (not in Tailwind v4 by default) */
-.bg-amber-950\/8 {
-  background-color: rgba(120, 53, 15, 0.08);
-}
-
-/* Custom layout variables for responsive sidebar */
+/* ── Layout grid ── */
 .app-container {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 232px 1fr;
   min-height: 100vh;
 }
 
 @media (max-width: 768px) {
   .app-container {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
   }
 }
+
+/* ── Amber utility ── */
+.bg-amber-950\/8 { background-color: rgba(120, 53, 15, 0.05); }

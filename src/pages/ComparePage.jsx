@@ -1,180 +1,125 @@
 import React, { useState, useMemo } from 'react';
 import { useProgressStore } from '../store/progressStore';
 import { useQuestions } from '../contexts/QuestionsContext';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer, 
-  Legend 
-} from 'recharts';
-import { BarChart3, Users, Award, Percent } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Users, Award } from 'lucide-react';
+
+const tooltipStyle = {
+  backgroundColor: '#111113',
+  borderColor: '#1f1f23',
+  borderRadius: '10px',
+  color: '#f4f4f5',
+  fontSize: '12px',
+};
 
 const ComparePage = () => {
   const { profiles, progress } = useProgressStore();
   const { questions } = useQuestions();
 
-  // Active Phase for topic breakdown (default to the first phase found)
-  const uniquePhases = useMemo(() => {
-    return [...new Set(questions.map(q => q.phase))];
-  }, [questions]);
-
+  const uniquePhases = useMemo(() => [...new Set(questions.map(q => q.phase))], [questions]);
   const [activeComparePhase, setActiveComparePhase] = useState(uniquePhases[0] || '');
 
-  // Calculate phase progress for all users side by side
-  // Data format: [ { name: 'Phase 1', 'User A': 45, 'User B': 30, ... }, ... ]
+  // Phase comparison data
   const phaseComparisonData = useMemo(() => {
-    if (profiles.length === 0 || questions.length === 0) return [];
-
-    // Group questions by phase
+    if (!profiles.length || !questions.length) return [];
     const phaseGroups = {};
     questions.forEach(q => {
-      if (!phaseGroups[q.phase]) {
-        phaseGroups[q.phase] = [];
-      }
+      if (!phaseGroups[q.phase]) phaseGroups[q.phase] = [];
       phaseGroups[q.phase].push(q.id);
     });
-
     return Object.keys(phaseGroups).map(phaseName => {
       const qIds = phaseGroups[phaseName];
-      const row = {
-        // Simplify phase names for display (e.g., "PHASE 1 : FUNDAMENTALS" -> "Phase 1")
-        name: phaseName.split(':')[0].trim()
-      };
-
+      const row = { name: phaseName.split(':')[0].trim() };
       profiles.forEach(p => {
-        const userProgress = progress.filter(pr => pr.user_id === p.id);
-        const solvedCount = userProgress.filter(pr => qIds.includes(pr.question_id) && pr.status === 'done').length;
-        const totalCount = qIds.length;
-        const pct = totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 0;
-        row[p.display_name] = pct;
+        const up = progress.filter(pr => pr.user_id === p.id);
+        const solved = up.filter(pr => qIds.includes(pr.question_id) && pr.status === 'done').length;
+        row[p.display_name] = qIds.length > 0 ? Math.round((solved / qIds.length) * 100) : 0;
       });
-
       return row;
     });
   }, [profiles, progress, questions]);
 
-  // Calculate topic progress for all users side by side for the selected phase
+  // Topic comparison data
   const topicComparisonData = useMemo(() => {
-    if (!activeComparePhase || profiles.length === 0 || questions.length === 0) return [];
-
-    // Filter questions in active phase
-    const phaseQuestions = questions.filter(q => q.phase === activeComparePhase);
-
-    // Group questions by topic
+    if (!activeComparePhase || !profiles.length || !questions.length) return [];
+    const phaseQs = questions.filter(q => q.phase === activeComparePhase);
     const topicGroups = {};
-    phaseQuestions.forEach(q => {
-      if (!topicGroups[q.topic]) {
-        topicGroups[q.topic] = [];
-      }
+    phaseQs.forEach(q => {
+      if (!topicGroups[q.topic]) topicGroups[q.topic] = [];
       topicGroups[q.topic].push(q.id);
     });
-
     return Object.keys(topicGroups).map(topicName => {
       const qIds = topicGroups[topicName];
-      const row = {
-        name: topicName
-      };
-
+      const row = { name: topicName };
       profiles.forEach(p => {
-        const userProgress = progress.filter(pr => pr.user_id === p.id);
-        const solvedCount = userProgress.filter(pr => qIds.includes(pr.question_id) && pr.status === 'done').length;
-        const totalCount = qIds.length;
-        const pct = totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 0;
-        row[p.display_name] = pct;
+        const up = progress.filter(pr => pr.user_id === p.id);
+        const solved = up.filter(pr => qIds.includes(pr.question_id) && pr.status === 'done').length;
+        row[p.display_name] = qIds.length > 0 ? Math.round((solved / qIds.length) * 100) : 0;
       });
-
       return row;
     });
   }, [profiles, progress, questions, activeComparePhase]);
 
-  // Overall completion percentages for ranking/cards
+  // Overview rankings
   const userCompletionRankings = useMemo(() => {
     const totalQ = questions.length || 1;
     return profiles.map(p => {
       const solved = progress.filter(pr => pr.user_id === p.id && pr.status === 'done').length;
-      const pct = Math.round((solved / totalQ) * 100);
-      return {
-        ...p,
-        solved,
-        pct
-      };
+      return { ...p, solved, pct: Math.round((solved / totalQ) * 100) };
     }).sort((a, b) => b.pct - a.pct);
   }, [profiles, progress, questions]);
 
   return (
-    <div className="space-y-6">
-      {/* Title */}
+    <div className="space-y-5">
+      {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-violet-500" />
-          <span>Compare Progress</span>
-        </h2>
-        <p className="text-zinc-500 text-sm mt-1">Side-by-side progression comparison across topics and phases.</p>
+        <h1 className="text-xl font-bold tracking-tight text-zinc-100">Compare Progress</h1>
+        <p className="text-zinc-500 text-sm mt-1">Side-by-side progression across phases and topics.</p>
       </div>
 
-      {/* Grid: Overview cards */}
+      {/* Overview cards */}
       {userCompletionRankings.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 bg-zinc-900/10 border border-zinc-900 p-4 rounded-2xl">
-          {userCompletionRankings.map((user, idx) => (
-            <div key={user.id} className="glass-panel p-3 rounded-xl flex items-center gap-3">
-              <div 
-                className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-sm uppercase shadow-sm"
-                style={{ backgroundColor: user.avatar_color || '#6366f1' }}
-              >
-                {user.display_name.charAt(0)}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-zinc-300 truncate">{user.display_name}</p>
-                <div className="flex items-center gap-1 mt-0.5 text-xxs font-bold text-violet-400">
-                  <Percent className="w-3 h-3" />
-                  <span>{user.pct}% Done</span>
+        <div className="glass-panel p-4 rounded-2xl">
+          <p className="section-label mb-3">Overall Completion</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
+            {userCompletionRankings.map((user) => (
+              <div key={user.id} className="flex items-center gap-3 bg-zinc-900/40 border border-[#1f1f23] p-3 rounded-xl">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-sm uppercase shrink-0"
+                  style={{ backgroundColor: user.avatar_color || '#6366f1' }}
+                >
+                  {user.display_name.charAt(0)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-zinc-300 truncate">{user.display_name}</p>
+                  <p className="text-xxs font-bold text-violet-400 mt-0.5">{user.pct}%</p>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Grouped Horizontal Bar Chart: Phase Completion */}
-      <div className="glass-panel p-5 rounded-2xl shadow-sm min-h-[380px] flex flex-col">
-        <div className="flex items-center gap-2 mb-6">
-          <Users className="w-5 h-5 text-violet-400" />
-          <h3 className="text-base font-bold text-zinc-200">Phase Progress Comparison (%)</h3>
+      {/* Phase comparison chart */}
+      <div className="glass-panel p-5 rounded-2xl min-h-[360px] flex flex-col">
+        <div className="flex items-center gap-2 mb-5">
+          <Users className="w-4 h-4 text-zinc-500" />
+          <p className="section-label">Phase Completion (%)</p>
         </div>
-        
         {profiles.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-xs text-zinc-500">
-            No racers to compare. Add racers to see comparison charts.
+          <div className="flex-1 flex items-center justify-center text-xs text-zinc-600">
+            No racers to compare.
           </div>
         ) : (
-          <div className="flex-1 w-full text-xs">
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart
-                data={phaseComparisonData}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
-                <XAxis dataKey="name" stroke="#71717a" />
-                <YAxis domain={[0, 100]} stroke="#71717a" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#121214',
-                    borderColor: '#27272a',
-                    borderRadius: '12px',
-                    color: '#fafafa'
-                  }}
-                />
-                <Legend iconType="circle" />
+          <div className="flex-1 w-full">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={phaseComparisonData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                <XAxis dataKey="name" stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} />
+                <YAxis domain={[0, 100]} stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: '#71717a' }} />
                 {profiles.map(p => (
-                  <Bar 
-                    key={p.id}
-                    dataKey={p.display_name} 
-                    fill={p.avatar_color || '#6366f1'} 
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={40}
-                  />
+                  <Bar key={p.id} dataKey={p.display_name} fill={p.avatar_color || '#6366f1'} radius={[3, 3, 0, 0]} maxBarSize={36} />
                 ))}
               </BarChart>
             </ResponsiveContainer>
@@ -182,60 +127,38 @@ const ComparePage = () => {
         )}
       </div>
 
-      {/* Topic-Wise Comparison for Selected Phase */}
-      <div className="glass-panel p-5 rounded-2xl shadow-sm min-h-[380px] flex flex-col">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+      {/* Topic comparison chart */}
+      <div className="glass-panel p-5 rounded-2xl min-h-[360px] flex flex-col">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-5">
           <div className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-violet-400" />
-            <h3 className="text-base font-bold text-zinc-200">Topic Progress Comparison (%)</h3>
+            <Award className="w-4 h-4 text-zinc-500" />
+            <p className="section-label">Topic Completion (%)</p>
           </div>
-          
-          {/* Phase selector dropdown */}
-          <div>
-            <select
-              value={activeComparePhase}
-              onChange={(e) => setActiveComparePhase(e.target.value)}
-              className="px-3 py-2 text-xs rounded-xl glass-input text-zinc-300 focus:outline-none cursor-pointer w-full sm:w-60"
-            >
-              {uniquePhases.map(p => (
-                <option key={p} value={p}>
-                  {p.split(':')[0].trim()}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={activeComparePhase}
+            onChange={e => setActiveComparePhase(e.target.value)}
+            className="px-3 py-2 text-xs rounded-lg glass-input text-zinc-300 focus:outline-none cursor-pointer w-full sm:w-56"
+          >
+            {uniquePhases.map(p => (
+              <option key={p} value={p}>{p.split(':')[0].trim()}</option>
+            ))}
+          </select>
         </div>
 
         {profiles.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-xs text-zinc-500">
+          <div className="flex-1 flex items-center justify-center text-xs text-zinc-600">
             No data to compare.
           </div>
         ) : (
-          <div className="flex-1 w-full text-xs">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={topicComparisonData}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
-                <XAxis dataKey="name" stroke="#71717a" />
-                <YAxis domain={[0, 100]} stroke="#71717a" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#121214',
-                    borderColor: '#27272a',
-                    borderRadius: '12px',
-                    color: '#fafafa'
-                  }}
-                />
-                <Legend iconType="circle" />
+          <div className="flex-1 w-full">
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={topicComparisonData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                <XAxis dataKey="name" stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} />
+                <YAxis domain={[0, 100]} stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: '#71717a' }} />
                 {profiles.map(p => (
-                  <Bar 
-                    key={p.id}
-                    dataKey={p.display_name} 
-                    fill={p.avatar_color || '#6366f1'} 
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={40}
-                  />
+                  <Bar key={p.id} dataKey={p.display_name} fill={p.avatar_color || '#6366f1'} radius={[3, 3, 0, 0]} maxBarSize={36} />
                 ))}
               </BarChart>
             </ResponsiveContainer>

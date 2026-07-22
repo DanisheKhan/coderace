@@ -66,46 +66,46 @@ const OnboardingPage = () => {
 
   return (
     <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Decorative background gradients */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-600/10 rounded-full blur-[128px] -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-fuchsia-600/10 rounded-full blur-[128px] translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
+      {/* Ambient blobs */}
+      <div className="absolute top-1/3 left-1/4 w-80 h-80 bg-violet-600/8 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-violet-500/5 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="w-full max-w-md glass-panel rounded-2xl p-8 relative z-10 shadow-2xl">
-        <div className="flex flex-col items-center mb-6 text-center">
-          <div className="w-12 h-12 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center mb-4 text-violet-400">
-            <Sparkles className="w-6 h-6" />
+      <div className="w-full max-w-sm glass-panel rounded-2xl p-8 relative z-10 shadow-2xl shadow-black/50">
+        <div className="flex flex-col items-center mb-7 text-center">
+          <div className="w-11 h-11 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4 text-violet-400">
+            <Sparkles className="w-5 h-5" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-100">Welcome to CodeRace!</h1>
-          <p className="text-zinc-400 text-sm mt-2">
-            Let's setup your profile before joining the DSA tracker board.
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-100">Welcome to CodeRace</h1>
+          <p className="text-zinc-500 text-xs mt-2">
+            Set up your profile to join the DSA tracker board.
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          <div className="mb-4 p-3.5 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-xs flex items-start gap-2">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-zinc-400 text-xs font-semibold uppercase tracking-wider mb-2">Display Name</label>
+            <label className="section-label block mb-2">Display Name</label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Danish Khan"
                 maxLength={25}
-                className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
+                className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-sm"
                 disabled={loading}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-zinc-400 text-xs font-semibold uppercase tracking-wider mb-3">Avatar Color</label>
+            <label className="section-label block mb-3">Avatar Color</label>
             <div className="grid grid-cols-4 gap-3">
               {COLORS.map((color) => {
                 const isSelected = selectedColor === color.value;
@@ -132,10 +132,10 @@ const OnboardingPage = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white font-semibold transition-all shadow-lg shadow-violet-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white text-sm font-semibold transition-all shadow-md shadow-violet-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-1"
           >
             {loading ? (
-              <span className="w-5 h-5 rounded-full border-2 border-white/20 border-t-white animate-spin"></span>
+              <span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
             ) : (
               'Save & Enter Race'
             )}

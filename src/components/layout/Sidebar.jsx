@@ -14,65 +14,66 @@ const Sidebar = () => {
   const { profile, signOut } = useAuth();
 
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'My Sheet', path: '/sheet', icon: TableProperties },
-    { name: 'Leaderboard', path: '/leaderboard', icon: Trophy },
-    { name: 'Compare', path: '/compare', icon: BarChart3 }
+    { name: 'Dashboard',   path: '/dashboard',   icon: LayoutDashboard },
+    { name: 'My Sheet',    path: '/sheet',        icon: TableProperties },
+    { name: 'Leaderboard', path: '/leaderboard',  icon: Trophy },
+    { name: 'Compare',     path: '/compare',      icon: BarChart3 },
   ];
 
   return (
-    <aside className="w-[240px] bg-[#121214] border-r border-zinc-800 flex flex-col h-screen sticky top-0 md:flex z-20 max-md:hidden">
-      {/* Brand Logo */}
-      <div className="p-6 border-b border-zinc-800 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center text-white shadow-md shadow-violet-500/10">
-          <Code2 className="w-5 h-5" />
+    <aside className="w-[232px] bg-[#111113] border-r border-[#1f1f23] flex flex-col h-screen sticky top-0 md:flex z-20 max-md:hidden">
+      {/* Brand */}
+      <div className="px-5 h-[60px] flex items-center gap-2.5 border-b border-[#1f1f23]">
+        <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center shadow-sm shadow-violet-500/20 shrink-0">
+          <Code2 className="w-4 h-4 text-white" />
         </div>
-        <span className="font-bold text-xl bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
+        <span className="font-bold text-base tracking-tight bg-gradient-to-r from-violet-400 to-violet-300 bg-clip-text text-transparent">
           CodeRace
         </span>
       </div>
 
-      {/* Nav Navigation */}
-      <nav className="flex-1 px-4 py-6 space-y-1.5">
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-5 space-y-0.5">
+        <p className="section-label px-3 mb-3">Menu</p>
         {navItems.map((item) => (
           <NavLink
             key={item.name}
             to={item.path}
             className={({ isActive }) => `
-              flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group cursor-pointer
-              ${isActive 
-                ? 'bg-violet-600/15 text-violet-400 border-l-2 border-violet-500 shadow-sm shadow-violet-500/5' 
-                : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200'
+              flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer
+              ${isActive
+                ? 'bg-violet-500/10 text-violet-400'
+                : 'text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-200'
               }
             `}
           >
-            <item.icon className="w-5 h-5 shrink-0" />
+            <item.icon className="w-4 h-4 shrink-0" />
             <span>{item.name}</span>
           </NavLink>
         ))}
       </nav>
 
-      {/* Bottom Profile Details */}
+      {/* Bottom Profile */}
       {profile && (
-        <div className="p-4 border-t border-zinc-800 bg-zinc-900/10">
-          <div className="flex items-center gap-3 px-2 py-3">
-            <div 
-              className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white uppercase shadow-md"
+        <div className="p-3 border-t border-[#1f1f23]">
+          <div className="flex items-center gap-3 px-2 py-2 rounded-xl">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-sm shrink-0"
               style={{ backgroundColor: profile.avatar_color || '#6366f1' }}
             >
               {profile.display_name?.charAt(0) || '?'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-zinc-100 truncate">{profile.display_name}</p>
-              <p className="text-xs text-zinc-500 truncate">Racer Profile</p>
+              <p className="text-sm font-semibold text-zinc-100 truncate leading-tight">{profile.display_name}</p>
+              <p className="text-xxs text-zinc-500 truncate mt-0.5">Racer</p>
             </div>
           </div>
           <button
             onClick={() => signOut()}
-            className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 text-xs font-semibold cursor-pointer transition-colors"
+            className="w-full mt-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/50 text-xs font-medium cursor-pointer transition-colors"
           >
-            <LogOut className="w-4 h-4" />
-            <span>Logout</span>
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign out</span>
           </button>
         </div>
       )}
