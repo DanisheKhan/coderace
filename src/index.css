@@ -91,6 +91,30 @@ body {
   overflow-x: hidden;
 }
 
+/* Native select / option dark theming */
+select,
+option {
+  background-color: #18181b;
+  color: #d4d4d8;
+}
+
+/* Table cells – no extra padding bleed */
+table {
+  border-collapse: collapse;
+}
+
+/* Subtle vertical writing for topic column */
+.writing-vertical {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}
+
+/* Amber-950/8 utility (not in Tailwind v4 by default) */
+.bg-amber-950\/8 {
+  background-color: rgba(120, 53, 15, 0.08);
+}
+
 /* Custom layout variables for responsive sidebar */
 .app-container {
   display: grid;
