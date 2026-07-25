@@ -365,6 +365,7 @@ const MySheetPage = () => {
   const [filterRevisit, setFilterRevisit] = useState(false);
   const [expandedTopics, setExpandedTopics] = useState({});
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [surpriseQuestion, setSurpriseQuestion] = useState(null);
   const [activeNotes, setActiveNotes] = useState(null);
   const [notesText, setNotesText] = useState('');
   const [solutionLink, setSolutionLink] = useState('');
@@ -760,7 +761,7 @@ const MySheetPage = () => {
 
       {/* ── Notes modal ── */}
       {activeNotes && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="w-full max-w-md bg-[#0f0f11] border border-[#252528] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
             {/* Modal header */}
             <div className="flex items-start justify-between px-5 py-4 border-b border-[#1f1f23]">

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuestions } from '../contexts/QuestionsContext';
 import { useProgressStore } from '../store/progressStore';
@@ -57,6 +57,131 @@ const DiffDot = ({ d }) => {
       {[1,2,3,4,5].map(i => (
         <span key={i} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: i <= d ? color : '#27272a' }} />
       ))}
+    </div>
+  );
+};
+
+const TopicCompletionPanel = ({ topicData }) => {
+  const [filter, setFilter] = useState('all');
+
+  const activeCount = useMemo(() => topicData.filter(t => t.solved > 0).length, [topicData]);
+  const doneCount = useMemo(() => topicData.filter(t => t.completed === 100).length, [topicData]);
+
+  const filteredTopics = useMemo(() => {
+    let list = [...topicData];
+    if (filter === 'active') {
+      list = list.filter(t => t.solved > 0 && t.completed < 100);
+    } else if (filter === 'done') {
+      list = list.filter(t => t.completed === 100);
+    }
+    return list.sort((a, b) => b.completed - a.completed || b.solved - a.solved || a.name.localeCompare(b.name));
+  }, [topicData, filter]);
+
+  return (
+    <div className="glass-panel p-5 rounded-2xl lg:col-span-2 flex flex-col min-h-[460px]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-zinc-800/60">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 shrink-0">
+            <Target className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-zinc-100">Topic Completion</h3>
+              <span className="text-xxs px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 font-medium">
+                {activeCount}/{topicData.length} started
+              </span>
+            </div>
+            <p className="text-xxs text-zinc-500 mt-0.5">Problem solving progress per topic</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 bg-zinc-900/80 p-1 rounded-xl border border-zinc-800/80 shrink-0">
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-2.5 py-1 rounded-lg text-xxs font-medium transition-all cursor-pointer ${
+              filter === 'all'
+                ? 'bg-violet-600 text-white shadow-sm font-semibold'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+            }`}
+          >
+            All ({topicData.length})
+          </button>
+          <button
+            onClick={() => setFilter('active')}
+            className={`px-2.5 py-1 rounded-lg text-xxs font-medium transition-all cursor-pointer ${
+              filter === 'active'
+                ? 'bg-violet-600 text-white shadow-sm font-semibold'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+            }`}
+          >
+            Active ({activeCount - doneCount})
+          </button>
+          <button
+            onClick={() => setFilter('done')}
+            className={`px-2.5 py-1 rounded-lg text-xxs font-medium transition-all cursor-pointer ${
+              filter === 'done'
+                ? 'bg-violet-600 text-white shadow-sm font-semibold'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+            }`}
+          >
+            Done ({doneCount})
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto max-h-[370px] pr-1.5 space-y-2 custom-scrollbar">
+        {filteredTopics.length === 0 ? (
+          <div className="h-44 flex flex-col items-center justify-center text-center">
+            <p className="text-xs text-zinc-500">No topics match selected filter.</p>
+          </div>
+        ) : (
+          filteredTopics.map((topic) => {
+            const isCompleted = topic.completed === 100;
+            const hasProgress = topic.solved > 0;
+            return (
+              <div
+                key={topic.name}
+                className="group p-2.5 rounded-xl bg-zinc-900/30 hover:bg-zinc-800/40 transition-all border border-zinc-800/30 hover:border-zinc-700/50"
+              >
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="font-semibold text-zinc-200 group-hover:text-violet-300 transition-colors truncate max-w-[220px] sm:max-w-[320px]">
+                    {topic.name}
+                  </span>
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <span className="font-mono text-xxs text-zinc-400">
+                      <strong className="text-zinc-200 font-semibold">{topic.solved}</strong> / {topic.total}
+                    </span>
+                    <span
+                      className={`text-xxs font-semibold font-mono px-2 py-0.5 rounded-md ${
+                        isCompleted
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : hasProgress
+                          ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
+                          : 'bg-zinc-800/60 text-zinc-500 border border-zinc-700/30'
+                      }`}
+                    >
+                      {topic.completed}%
+                    </span>
+                  </div>
+                </div>
+
+                <div className="h-2 w-full bg-zinc-950 rounded-full overflow-hidden p-0.5 border border-zinc-800/60">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      isCompleted
+                        ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-sm shadow-emerald-500/20'
+                        : hasProgress
+                        ? 'bg-gradient-to-r from-violet-600 via-purple-500 to-indigo-500 shadow-sm shadow-violet-500/20'
+                        : 'bg-zinc-800/40'
+                    }`}
+                    style={{ width: `${Math.max(hasProgress ? 3 : 0, topic.completed)}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 };
@@ -153,13 +278,11 @@ const DashboardPage = () => {
       }
     });
     return [
-      { name: 'Easy (?1-2)', value: easy, color: '#10b981' },
-      { name: 'Medium (?3)', value: medium, color: '#f59e0b' },
-      { name: 'Hard (?4-5)', value: hard, color: '#ef4444' },
+      { name: 'Easy (1-2)', value: easy, color: '#10b981' },
+      { name: 'Medium (3)', value: medium, color: '#f59e0b' },
+      { name: 'Hard (4-5)', value: hard, color: '#ef4444' },
     ].filter(d => d.value > 0);
   }, [questions, userProgress]);
-
-
 
   const weeklyData = useMemo(() => {
     const today = new Date();
@@ -185,32 +308,33 @@ const DashboardPage = () => {
     return userProgress
       .filter(p => p.status === 'done')
       .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-      .slice(0, 6)
+      .slice(0, 5)
       .map(p => { const q = questions.find(q => q.id === p.question_id); return q ? { ...q, solved_at: p.updated_at } : null; })
       .filter(Boolean);
   }, [userProgress, questions]);
 
   const topTopics = useMemo(() =>
-    [...topicData].filter(t => t.solved > 0).sort((a, b) => b.completed - a.completed).slice(0, 4),
+    [...topicData].filter(t => t.solved > 0).sort((a, b) => b.completed - a.completed).slice(0, 3),
     [topicData]
   );
   const weakTopics = useMemo(() =>
-    [...topicData].filter(t => t.completed < 100 && t.total > 0).sort((a, b) => a.completed - b.completed).slice(0, 4),
+    [...topicData].filter(t => t.completed < 100 && t.total > 0).sort((a, b) => a.completed - b.completed).slice(0, 3),
     [topicData]
   );
 
   const dailyGoal = 5;
   const goalPct = Math.min(100, Math.round((stats.solvedToday / dailyGoal) * 100));
-  const circumference = 2 * Math.PI * 50;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 max-w-7xl mx-auto pb-6">
+      {/* Header */}
       <div>
         <h1 className="text-xl font-bold tracking-tight text-zinc-100">Welcome back, {profile?.display_name}</h1>
-        <p className="text-zinc-500 text-sm mt-1">Your DSA progress snapshot.</p>
+        <p className="text-zinc-500 text-xs mt-0.5">Your DSA progress & race analytics snapshot.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Top 5 Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
         <StatCard label="Total Solved" value={stats.solved} unit={`/ ${stats.total}`} sub={<><Percent className="w-3 h-3" /> {stats.pct}% complete</>} subColor="text-violet-400" icon={Trophy} iconBg="bg-violet-500/8 border border-violet-500/15 text-violet-400" />
         <StatCard label="Power Score" value={totalXP} unit="XP" sub={<><Award className="w-3.5 h-3.5" /> {unlockedCount} badges</>} subColor="text-violet-400" icon={Award} iconBg="bg-violet-500/8 border border-violet-500/15 text-violet-400" />
         <StatCard label="Current Streak" value={streak} unit={`day${streak !== 1 ? 's' : ''}`} sub={<><TrendingUp className="w-3 h-3" /> Active streak</>} subColor="text-orange-400" icon={Flame} iconBg="bg-orange-500/8 border border-orange-500/15 text-orange-400" />
@@ -218,58 +342,50 @@ const DashboardPage = () => {
         <StatCard label="Remaining" value={stats.remaining} unit="questions" sub={`${stats.attempted} attempted`} icon={ListTodo} iconBg="bg-zinc-800 border border-zinc-700/40 text-zinc-400" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="glass-panel p-5 rounded-2xl lg:col-span-2 flex flex-col min-h-[380px]">
-          <PanelHeader label="Topic Completion" icon={Target} />
-          <div className="flex-1 w-full overflow-y-auto max-h-[300px] mt-3 pr-1 custom-scrollbar">
-            <ResponsiveContainer width="100%" height={640}>
-              <BarChart data={topicData} layout="vertical" margin={{ top: 8, right: 12, left: 8, bottom: 0 }}>
-                <XAxis type="number" domain={[0, 100]} stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} />
-                <YAxis dataKey="name" type="category" width={110} stroke="#3f3f46" tick={{ fill: '#71717a', fontSize: 10 }} interval={0} />
-                <Tooltip cursor={{ fill: 'rgba(255,255,255,0.015)' }} contentStyle={tooltipStyle} formatter={(value, _, props) => [`${value}% (${props.payload.solved}/${props.payload.total})`, 'Completed']} />
-                <Bar dataKey="completed" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={10} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {/* Row 2: Topic Completion (2/3) + Right Stats Column (1/3) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
+        <TopicCompletionPanel topicData={topicData} />
 
-        <div className="space-y-4">
-          <div className="glass-panel p-5 rounded-2xl flex flex-col items-center text-center">
+        <div className="space-y-3.5 h-[424px] flex flex-col justify-between">
+          <div className="glass-panel p-4 rounded-2xl flex flex-col items-center text-center flex-1 justify-center">
             <PanelHeader label="Daily Goal" icon={Zap} />
-            <div className="relative w-28 h-28 flex items-center justify-center">
+            <div className="relative w-24 h-24 flex items-center justify-center">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 108 108">
-                <circle cx="54" cy="54" r="50" strokeWidth="7" className="stroke-zinc-800 fill-none" />
-                <circle cx="54" cy="54" r="50" strokeWidth="7" className="stroke-violet-500 fill-none transition-all duration-700" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - goalPct / 100)} strokeLinecap="round" />
+                <circle cx="54" cy="54" r="48" strokeWidth="6" className="stroke-zinc-800 fill-none" />
+                <circle cx="54" cy="54" r="48" strokeWidth="6" className="stroke-violet-500 fill-none transition-all duration-700" strokeDasharray={2 * Math.PI * 48} strokeDashoffset={(2 * Math.PI * 48) * (1 - goalPct / 100)} strokeLinecap="round" />
               </svg>
               <div className="absolute flex flex-col items-center">
-                <span className="text-2xl font-bold text-zinc-100">{stats.solvedToday}</span>
+                <span className="text-xl font-bold text-zinc-100">{stats.solvedToday}</span>
                 <span className="section-label mt-0.5">/ {dailyGoal}</span>
               </div>
             </div>
-            <p className="mt-3 text-xs text-zinc-400">{goalPct === 100 ? '?? Daily goal reached!' : `${dailyGoal - stats.solvedToday} more to reach daily target`}</p>
+            <p className="mt-2 text-xxs text-zinc-400">{goalPct === 100 ? '🎉 Daily goal reached!' : `${dailyGoal - stats.solvedToday} more to reach daily target`}</p>
           </div>
 
-          <div className="glass-panel p-5 rounded-2xl flex flex-col min-h-[180px]">
+          <div className="glass-panel p-4 rounded-2xl flex flex-col flex-1 justify-center">
             <PanelHeader label="Solved by Difficulty" icon={Activity} />
             {difficultyData.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center text-xs text-zinc-600">Mark problems done to see breakdown.</div>
+              <div className="flex-1 flex items-center justify-center text-xxs text-zinc-600">Mark problems done to see breakdown.</div>
             ) : (
-              <div className="flex-1 flex flex-col items-center">
-                <div className="w-full h-24">
+              <div className="flex items-center justify-between gap-2">
+                <div className="w-20 h-20 shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={difficultyData} cx="50%" cy="50%" innerRadius={28} outerRadius={40} paddingAngle={3} dataKey="value">
+                      <Pie data={difficultyData} cx="50%" cy="50%" innerRadius={22} outerRadius={34} paddingAngle={3} dataKey="value">
                         {difficultyData.map((e, i) => <Cell key={i} fill={e.color} />)}
                       </Pie>
                       <Tooltip contentStyle={tooltipStyle} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2">
+                <div className="space-y-1 flex-1 min-w-0">
                   {difficultyData.map((e, i) => (
-                    <div key={i} className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: e.color }} />
-                      <span className="text-xxs text-zinc-400">{e.name}: {e.value}</span>
+                    <div key={i} className="flex items-center justify-between text-xxs">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: e.color }} />
+                        <span className="text-zinc-400 truncate">{e.name}</span>
+                      </div>
+                      <span className="font-mono text-zinc-200 font-semibold">{e.value}</span>
                     </div>
                   ))}
                 </div>
@@ -278,13 +394,13 @@ const DashboardPage = () => {
           </div>
 
           {nextBadge && (
-            <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between min-h-[140px]">
+            <div className="glass-panel p-4 rounded-2xl flex flex-col justify-between">
               <PanelHeader label="Next Badge" icon={Award} />
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center border shrink-0 bg-violet-500/10 border-violet-500/20 text-violet-400">
+              <div className="flex items-start gap-2.5">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center border shrink-0 bg-violet-500/10 border-violet-500/20 text-violet-400">
                   {(() => {
                     const Icon = IconMap[nextBadge.icon] || Award;
-                    return <Icon className="w-4 h-4" />;
+                    return <Icon className="w-3.5 h-3.5" />;
                   })()}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -292,7 +408,7 @@ const DashboardPage = () => {
                   <p className="text-[10px] text-zinc-500 truncate mt-0.5">{nextBadge.description}</p>
                 </div>
               </div>
-              <div className="mt-3.5 space-y-1.5">
+              <div className="mt-2.5 space-y-1">
                 <div className="flex justify-between items-center text-xxs text-zinc-400">
                   <span>Progress</span>
                   <span className="font-mono tabular-nums">{nextBadge.currentProgress} / {nextBadge.maxProgress}</span>
@@ -306,40 +422,12 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Recently Solved */}
-              <div className="glass-panel p-5 rounded-2xl flex flex-col">
-          <PanelHeader label="Recently Solved" icon={Clock} />
-          {recentlySolved.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-xs text-zinc-600 text-center">Solve problems to see your history here.</p>
-            </div>
-          ) : (
-            <div className="space-y-3 flex-1">
-              {recentlySolved.map((q) => (
-                <div key={q.id} className="flex items-start justify-between gap-2 group py-1">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-zinc-200 truncate group-hover:text-violet-400 transition-colors leading-snug">{q.problem_name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xxs text-zinc-600 truncate">{q.topic}</span>
-                      <DiffDot d={q.difficulty} />
-                    </div>
-                  </div>
-                  {q.link && (
-                    <a href={q.link} target="_blank" rel="noreferrer" className="p-1 rounded-md hover:bg-zinc-800 text-zinc-700 hover:text-zinc-300 transition-colors shrink-0 mt-0.5">
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-      {/* Weekly activity + Topic insights */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="glass-panel p-5 rounded-2xl">
+      {/* Row 3: 3 Equal Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
+        {/* Col 1: Weekly Activity */}
+        <div className="glass-panel p-4 sm:p-5 rounded-2xl flex flex-col h-[230px]">
           <PanelHeader label="This Week's Activity" icon={TrendingUp} />
-          <div className="h-36">
+          <div className="flex-1 w-full min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={weeklyData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
                 <defs>
@@ -348,8 +436,8 @@ const DashboardPage = () => {
                     <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="day" stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                <XAxis dataKey="day" stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 10 }} allowDecimals={false} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: 'rgba(139,92,246,0.15)', strokeWidth: 1 }} formatter={(v) => [`${v} solved`, 'Problems']} />
                 <Area type="monotone" dataKey="solved" stroke="#8b5cf6" strokeWidth={2} fill="url(#solvedGradient)" dot={{ fill: '#8b5cf6', r: 3, strokeWidth: 0 }} activeDot={{ r: 5, fill: '#a78bfa', strokeWidth: 0 }} />
               </AreaChart>
@@ -357,20 +445,21 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        <div className="glass-panel p-5 rounded-2xl">
+        {/* Col 2: Topic Insights */}
+        <div className="glass-panel p-4 sm:p-5 rounded-2xl flex flex-col h-[230px]">
           <PanelHeader label="Topic Insights" icon={Layers} />
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-2 gap-4 flex-1 overflow-y-auto custom-scrollbar">
             <div>
-              <p className="text-xxs font-bold text-emerald-500/80 uppercase tracking-widest mb-3">?? Strongest</p>
+              <p className="text-xxs font-bold text-emerald-500/80 uppercase tracking-widest mb-2">💪 Strongest</p>
               {topTopics.length === 0 ? (
                 <p className="text-xxs text-zinc-600">Keep solving to see insights.</p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {topTopics.map((t, i) => (
                     <div key={i}>
-                      <div className="flex justify-between items-end mb-1">
-                        <span className="text-xs text-zinc-300 truncate mr-2 leading-none">{t.name}</span>
-                        <span className="text-xxs text-emerald-400 shrink-0 font-medium">{t.completed}%</span>
+                      <div className="flex justify-between items-end mb-0.5">
+                        <span className="text-xxs text-zinc-300 truncate mr-1 leading-none">{t.name}</span>
+                        <span className="text-xxs text-emerald-400 shrink-0 font-medium font-mono">{t.completed}%</span>
                       </div>
                       <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${t.completed}%`, backgroundColor: '#10b981' }} />
@@ -381,16 +470,16 @@ const DashboardPage = () => {
               )}
             </div>
             <div>
-              <p className="text-xxs font-bold text-rose-500/80 uppercase tracking-widest mb-3">?? Needs Work</p>
+              <p className="text-xxs font-bold text-rose-500/80 uppercase tracking-widest mb-2">⚠️ Needs Work</p>
               {weakTopics.length === 0 ? (
-                <p className="text-xxs text-zinc-600">All topics complete! ??</p>
+                <p className="text-xxs text-zinc-600">All topics complete! 🎉</p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {weakTopics.map((t, i) => (
                     <div key={i}>
-                      <div className="flex justify-between items-end mb-1">
-                        <span className="text-xs text-zinc-300 truncate mr-2 leading-none">{t.name}</span>
-                        <span className="text-xxs text-rose-400 shrink-0 font-medium">{t.completed}%</span>
+                      <div className="flex justify-between items-end mb-0.5">
+                        <span className="text-xxs text-zinc-300 truncate mr-1 leading-none">{t.name}</span>
+                        <span className="text-xxs text-rose-400 shrink-0 font-medium font-mono">{t.completed}%</span>
                       </div>
                       <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${t.completed}%`, backgroundColor: '#ef4444' }} />
@@ -401,6 +490,35 @@ const DashboardPage = () => {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Col 3: Recently Solved */}
+        <div className="glass-panel p-4 sm:p-5 rounded-2xl flex flex-col h-[230px]">
+          <PanelHeader label="Recently Solved" icon={Clock} />
+          {recentlySolved.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-xs text-zinc-600 text-center">Solve problems to see history.</p>
+            </div>
+          ) : (
+            <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-1">
+              {recentlySolved.map((q) => (
+                <div key={q.id} className="flex items-center justify-between gap-2 group py-1 border-b border-zinc-800/30 last:border-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-zinc-200 truncate group-hover:text-violet-400 transition-colors leading-snug">{q.problem_name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xxs text-zinc-500 truncate">{q.topic}</span>
+                      <DiffDot d={q.difficulty} />
+                    </div>
+                  </div>
+                  {q.link && (
+                    <a href={q.link} target="_blank" rel="noreferrer" className="p-1 rounded-md hover:bg-zinc-800 text-zinc-600 hover:text-zinc-300 transition-colors shrink-0">
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

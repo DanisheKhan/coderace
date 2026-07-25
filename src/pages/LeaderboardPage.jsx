@@ -88,7 +88,7 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
   const pct = Math.round((stats.solved / totalQ) * 100);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
       <div className="w-full max-w-5xl bg-[#0f0f11] border border-[#252528] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col h-[90vh] max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#1f1f23] shrink-0">
@@ -148,15 +148,24 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
 
               {/* Topic Progress chart */}
               <div className="bg-zinc-950/40 border border-zinc-800/40 p-4 rounded-xl">
-                <p className="section-label mb-3">Topic Completion (%)</p>
-                <div className="h-44 overflow-y-auto pr-1 custom-scrollbar">
-                  <ResponsiveContainer width="100%" height={600}>
-                    <BarChart data={topicData} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
-                      <XAxis type="number" domain={[0, 100]} hide />
-                      <YAxis dataKey="name" type="category" stroke="#52525b" tick={{ fill: '#71717a', fontSize: 9 }} width={100} interval={0} />
-                      <Bar dataKey="completed" fill="#8b5cf6" radius={[0, 3, 3, 0]} barSize={8} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <p className="section-label mb-3">Topic Completion</p>
+                <div className="h-48 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+                  {topicData.map(t => (
+                    <div key={t.name} className="space-y-1">
+                      <div className="flex justify-between items-center text-xxs">
+                        <span className="text-zinc-300 font-medium truncate max-w-[160px]">{t.name}</span>
+                        <span className="text-zinc-400 font-mono">{t.solved}/{t.total} ({t.completed}%)</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            t.completed === 100 ? 'bg-emerald-500' : t.solved > 0 ? 'bg-violet-500' : 'bg-zinc-800'
+                          }`}
+                          style={{ width: `${Math.max(t.solved > 0 ? 3 : 0, t.completed)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -348,11 +357,46 @@ const calculateUserStreak = (userId, progress) => {
   return streak;
 };
 
-const RANK_STYLES = [
-  { bg: 'bg-amber-500/8 border-amber-500/20 text-amber-400', icon: Crown, iconClass: 'text-amber-400 fill-amber-400' },
-  { bg: 'bg-zinc-300/8 border-zinc-400/20 text-zinc-300',   icon: Award, iconClass: 'text-zinc-300 fill-zinc-300' },
-  { bg: 'bg-amber-700/8 border-amber-700/20 text-amber-600', icon: Award, iconClass: 'text-amber-600 fill-amber-600' },
-];
+const DiffDot = ({ d }) => {
+  const color = d <= 2 ? '#10b981' : d === 3 ? '#f59e0b' : '#ef4444';
+  return (
+    <div className="flex gap-0.5 items-center">
+      {[1,2,3,4,5].map(i => (
+        <span key={i} className="w-1 h-1 rounded-full" style={{ backgroundColor: i <= d ? color : '#27272a' }} />
+      ))}
+    </div>
+  );
+};
+
+const RANK_STYLES = {
+  1: {
+    cardBg: 'bg-gradient-to-r from-amber-500/12 via-yellow-500/5 to-transparent border-amber-500/35 shadow-lg shadow-amber-500/5',
+    badgeBg: 'bg-gradient-to-br from-amber-400 to-yellow-500 text-zinc-950 font-extrabold shadow-sm border border-amber-300/60',
+    barColor: 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500',
+    icon: Crown,
+    iconClass: 'text-zinc-950 fill-zinc-950',
+    titleBadge: 'bg-amber-500/20 text-amber-300 border border-amber-400/30',
+    titleText: '#1 Champion',
+  },
+  2: {
+    cardBg: 'bg-gradient-to-r from-zinc-300/12 via-zinc-400/5 to-transparent border-zinc-300/35 shadow-lg shadow-zinc-400/5',
+    badgeBg: 'bg-gradient-to-br from-zinc-200 to-zinc-400 text-zinc-950 font-extrabold shadow-sm border border-zinc-100/60',
+    barColor: 'bg-gradient-to-r from-zinc-200 via-zinc-300 to-zinc-400',
+    icon: Award,
+    iconClass: 'text-zinc-950 fill-zinc-950',
+    titleBadge: 'bg-zinc-300/20 text-zinc-200 border border-zinc-300/30',
+    titleText: '#2 Runner Up',
+  },
+  3: {
+    cardBg: 'bg-gradient-to-r from-amber-700/15 via-amber-800/5 to-transparent border-amber-700/35 shadow-lg shadow-amber-700/5',
+    badgeBg: 'bg-gradient-to-br from-amber-600 to-amber-800 text-white font-extrabold shadow-sm border border-amber-500/60',
+    barColor: 'bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800',
+    icon: Award,
+    iconClass: 'text-white fill-white',
+    titleBadge: 'bg-amber-700/20 text-amber-400 border border-amber-600/30',
+    titleText: '#3 Bronze',
+  },
+};
 
 const LeaderboardPage = () => {
   const { profiles, progress } = useProgressStore();
@@ -373,36 +417,69 @@ const LeaderboardPage = () => {
   }, [profiles, progress, questions]);
 
   const recentActivities = useMemo(() => {
-    return progress
+    const seen = new Set();
+    const list = [];
+    const sorted = progress
       .filter(p => p.status === 'done')
-      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-      .slice(0, 8)
-      .map(p => {
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+
+    for (const p of sorted) {
+      const key = `${p.user_id}-${p.question_id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
         const u = profiles.find(pr => pr.id === p.user_id);
         const q = questions.find(qn => qn.id === p.question_id);
-        return {
+        list.push({
           id: p.id,
           userId: p.user_id,
           userName: u?.display_name || 'Racer',
           avatarColor: u?.avatar_color || '#6366f1',
           avatarUrl: u?.avatar_url || '',
           problemName: q?.problem_name || 'a problem',
-          topic: q?.topic || '',
+          topic: q?.topic || 'DSA',
+          difficulty: q?.difficulty || 1,
           updatedAt: p.updated_at,
-        };
-      });
+        });
+        if (list.length >= 8) break;
+      }
+    }
+    return list;
   }, [progress, profiles, questions]);
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-zinc-100">Leaderboard</h1>
-        <p className="text-zinc-500 text-sm mt-1">Live rankings — updates pushed automatically.</p>
+    <div className="space-y-5 max-w-7xl mx-auto pb-6">
+      {/* Header & Quick Stats Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1 border-b border-zinc-800/40">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-zinc-100 flex items-center gap-2.5">
+            Leaderboard
+            <span className="text-xxs px-2.5 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 font-mono font-medium">
+              Live Rankings
+            </span>
+          </h1>
+          <p className="text-zinc-500 text-xs mt-0.5">Real-time DSA problem-solving leaderboard across all registered racers.</p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="glass-panel px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-amber-400" />
+            <div>
+              <p className="text-[9px] text-zinc-500 uppercase font-semibold">Racers</p>
+              <p className="text-xs font-bold text-zinc-100">{leaderboard.length}</p>
+            </div>
+          </div>
+          <div className="glass-panel px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+            <Flame className="w-4 h-4 text-orange-400" />
+            <div>
+              <p className="text-[9px] text-zinc-500 uppercase font-semibold">Top Streak</p>
+              <p className="text-xs font-bold text-zinc-100">{Math.max(...leaderboard.map(u => u.streak || 0), 0)}d</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Rankings */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+        {/* Rankings List */}
         <div className="lg:col-span-2 space-y-2.5">
           {leaderboard.length === 0 ? (
             <div className="text-center py-12 glass-panel rounded-2xl">
@@ -414,26 +491,30 @@ const LeaderboardPage = () => {
               const rank = idx + 1;
               const totalQ = questions.length || 502;
               const pct = Math.round((user.solved / totalQ) * 100);
-              const rankStyle = RANK_STYLES[idx] || null;
+              const rankStyle = RANK_STYLES[rank] || null;
 
               return (
                 <div
                   key={user.id}
                   onClick={() => setSelectedUser(user)}
-                  className={`glass-panel p-4 rounded-2xl flex items-center gap-4 transition-all cursor-pointer hover:bg-zinc-900/30 active:scale-[0.99] ${
-                    isCurrent ? 'border-violet-500/25 ring-1 ring-violet-500/10' : ''
+                  className={`glass-panel p-4 rounded-2xl flex items-center gap-3.5 transition-all cursor-pointer hover:bg-zinc-800/40 active:scale-[0.99] border ${
+                    rankStyle
+                      ? rankStyle.cardBg
+                      : isCurrent
+                      ? 'bg-violet-500/8 border-violet-500/40 shadow-xl shadow-violet-500/10 ring-1 ring-violet-500/20'
+                      : 'border-zinc-800/60'
                   }`}
                 >
                   {/* Rank badge */}
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm border shrink-0 ${
-                    rankStyle ? rankStyle.bg : 'bg-zinc-800/60 border-zinc-700/40 text-zinc-500'
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                    rankStyle ? rankStyle.badgeBg : 'bg-zinc-800/80 border border-zinc-700/40 text-zinc-400'
                   }`}>
-                    {rankStyle ? <rankStyle.icon className={`w-4 h-4 ${rankStyle.iconClass}`} /> : rank}
+                    {rankStyle ? <rankStyle.icon className={`w-4 h-4 ${rankStyle.iconClass}`} /> : `#${rank}`}
                   </div>
 
                   {/* Avatar */}
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm uppercase shrink-0 overflow-hidden"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm uppercase shrink-0 overflow-hidden shadow-sm border border-white/10"
                     style={{ backgroundColor: user.avatar_url ? 'transparent' : (user.avatar_color || '#6366f1') }}
                   >
                     {user.avatar_url ? (
@@ -448,33 +529,43 @@ const LeaderboardPage = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-sm font-semibold text-zinc-100 truncate">{user.display_name}</span>
+                        {rankStyle && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${rankStyle.titleBadge}`}>
+                            {rankStyle.titleText}
+                          </span>
+                        )}
                         {isCurrent && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xxs font-bold uppercase tracking-wider shrink-0">
-                            You
+                          <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xxs font-extrabold uppercase tracking-wider shrink-0 shadow-sm shadow-violet-500/30">
+                            YOU
                           </span>
                         )}
                       </div>
-                      <span className="text-sm font-bold text-zinc-100 shrink-0 ml-2">
-                        {user.solved} <span className="text-zinc-600 font-normal text-xs">/ {totalQ}</span>
+                      <span className="text-sm font-bold font-mono text-zinc-100 shrink-0 ml-2">
+                        {user.solved} <span className="text-zinc-500 font-normal text-xs">/ {totalQ}</span>
                       </span>
                     </div>
 
                     {/* Progress bar */}
-                    <div className="w-full bg-zinc-800/80 h-1 rounded-full overflow-hidden">
-                      <div className="bg-violet-500 h-full transition-all duration-500 rounded-full" style={{ width: `${pct}%` }} />
+                    <div className="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden p-0.5 border border-zinc-800/60">
+                      <div
+                        className={`h-full transition-all duration-700 rounded-full ${
+                          rankStyle ? rankStyle.barColor : 'bg-gradient-to-r from-violet-600 to-indigo-500'
+                        }`}
+                        style={{ width: `${Math.max(user.solved > 0 ? 2 : 0, pct)}%` }}
+                      />
                     </div>
 
-                    {/* Stats */}
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1 text-xxs text-zinc-500">
+                    {/* Stats summary pills */}
+                    <div className="flex items-center gap-3 pt-0.5">
+                      <div className="flex items-center gap-1 text-xxs text-zinc-400">
                         <Flame className="w-3.5 h-3.5 text-orange-400" />
                         <span>{user.streak}d streak</span>
                       </div>
-                      <div className="flex items-center gap-1 text-xxs text-zinc-500">
-                        <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+                      <div className="flex items-center gap-1 text-xxs text-zinc-400">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-400" />
                         <span>+{user.solvedThisWeek} this week</span>
                       </div>
-                      <div className="flex items-center gap-1 text-xxs text-violet-400 font-semibold bg-violet-500/10 px-1.5 py-0.5 rounded-md border border-violet-500/20">
+                      <div className="flex items-center gap-1 text-xxs text-violet-300 font-semibold bg-violet-500/10 px-2 py-0.5 rounded-md border border-violet-500/20 font-mono">
                         <span>⭐ {user.totalXP} XP</span>
                       </div>
                     </div>
@@ -486,16 +577,19 @@ const LeaderboardPage = () => {
         </div>
 
         {/* Activity Feed */}
-        <div className="glass-panel p-5 rounded-2xl h-fit">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-4 h-4 text-violet-400" />
-            <p className="section-label">Recent Activity</p>
+        <div className="glass-panel p-4 sm:p-5 rounded-2xl h-fit">
+          <div className="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-zinc-800/60">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-violet-400" />
+              <h3 className="section-label text-zinc-200 font-semibold">Recent Activity</h3>
+            </div>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live stream" />
           </div>
 
           {recentActivities.length === 0 ? (
-            <p className="text-xs text-zinc-600 py-4 text-center">No recent activity.</p>
+            <p className="text-xs text-zinc-600 py-6 text-center">No recent activity.</p>
           ) : (
-            <div className="space-y-3.5">
+            <div className="space-y-2.5">
               {recentActivities.map((act) => (
                 <div
                   key={act.id}
@@ -506,10 +600,10 @@ const LeaderboardPage = () => {
                       setSelectedUser(leaderboardUser || { ...u, solved: 0, solvedThisWeek: 0, streak: 0 });
                     }
                   }}
-                  className="flex gap-3 cursor-pointer hover:bg-zinc-900/10 p-1.5 -m-1.5 rounded-xl transition-all active:scale-[0.98]"
+                  className="flex items-start gap-3 p-2.5 rounded-xl bg-zinc-900/30 border border-zinc-800/40 hover:bg-zinc-800/40 hover:border-zinc-700/60 transition-all cursor-pointer group"
                 >
                   <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white text-xs uppercase shrink-0 overflow-hidden"
+                    className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-white text-xs uppercase shrink-0 overflow-hidden shadow-sm"
                     style={{ backgroundColor: act.avatarUrl ? 'transparent' : act.avatarColor }}
                   >
                     {act.avatarUrl ? (
@@ -519,14 +613,22 @@ const LeaderboardPage = () => {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-zinc-300 truncate">{act.userName}</p>
-                    <p className="text-xxs text-zinc-500 mt-0.5 truncate">
-                      Solved <span className="text-violet-400">{act.problemName}</span>
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-xs font-semibold text-zinc-200 group-hover:text-violet-300 transition-colors truncate">
+                        {act.userName}
+                      </p>
+                      <span className="text-[10px] text-zinc-500 shrink-0 font-mono">
+                        {formatRelativeTime(act.updatedAt)}
+                      </span>
+                    </div>
+                    <p className="text-xxs text-zinc-400 mt-0.5 truncate">
+                      Solved <span className="text-zinc-200 font-medium">{act.problemName}</span>
                     </p>
-                    <div className="flex items-center gap-2 mt-1 text-xxs text-zinc-600">
-                      <span>{act.topic}</span>
-                      <span>·</span>
-                      <span>{formatRelativeTime(act.updatedAt)}</span>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-medium">
+                        {act.topic}
+                      </span>
+                      <DiffDot d={act.difficulty} />
                     </div>
                   </div>
                 </div>

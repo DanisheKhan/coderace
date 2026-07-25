@@ -66,7 +66,7 @@ const AddQuestionModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
       <div className="w-full max-w-lg glass-panel rounded-2xl p-6 relative z-10 shadow-2xl shadow-black/80 border border-[#252528]">
         <div className="flex items-center justify-between pb-4 border-b border-[#1f1f23] mb-5">
           <div className="flex items-center gap-2">
