@@ -7,7 +7,7 @@ import {
   Search, ExternalLink, ChevronDown, ChevronUp,
   Shuffle, Save, X, Code, MoreHorizontal,
   Bookmark, BookmarkCheck, FileText,
-  Zap, Brain, Rocket, Link2, Trash2, CheckCircle2,
+  Link2, Trash2, CheckCircle2,
   Clock, AlertCircle, RotateCcw, Circle,
   Sparkles, Copy, Lightbulb, Eye,
 } from 'lucide-react';
@@ -84,11 +84,13 @@ const StatusCell = ({ status, onChange }) => {
     <div ref={ref} className="relative inline-block">
       <button
         onClick={() => setOpen(v => !v)}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-all cursor-pointer select-none ${statusPillStyles[status] || statusPillStyles.not_started}`}
+        className={`inline-flex items-center justify-between w-[115px] px-2.5 py-1 rounded-full border text-xs font-medium transition-all cursor-pointer select-none ${statusPillStyles[status] || statusPillStyles.not_started}`}
       >
-        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cur.dot}`} />
-        {cur.label}
-        <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="flex items-center gap-1.5 min-w-0">
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cur.dot}`} />
+          <span className="truncate">{cur.label}</span>
+        </span>
+        <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       <PortalDropdown anchor={ref.current} open={open} onClose={() => setOpen(false)}>
         <div className="bg-[#111113] border border-[#2a2a2e] rounded-xl shadow-2xl shadow-black/60 py-1 overflow-hidden" style={{ minWidth: 148 }}>
@@ -133,11 +135,13 @@ const ApproachCell = ({ bruteForce, optimized, onChange }) => {
     <div ref={ref} className="relative inline-block">
       <button
         onClick={() => setOpen(v => !v)}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-all cursor-pointer select-none ${cur.pill}`}
+        className={`inline-flex items-center justify-between w-[115px] px-2.5 py-1 rounded-full border text-xs font-medium transition-all cursor-pointer select-none ${cur.pill}`}
       >
-        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cur.dot}`} />
-        {cur.label}
-        <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="flex items-center gap-1.5 min-w-0">
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cur.dot}`} />
+          <span className="truncate">{cur.label}</span>
+        </span>
+        <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       <PortalDropdown anchor={ref.current} open={open} onClose={() => setOpen(false)}>
         <div className="bg-[#111113] border border-[#2a2a2e] rounded-xl shadow-2xl shadow-black/60 py-1 overflow-hidden" style={{ minWidth: 148 }}>
@@ -163,22 +167,6 @@ const ApproachCell = ({ bruteForce, optimized, onChange }) => {
   );
 };
 
-// ── Step Toggle ───────────────────────────────────────────────────────────────
-const StepToggle = ({ value, onChange, icon: Icon, activeColor, activeBg, label }) => (
-  <button
-    onClick={() => onChange(!value)}
-    title={label}
-    className={`flex flex-col items-center gap-1 p-2 rounded-lg cursor-pointer transition-all ${
-      value ? `${activeBg} ring-1 ring-inset ${activeColor.replace('text-', 'ring-')}/30` : 'hover:bg-zinc-800/60'
-    }`}
-  >
-    <Icon className={`w-3.5 h-3.5 transition-colors ${value ? activeColor : 'text-zinc-600'}`} />
-    <span className={`text-[9px] font-bold uppercase tracking-wide leading-none transition-colors ${value ? activeColor : 'text-zinc-700'}`}>
-      {label}
-    </span>
-  </button>
-);
-
 // ── Solve Source Options ──────────────────────────────────────────────────────
 const SOLVE_METHODS = [
   { id: 'gpt',      label: 'AI / GPT',    icon: Sparkles,  color: 'text-violet-400', activeBg: 'bg-violet-500/12 border-violet-500/35' },
@@ -188,7 +176,7 @@ const SOLVE_METHODS = [
 ];
 
 // ── Row context menu ──────────────────────────────────────────────────────────
-const RowMenu = ({ question, prog, bruteForce, approach, optimized, onStepChange, onOpenNotes, onIncrementRevisit, onToggleRevisit, onSolveMethodChange, onClearProgress }) => {
+const RowMenu = ({ question, prog, onOpenNotes, onIncrementRevisit, onToggleRevisit, onSolveMethodChange, onClearProgress }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const solveMethod = prog?.solve_method || null;
@@ -215,16 +203,6 @@ const RowMenu = ({ question, prog, bruteForce, approach, optimized, onStepChange
 
       {open && (
         <div className="absolute right-0 z-50 mt-1.5 w-56 bg-[#111113] border border-[#252528] rounded-xl shadow-2xl shadow-black/60 overflow-hidden py-1.5" style={{ top: '100%' }}>
-          {/* Solution steps */}
-          <div className="px-3 py-2.5 border-b border-[#1f1f23] mb-1">
-            <span className="section-label block mb-2">Solution Steps</span>
-            <div className="grid grid-cols-3 gap-1 bg-zinc-950/70 p-1 rounded-lg border border-zinc-800/50">
-              <StepToggle value={bruteForce} onChange={v => onStepChange('brute_force', v)} icon={Zap}    activeColor="text-amber-400"   activeBg="bg-amber-500/10"   label="Brute" />
-              <StepToggle value={approach}   onChange={v => onStepChange('approach', v)}   icon={Brain}   activeColor="text-sky-400"     activeBg="bg-sky-500/10"     label="Think" />
-              <StepToggle value={optimized}  onChange={v => onStepChange('optimized', v)}  icon={Rocket}  activeColor="text-emerald-400" activeBg="bg-emerald-500/10" label="Optim" />
-            </div>
-          </div>
-
           {/* How Solved Tags */}
           <div className="px-3 py-2.5 border-b border-[#1f1f23] mb-1">
             <span className="section-label block mb-2">How Solved?</span>
@@ -384,7 +362,7 @@ const MySheetPage = () => {
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [filterRevisit, setFilterRevisit] = useState(false);
-  const [expandedPhases, setExpandedPhases] = useState({});
+  const [expandedTopics, setExpandedTopics] = useState({});
   const [surpriseQuestion, setSurpriseQuestion] = useState(null);
 
   const [activeNotes, setActiveNotes] = useState(null);
@@ -412,11 +390,11 @@ const MySheetPage = () => {
     [questions, progressMap, search, selectedDifficulty, selectedStatus, filterRevisit]
   );
 
-  const groupedByPhase = useMemo(() => {
+  const groupedByTopic = useMemo(() => {
     const groups = {};
     filteredQuestions.forEach(q => {
-      if (!groups[q.phase]) groups[q.phase] = [];
-      groups[q.phase].push(q);
+      if (!groups[q.topic]) groups[q.topic] = [];
+      groups[q.topic].push(q);
     });
     return groups;
   }, [filteredQuestions]);
@@ -429,7 +407,6 @@ const MySheetPage = () => {
     else if (val === 'optimized')   upsertProgress(profile.id, qId, { brute_force: false, optimized: true });
     else if (val === 'both')        upsertProgress(profile.id, qId, { brute_force: true, optimized: true });
   };
-  const handleStep = (qId, field, val) => { if (profile) upsertProgress(profile.id, qId, { [field]: val }); };
   const handleSolveMethod = (qId, method) => {
     if (!profile) return;
     upsertProgress(profile.id, qId, { solve_method: method });
@@ -467,8 +444,8 @@ const MySheetPage = () => {
     if (!unsolved.length) return;
     const pick = unsolved[Math.floor(Math.random() * unsolved.length)];
     setSurpriseQuestion(pick);
-    setExpandedPhases(prev => ({ ...prev, [pick.phase]: true }));
-    setTimeout(() => document.getElementById(`phase-${pick.phase}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    setExpandedTopics(prev => ({ ...prev, [pick.topic]: true }));
+    setTimeout(() => document.getElementById(`topic-${pick.topic}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   };
 
   if (qLoading && !questions.length) {
@@ -572,39 +549,33 @@ const MySheetPage = () => {
         </button>
       </div>
 
-      {/* ── Legend ── */}
-      <div className="flex items-center gap-4 text-xxs text-zinc-600 pb-0.5">
-        <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-amber-500/70" /> Brute</span>
-        <span className="flex items-center gap-1"><Brain className="w-3 h-3 text-sky-400/70" /> Approach</span>
-        <span className="flex items-center gap-1"><Rocket className="w-3 h-3 text-emerald-400/70" /> Optimized</span>
-      </div>
-
-      {/* ── Phase accordions ── */}
-      {Object.keys(groupedByPhase).length === 0 ? (
+      {/* ── Topic accordions ── */}
+      {Object.keys(groupedByTopic).length === 0 ? (
         <div className="text-center py-20 text-zinc-600 text-sm">No questions match your filters.</div>
       ) : (
         <div className="space-y-2">
-          {Object.entries(groupedByPhase).map(([phase, phaseQuestions]) => {
-            const isOpen = !!expandedPhases[phase];
-            const done  = phaseQuestions.filter(q => progressMap[q.id]?.status === 'done').length;
-            const total = phaseQuestions.length;
+          {Object.entries(groupedByTopic).map(([topic, topicQuestions]) => {
+            const isOpen = !!expandedTopics[topic];
+            const done  = topicQuestions.filter(q => progressMap[q.id]?.status === 'done').length;
+            const total = topicQuestions.length;
             const pct   = total ? Math.round((done / total) * 100) : 0;
 
-            const topicGroups = {};
-            phaseQuestions.forEach(q => {
-              if (!topicGroups[q.topic]) topicGroups[q.topic] = [];
-              topicGroups[q.topic].push(q);
+            const subtopicGroups = {};
+            topicQuestions.forEach(q => {
+              const k = q.subtopic || '';
+              if (!subtopicGroups[k]) subtopicGroups[k] = [];
+              subtopicGroups[k].push(q);
             });
 
             return (
-              <div key={phase} id={`phase-${phase}`} className="border border-[#1f1f23] rounded-xl overflow-hidden" style={{ background: '#0c0c0e' }}>
-                {/* Phase header */}
+              <div key={topic} id={`topic-${topic}`} className="border border-[#1f1f23] rounded-xl overflow-hidden" style={{ background: '#0c0c0e' }}>
+                {/* Topic header */}
                 <button
-                  onClick={() => setExpandedPhases(prev => ({ ...prev, [phase]: !isOpen }))}
+                  onClick={() => setExpandedTopics(prev => ({ ...prev, [topic]: !isOpen }))}
                   className="w-full flex items-center justify-between px-5 py-3.5 text-left cursor-pointer hover:bg-zinc-900/40 transition-colors group"
                 >
                   <div className="flex items-center gap-4 min-w-0 flex-1">
-                    <span className="section-label truncate">{phase}</span>
+                    <span className="section-label truncate">{topic}</span>
                     <div className="flex items-center gap-2 shrink-0">
                       <div className="w-28 h-1 bg-zinc-800 rounded-full overflow-hidden">
                         <div
@@ -628,7 +599,6 @@ const MySheetPage = () => {
                       <thead>
                         <tr style={{ background: 'rgba(18,18,21,0.95)' }} className="text-zinc-600 font-semibold text-xxs uppercase tracking-wider">
                           <th className="px-4 py-3 text-right w-10 border-r border-[#1f1f23]">#</th>
-                          <th className="px-4 py-3 w-28 border-r border-[#1f1f23] text-left">Topic</th>
                           <th className="px-4 py-3 w-44 border-r border-[#1f1f23] text-left">Subtopic</th>
                           <th className="px-4 py-3 border-r border-[#1f1f23] text-left">Problem</th>
                           <th className="px-4 py-3 w-28 text-center border-r border-[#1f1f23]">Difficulty</th>
@@ -641,152 +611,128 @@ const MySheetPage = () => {
                         {(() => {
                           const rows = [];
 
-                          Object.entries(topicGroups).forEach(([topic, topicQs]) => {
-                            const subtopicGroups = {};
-                            topicQs.forEach(q => {
-                              const k = q.subtopic || '';
-                              if (!subtopicGroups[k]) subtopicGroups[k] = [];
-                              subtopicGroups[k].push(q);
-                            });
+                          Object.entries(subtopicGroups).forEach(([subtopic, stQs]) => {
+                            stQs.forEach((q, qIdx) => {
+                              const prog       = progressMap[q.id] || {};
+                              const status     = prog.status || 'not_started';
+                              const bruteForce = prog.brute_force || false;
+                              const optimized  = prog.optimized  || false;
+                              const revisit    = prog.revisit    || false;
+                              const revisitCount = prog.revisit_count || 0;
+                              const isSurprise = surpriseQuestion?.id === q.id;
+                              const isFirstSub   = qIdx === 0;
 
-                            let topicRendered = 0;
+                              const rowBg =
+                                isSurprise             ? 'bg-violet-950/25' :
+                                revisit                ? 'bg-rose-950/15' :
+                                status === 'done'      ? 'bg-emerald-950/10' :
+                                status === 'attempted' ? 'bg-amber-950/8' : '';
 
-                            Object.entries(subtopicGroups).forEach(([subtopic, stQs]) => {
-                              stQs.forEach((q, qIdx) => {
-                                const prog       = progressMap[q.id] || {};
-                                const status     = prog.status || 'not_started';
-                                const bruteForce = prog.brute_force || false;
-                                const approach   = prog.approach   || false;
-                                const optimized  = prog.optimized  || false;
-                                const revisit    = prog.revisit    || false;
-                                const revisitCount = prog.revisit_count || 0;
-                                const isSurprise = surpriseQuestion?.id === q.id;
-                                const isFirstTopic = topicRendered === 0;
-                                const isFirstSub   = qIdx === 0;
-                                topicRendered++;
+                              const borderL =
+                                isSurprise ? 'border-l-2 border-l-violet-500' :
+                                revisit    ? 'border-l-2 border-l-rose-500' : '';
 
-                                const rowBg =
-                                  isSurprise             ? 'bg-violet-950/25' :
-                                  revisit                ? 'bg-rose-950/15' :
-                                  status === 'done'      ? 'bg-emerald-950/10' :
-                                  status === 'attempted' ? 'bg-amber-950/8' : '';
+                              rows.push(
+                                <tr
+                                  key={q.id}
+                                  className={[
+                                    'border-b border-[#181818] transition-all duration-150',
+                                    rowBg,
+                                    borderL,
+                                    !isSurprise && !revisit ? 'hover:bg-zinc-900/30' : '',
+                                  ].filter(Boolean).join(' ')}
+                                >
+                                  {/* Sr No */}
+                                  <td className="px-4 py-2.5 text-right font-mono text-xxs text-zinc-700 border-r border-[#1f1f23]/50 whitespace-nowrap">
+                                    {q.sr_no}
+                                  </td>
 
-                                const borderL =
-                                  isSurprise ? 'border-l-2 border-l-violet-500' :
-                                  revisit    ? 'border-l-2 border-l-rose-500' : '';
-
-                                rows.push(
-                                  <tr
-                                    key={q.id}
-                                    className={[
-                                      'border-b border-[#181818] transition-all duration-150',
-                                      rowBg,
-                                      borderL,
-                                      !isSurprise && !revisit ? 'hover:bg-zinc-900/30' : '',
-                                    ].filter(Boolean).join(' ')}
-                                  >
-                                    {/* Sr No */}
-                                    <td className="px-4 py-2.5 text-right font-mono text-xxs text-zinc-700 border-r border-[#1f1f23]/50 whitespace-nowrap">
-                                      {q.sr_no}
+                                  {/* Subtopic — rowspan */}
+                                  {isFirstSub && (
+                                    <td
+                                      rowSpan={stQs.length}
+                                      className="px-4 py-3 text-xs text-zinc-600 border-r border-[#1f1f23]/50 align-top pt-3 leading-relaxed bg-[#0c0c0e]"
+                                      style={{ borderBottom: '1px solid rgba(31,31,35,0.5)' }}
+                                    >
+                                      {subtopic}
                                     </td>
+                                  )}
 
-                                    {/* Topic — rowspan */}
-                                    {isFirstTopic && (
-                                      <td
-                                        rowSpan={topicQs.length}
-                                        className="px-3 py-3 text-xxs font-semibold text-zinc-500 border-r border-[#1f1f23]/50 align-middle text-center bg-[#0c0c0e]"
-                                        style={{ borderBottom: '1px solid rgba(31,31,35,0.5)' }}
-                                      >
-                                        <span style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', display: 'inline-block', whiteSpace: 'nowrap', letterSpacing: '0.05em' }}>
-                                          {topic}
-                                        </span>
-                                      </td>
-                                    )}
-
-                                    {/* Subtopic — rowspan */}
-                                    {isFirstSub && (
-                                      <td
-                                        rowSpan={stQs.length}
-                                        className="px-4 py-3 text-xs text-zinc-600 border-r border-[#1f1f23]/50 align-top pt-3 leading-relaxed bg-[#0c0c0e]"
-                                        style={{ borderBottom: '1px solid rgba(31,31,35,0.5)' }}
-                                      >
-                                        {subtopic}
-                                      </td>
-                                    )}
-
-                                    {/* Problem name */}
-                                    <td className="px-4 py-2.5 border-r border-[#1f1f23]/50">
-                                      <div className="flex items-center gap-2">
-                                        <span className={`text-sm leading-snug transition-colors ${status === 'done' ? 'line-through text-zinc-600' : 'text-zinc-200'}`}>
-                                          {q.problem_name}
-                                        </span>
-                                        {q.link && (
-                                          <a href={q.link} target="_blank" rel="noopener noreferrer"
-                                            className="shrink-0 text-zinc-700 hover:text-violet-400 transition-colors">
-                                            <ExternalLink className="w-3 h-3" />
-                                          </a>
-                                        )}
-                                        {/* Solve Method Badge Symbol */}
-                                        {prog.solve_method && (() => {
-                                          const m = SOLVE_METHODS.find(sm => sm.id === prog.solve_method);
-                                          if (!m) return null;
-                                          const Icon = m.icon;
-                                          return (
-                                            <span
-                                              key={m.id}
-                                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-mono font-bold select-none transition-all ${m.activeBg} ${m.color}`}
-                                              title={`Solved method: ${m.label}`}
-                                            >
-                                              <Icon className="w-3 h-3" />
-                                              <span>{m.label}</span>
-                                            </span>
-                                          );
-                                        })()}
-                                        {/* Active Revisit Badge */}
-                                        {revisit && (
-                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-[10px] font-mono font-bold text-rose-400 select-none shadow-sm shadow-rose-950/30">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
-                                            <span>REVISIT{revisitCount > 1 ? ` · ${revisitCount}×` : ''}</span>
+                                  {/* Problem name */}
+                                  <td className="px-4 py-2.5 border-r border-[#1f1f23]/50">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-sm leading-snug transition-colors ${status === 'done' ? 'line-through text-zinc-600' : 'text-zinc-200'}`}>
+                                        {q.problem_name}
+                                      </span>
+                                      {q.link && (
+                                        <a
+                                          href={q.link}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-zinc-600 hover:text-violet-400 transition-colors"
+                                          title="Open problem link"
+                                        >
+                                          <ExternalLink className="w-3.5 h-3.5" />
+                                        </a>
+                                      )}
+                                      {(() => {
+                                        const solveMethod = prog.solve_method;
+                                        if (!solveMethod) return null;
+                                        const m = SOLVE_METHODS.find(sm => sm.id === solveMethod);
+                                        if (!m) return null;
+                                        const Icon = m.icon;
+                                        return (
+                                          <span
+                                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${m.activeBg} ${m.color}`}
+                                            title={`Solved method: ${m.label}`}
+                                          >
+                                            <Icon className="w-3 h-3" />
+                                            <span>{m.label}</span>
                                           </span>
-                                        )}
-                                      </div>
-                                    </td>
+                                        );
+                                      })()}
+                                      {/* Active Revisit Badge */}
+                                      {revisit && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-[10px] font-mono font-bold text-rose-400 select-none shadow-sm shadow-rose-950/30">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                                          <span>REVISIT{revisitCount > 1 ? ` · ${revisitCount}×` : ''}</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
 
-                                    {/* Difficulty */}
-                                    <td className="px-4 py-2.5 text-center border-r border-[#1f1f23]/50 whitespace-nowrap">
-                                      <Stars n={q.difficulty} />
-                                    </td>
+                                  {/* Difficulty */}
+                                  <td className="px-4 py-2.5 text-center border-r border-[#1f1f23]/50 whitespace-nowrap">
+                                    <Stars n={q.difficulty} />
+                                  </td>
 
-                                    {/* Approach */}
-                                    <td className="px-3 py-2 text-center border-r border-[#1f1f23]/50 whitespace-nowrap">
-                                      <ApproachCell bruteForce={bruteForce} optimized={optimized} onChange={val => handleApproach(q.id, val)} />
-                                    </td>
+                                  {/* Approach */}
+                                  <td className="px-3 py-2 text-center border-r border-[#1f1f23]/50 whitespace-nowrap">
+                                    <ApproachCell bruteForce={bruteForce} optimized={optimized} onChange={val => handleApproach(q.id, val)} />
+                                  </td>
 
-                                    {/* Status */}
-                                    <td className="px-3 py-2 text-center border-r border-[#1f1f23]/50">
-                                      <StatusCell status={status} onChange={ns => handleStatus(q.id, ns)} />
-                                    </td>
+                                  {/* Status */}
+                                  <td className="px-3 py-2 text-center border-r border-[#1f1f23]/50">
+                                    <StatusCell status={status} onChange={ns => handleStatus(q.id, ns)} />
+                                  </td>
 
-                                    {/* Menu */}
-                                    <td className="px-2 py-2 text-center">
-                                      <RowMenu
-                                        question={q} prog={prog}
-                                        bruteForce={bruteForce} approach={approach} optimized={optimized}
-                                        onStepChange={(field, val) => handleStep(q.id, field, val)}
-                                        onOpenNotes={() => openNotes(q)}
-                                        onIncrementRevisit={() => handleIncrementRevisit(q.id)}
-                                        onToggleRevisit={v => handleToggleRevisit(q.id, v)}
-                                        onSolveMethodChange={m => handleSolveMethod(q.id, m)}
-                                        onClearProgress={() => handleClearProgress(q.id)}
-                                      />
-                                    </td>
-                                  </tr>
+                                  {/* Menu */}
+                                  <td className="px-2 py-2 text-center">
+                                    <RowMenu
+                                      question={q} prog={prog}
+                                      onOpenNotes={() => openNotes(q)}
+                                      onIncrementRevisit={() => handleIncrementRevisit(q.id)}
+                                      onToggleRevisit={v => handleToggleRevisit(q.id, v)}
+                                      onSolveMethodChange={m => handleSolveMethod(q.id, m)}
+                                      onClearProgress={() => handleClearProgress(q.id)}
+                                    />
+                                  </td>
+                                </tr>
                                 );
                               });
                             });
-                          });
 
-                          return rows;
+                            return rows;
                         })()}
                       </tbody>
                     </table>

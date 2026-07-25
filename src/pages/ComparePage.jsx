@@ -16,35 +16,14 @@ const ComparePage = () => {
   const { profiles, progress } = useProgressStore();
   const { questions } = useQuestions();
 
-  const uniquePhases = useMemo(() => [...new Set(questions.map(q => q.phase))], [questions]);
-  const [activeComparePhase, setActiveComparePhase] = useState(uniquePhases[0] || '');
+  const uniqueTopics = useMemo(() => [...new Set(questions.map(q => q.topic))], [questions]);
+  const [activeCompareTopic, setActiveCompareTopic] = useState(uniqueTopics[0] || '');
 
-  // Phase comparison data
-  const phaseComparisonData = useMemo(() => {
-    if (!profiles.length || !questions.length) return [];
-    const phaseGroups = {};
-    questions.forEach(q => {
-      if (!phaseGroups[q.phase]) phaseGroups[q.phase] = [];
-      phaseGroups[q.phase].push(q.id);
-    });
-    return Object.keys(phaseGroups).map(phaseName => {
-      const qIds = phaseGroups[phaseName];
-      const row = { name: phaseName.split(':')[0].trim() };
-      profiles.forEach(p => {
-        const up = progress.filter(pr => pr.user_id === p.id);
-        const solved = up.filter(pr => qIds.includes(pr.question_id) && pr.status === 'done').length;
-        row[p.display_name] = qIds.length > 0 ? Math.round((solved / qIds.length) * 100) : 0;
-      });
-      return row;
-    });
-  }, [profiles, progress, questions]);
-
-  // Topic comparison data
+  // Topic comparison data (Overall completion percentage per topic for each user)
   const topicComparisonData = useMemo(() => {
-    if (!activeComparePhase || !profiles.length || !questions.length) return [];
-    const phaseQs = questions.filter(q => q.phase === activeComparePhase);
+    if (!profiles.length || !questions.length) return [];
     const topicGroups = {};
-    phaseQs.forEach(q => {
+    questions.forEach(q => {
       if (!topicGroups[q.topic]) topicGroups[q.topic] = [];
       topicGroups[q.topic].push(q.id);
     });
@@ -58,7 +37,29 @@ const ComparePage = () => {
       });
       return row;
     });
-  }, [profiles, progress, questions, activeComparePhase]);
+  }, [profiles, progress, questions]);
+
+  // Subtopic comparison data (Completion percentage per subtopic for active topic)
+  const subtopicComparisonData = useMemo(() => {
+    if (!activeCompareTopic || !profiles.length || !questions.length) return [];
+    const topicQs = questions.filter(q => q.topic === activeCompareTopic);
+    const subtopicGroups = {};
+    topicQs.forEach(q => {
+      const k = q.subtopic || 'General';
+      if (!subtopicGroups[k]) subtopicGroups[k] = [];
+      subtopicGroups[k].push(q.id);
+    });
+    return Object.keys(subtopicGroups).map(subtopicName => {
+      const qIds = subtopicGroups[subtopicName];
+      const row = { name: subtopicName };
+      profiles.forEach(p => {
+        const up = progress.filter(pr => pr.user_id === p.id);
+        const solved = up.filter(pr => qIds.includes(pr.question_id) && pr.status === 'done').length;
+        row[p.display_name] = qIds.length > 0 ? Math.round((solved / qIds.length) * 100) : 0;
+      });
+      return row;
+    });
+  }, [profiles, progress, questions, activeCompareTopic]);
 
   // Overview rankings
   const userCompletionRankings = useMemo(() => {
@@ -74,7 +75,7 @@ const ComparePage = () => {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold tracking-tight text-zinc-100">Compare Progress</h1>
-        <p className="text-zinc-500 text-sm mt-1">Side-by-side progression across phases and topics.</p>
+        <p className="text-zinc-500 text-sm mt-1">Side-by-side progression across topics and subtopics.</p>
       </div>
 
       {/* Overview cards */}
@@ -100,47 +101,49 @@ const ComparePage = () => {
         </div>
       )}
 
-      {/* Phase comparison chart */}
+      {/* Topic comparison chart */}
       <div className="glass-panel p-5 rounded-2xl min-h-[360px] flex flex-col">
         <div className="flex items-center gap-2 mb-5">
           <Users className="w-4 h-4 text-zinc-500" />
-          <p className="section-label">Phase Completion (%)</p>
+          <p className="section-label">Topic Completion (%)</p>
         </div>
         {profiles.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-xs text-zinc-600">
             No racers to compare.
           </div>
         ) : (
-          <div className="flex-1 w-full">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={phaseComparisonData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                <XAxis dataKey="name" stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} />
-                <YAxis domain={[0, 100]} stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: '#71717a' }} />
-                {profiles.map(p => (
-                  <Bar key={p.id} dataKey={p.display_name} fill={p.avatar_color || '#6366f1'} radius={[3, 3, 0, 0]} maxBarSize={36} />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="flex-1 w-full overflow-x-auto custom-scrollbar">
+            <div style={{ minWidth: 2000 }}>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={topicComparisonData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                  <XAxis dataKey="name" stroke="#3f3f46" tick={{ fill: '#71717a', fontSize: 10 }} height={35} interval={0} />
+                  <YAxis domain={[0, 100]} stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: '#71717a' }} />
+                  {profiles.map(p => (
+                    <Bar key={p.id} dataKey={p.display_name} fill={p.avatar_color || '#6366f1'} radius={[3, 3, 0, 0]} maxBarSize={36} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Topic comparison chart */}
+      {/* Subtopic comparison chart */}
       <div className="glass-panel p-5 rounded-2xl min-h-[360px] flex flex-col">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-5">
           <div className="flex items-center gap-2">
             <Award className="w-4 h-4 text-zinc-500" />
-            <p className="section-label">Topic Completion (%)</p>
+            <p className="section-label">Subtopic Completion (%)</p>
           </div>
           <select
-            value={activeComparePhase}
-            onChange={e => setActiveComparePhase(e.target.value)}
+            value={activeCompareTopic}
+            onChange={e => setActiveCompareTopic(e.target.value)}
             className="px-3 py-2 text-xs rounded-lg glass-input text-zinc-300 focus:outline-none cursor-pointer w-full sm:w-56"
           >
-            {uniquePhases.map(p => (
-              <option key={p} value={p}>{p.split(':')[0].trim()}</option>
+            {uniqueTopics.map(t => (
+              <option key={t} value={t}>{t}</option>
             ))}
           </select>
         </div>
@@ -150,18 +153,20 @@ const ComparePage = () => {
             No data to compare.
           </div>
         ) : (
-          <div className="flex-1 w-full">
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={topicComparisonData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                <XAxis dataKey="name" stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} />
-                <YAxis domain={[0, 100]} stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: '#71717a' }} />
-                {profiles.map(p => (
-                  <Bar key={p.id} dataKey={p.display_name} fill={p.avatar_color || '#6366f1'} radius={[3, 3, 0, 0]} maxBarSize={36} />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="flex-1 w-full overflow-x-auto custom-scrollbar">
+            <div style={{ minWidth: Math.max(750, subtopicComparisonData.length * 160) }}>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={subtopicComparisonData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                  <XAxis dataKey="name" stroke="#3f3f46" tick={{ fill: '#71717a', fontSize: 10 }} height={35} interval={0} />
+                  <YAxis domain={[0, 100]} stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: '#71717a' }} />
+                  {profiles.map(p => (
+                    <Bar key={p.id} dataKey={p.display_name} fill={p.avatar_color || '#6366f1'} radius={[3, 3, 0, 0]} maxBarSize={36} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
       </div>

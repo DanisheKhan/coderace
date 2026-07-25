@@ -79,7 +79,7 @@ export const useProgressStore = create((set, get) => ({
     // Optimistic update
     set({ progress: newProgress });
 
-    try {the 
+    try {
       // Sync to database
       const payload = {
         user_id: userId,

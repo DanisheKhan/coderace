@@ -95,25 +95,23 @@ const DashboardPage = () => {
     return s;
   }, [userProgress, profile]);
 
-  // Phase chart data
-  const phaseData = useMemo(() => {
-    const phases = {};
+  // Topic chart data
+  const topicData = useMemo(() => {
+    const topics = {};
     questions.forEach(q => {
-      if (!phases[q.phase]) phases[q.phase] = { total: 0, solved: 0 };
-      phases[q.phase].total++;
+      if (!topics[q.topic]) topics[q.topic] = { total: 0, solved: 0 };
+      topics[q.topic].total++;
     });
     userProgress.forEach(p => {
       if (p.status === 'done') {
         const q = questions.find(q => q.id === p.question_id);
-        if (q && phases[q.phase]) phases[q.phase].solved++;
+        if (q && topics[q.topic]) topics[q.topic].solved++;
       }
     });
-    return Object.keys(phases).map(name => {
-      const d = phases[name];
+    return Object.keys(topics).map(name => {
+      const d = topics[name];
       const pct = d.total > 0 ? Math.round((d.solved / d.total) * 100) : 0;
-      let display = name.split(':')[0].trim();
-      display = display.charAt(0) + display.slice(1).toLowerCase();
-      return { name: display, completed: pct, solved: d.solved, total: d.total };
+      return { name, completed: pct, solved: d.solved, total: d.total };
     });
   }, [questions, userProgress]);
 
@@ -197,14 +195,14 @@ const DashboardPage = () => {
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Phase bar chart */}
-        <div className="glass-panel p-5 rounded-2xl lg:col-span-2 flex flex-col min-h-[340px]">
-          <PanelHeader label="Phase Completion" />
-          <div className="flex-1 w-full">
-            <ResponsiveContainer width="100%" height="100%" minHeight={270}>
-              <BarChart data={phaseData} layout="vertical" margin={{ top: 0, right: 12, left: 8, bottom: 0 }}>
+        {/* Topic bar chart */}
+        <div className="glass-panel p-5 rounded-2xl lg:col-span-2 flex flex-col min-h-[380px]">
+          <PanelHeader label="Topic Completion" />
+          <div className="flex-1 w-full overflow-y-auto max-h-[300px] mt-3 pr-1 custom-scrollbar">
+            <ResponsiveContainer width="100%" height={640}>
+              <BarChart data={topicData} layout="vertical" margin={{ top: 8, right: 12, left: 8, bottom: 0 }}>
                 <XAxis type="number" domain={[0, 100]} stroke="#3f3f46" tick={{ fill: '#52525b', fontSize: 11 }} />
-                <YAxis dataKey="name" type="category" width={62} stroke="#3f3f46" tick={{ fill: '#71717a', fontSize: 11 }} />
+                <YAxis dataKey="name" type="category" width={110} stroke="#3f3f46" tick={{ fill: '#71717a', fontSize: 10 }} interval={0} />
                 <Tooltip
                   cursor={{ fill: 'rgba(255,255,255,0.015)' }}
                   contentStyle={tooltipStyle}

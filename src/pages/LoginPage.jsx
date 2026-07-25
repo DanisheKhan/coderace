@@ -2,6 +2,23 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Code2, Mail, Lock, AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
 
+const InputField = ({ label, type, value, onChange, placeholder, icon: Icon, disabled }) => (
+  <div>
+    <label className="section-label block mb-2">{label}</label>
+    <div className="relative">
+      <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-sm"
+      />
+    </div>
+  </div>
+);
+
 const LoginPage = () => {
   const { signIn, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
@@ -34,23 +51,6 @@ const LoginPage = () => {
       setLoading(false);
     }
   };
-
-  const InputField = ({ label, type, value, onChange, placeholder, icon: Icon }) => (
-    <div>
-      <label className="section-label block mb-2">{label}</label>
-      <div className="relative">
-        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-        <input
-          type={type}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          disabled={loading}
-          className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-sm"
-        />
-      </div>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-4 relative overflow-hidden">
@@ -93,10 +93,10 @@ const LoginPage = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <InputField label="Email Address" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" icon={Mail} />
-          <InputField label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" icon={Lock} />
+          <InputField label="Email Address" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" icon={Mail} disabled={loading} />
+          <InputField label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" icon={Lock} disabled={loading} />
           {isSignUp && (
-            <InputField label="Confirm Password" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" icon={Lock} />
+            <InputField label="Confirm Password" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" icon={Lock} disabled={loading} />
           )}
 
           <button

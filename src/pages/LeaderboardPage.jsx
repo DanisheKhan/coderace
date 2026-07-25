@@ -1,8 +1,151 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useProgressStore } from '../store/progressStore';
 import { useQuestions } from '../contexts/QuestionsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Trophy, Flame, Calendar, Activity, Crown, Award } from 'lucide-react';
+import { Trophy, Flame, Calendar, Activity, Crown, Award, X } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+
+// ── User Profile Modal ────────────────────────────────────────────────────────
+const UserProfileModal = ({ user, progress, questions, onClose }) => {
+  const userProgress = useMemo(() => progress.filter(p => p.user_id === user.id), [progress, user.id]);
+
+  const stats = useMemo(() => {
+    const solved = userProgress.filter(p => p.status === 'done').length;
+    const attempted = userProgress.filter(p => p.status === 'attempted').length;
+    return { solved, attempted };
+  }, [userProgress]);
+
+  const topicData = useMemo(() => {
+    const topics = {};
+    questions.forEach(q => {
+      if (!topics[q.topic]) topics[q.topic] = { total: 0, solved: 0 };
+      topics[q.topic].total++;
+    });
+    userProgress.forEach(p => {
+      if (p.status === 'done') {
+        const q = questions.find(qi => qi.id === p.question_id);
+        if (q && topics[q.topic]) topics[q.topic].solved++;
+      }
+    });
+    return Object.keys(topics).map(name => {
+      const d = topics[name];
+      const pct = d.total > 0 ? Math.round((d.solved / d.total) * 100) : 0;
+      return { name, completed: pct, solved: d.solved, total: d.total };
+    });
+  }, [questions, userProgress]);
+
+  const recentlySolved = useMemo(() => {
+    return userProgress
+      .filter(p => p.status === 'done')
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+      .slice(0, 5)
+      .map(p => {
+        const q = questions.find(qi => qi.id === p.question_id);
+        return q ? { ...q, solvedAt: p.updated_at } : null;
+      })
+      .filter(Boolean);
+  }, [userProgress, questions]);
+
+  const totalQ = questions.length || 502;
+  const pct = Math.round((stats.solved / totalQ) * 100);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="w-full max-w-lg bg-[#0f0f11] border border-[#252528] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1f1f23]">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-white text-lg uppercase shrink-0"
+              style={{ backgroundColor: user.avatar_color || '#6366f1' }}
+            >
+              {user.display_name?.charAt(0) || '?'}
+            </div>
+            <div>
+              <h3 className="font-semibold text-zinc-100 text-base leading-tight">{user.display_name}</h3>
+              <p className="text-xxs text-zinc-500 mt-1 uppercase font-mono tracking-wider">Racer Profile</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 cursor-pointer p-1 rounded-lg transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 overflow-y-auto space-y-5">
+          {/* Stats overview */}
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="bg-zinc-900/40 border border-[#1f1f23] p-3.5 rounded-xl text-center">
+              <span className="text-xxs text-zinc-500 uppercase block font-semibold">Solved</span>
+              <span className="text-lg font-bold text-zinc-200 mt-1 block">{stats.solved} / {totalQ}</span>
+              <span className="text-[10px] text-violet-400 font-bold mt-0.5 block">{pct}% complete</span>
+            </div>
+            <div className="bg-zinc-900/40 border border-[#1f1f23] p-3.5 rounded-xl text-center flex flex-col justify-center items-center">
+              <span className="text-xxs text-zinc-500 uppercase block font-semibold">Streak</span>
+              <span className="text-lg font-bold text-zinc-200 mt-1 flex items-center gap-1">
+                <Flame className="w-4 h-4 text-orange-400 shrink-0" />
+                {user.streak}d
+              </span>
+            </div>
+            <div className="bg-zinc-900/40 border border-[#1f1f23] p-3.5 rounded-xl text-center flex flex-col justify-center items-center">
+              <span className="text-xxs text-zinc-500 uppercase block font-semibold">This Week</span>
+              <span className="text-lg font-bold text-zinc-200 mt-1 flex items-center gap-1">
+                <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+                +{user.solvedThisWeek}
+              </span>
+            </div>
+          </div>
+
+          {/* Topic Progress chart */}
+          <div className="bg-zinc-950/40 border border-zinc-800/40 p-4 rounded-xl">
+            <p className="section-label mb-3">Topic Completion (%)</p>
+            <div className="h-44 overflow-y-auto pr-1 custom-scrollbar">
+              <ResponsiveContainer width="100%" height={600}>
+                <BarChart data={topicData} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
+                  <XAxis type="number" domain={[0, 100]} hide />
+                  <YAxis dataKey="name" type="category" stroke="#52525b" tick={{ fill: '#71717a', fontSize: 9 }} width={100} interval={0} />
+                  <Bar dataKey="completed" fill="#8b5cf6" radius={[0, 3, 3, 0]} barSize={8} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Recently solved feed */}
+          <div className="space-y-3">
+            <p className="section-label">Recently Solved</p>
+            {recentlySolved.length === 0 ? (
+              <p className="text-xs text-zinc-600 py-2">No solved questions yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {recentlySolved.map(q => (
+                  <div key={q.id} className="flex items-center justify-between gap-3 bg-zinc-900/30 border border-[#1f1f23]/60 px-3.5 py-2.5 rounded-xl">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-zinc-200 truncate">{q.problem_name}</p>
+                      <p className="text-[10px] text-zinc-500 mt-0.5">{q.topic} · {q.subtopic}</p>
+                    </div>
+                    <span className="text-[10px] text-zinc-600 shrink-0">
+                      {formatRelativeTime(q.solvedAt)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end px-6 py-4 border-t border-[#1f1f23]">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const formatRelativeTime = (dateString) => {
   const diffMs = Date.now() - new Date(dateString).getTime();
@@ -48,6 +191,7 @@ const LeaderboardPage = () => {
   const { profiles, progress } = useProgressStore();
   const { questions } = useQuestions();
   const { profile: currentProfile } = useAuth();
+  const [selectedUser, setSelectedUser] = useState(null);
 
   const leaderboard = useMemo(() => {
     const sevenAgo = Date.now() - 7 * 86400000;
@@ -70,6 +214,7 @@ const LeaderboardPage = () => {
         const q = questions.find(qn => qn.id === p.question_id);
         return {
           id: p.id,
+          userId: p.user_id,
           userName: u?.display_name || 'Racer',
           avatarColor: u?.avatar_color || '#6366f1',
           problemName: q?.problem_name || 'a problem',
@@ -105,7 +250,8 @@ const LeaderboardPage = () => {
               return (
                 <div
                   key={user.id}
-                  className={`glass-panel p-4 rounded-2xl flex items-center gap-4 transition-all ${
+                  onClick={() => setSelectedUser(user)}
+                  className={`glass-panel p-4 rounded-2xl flex items-center gap-4 transition-all cursor-pointer hover:bg-zinc-900/30 active:scale-[0.99] ${
                     isCurrent ? 'border-violet-500/25 ring-1 ring-violet-500/10' : ''
                   }`}
                 >
@@ -175,7 +321,17 @@ const LeaderboardPage = () => {
           ) : (
             <div className="space-y-3.5">
               {recentActivities.map((act) => (
-                <div key={act.id} className="flex gap-3">
+                <div
+                  key={act.id}
+                  onClick={() => {
+                    const u = profiles.find(p => p.id === act.userId);
+                    if (u) {
+                      const leaderboardUser = leaderboard.find(lu => lu.id === u.id);
+                      setSelectedUser(leaderboardUser || { ...u, solved: 0, solvedThisWeek: 0, streak: 0 });
+                    }
+                  }}
+                  className="flex gap-3 cursor-pointer hover:bg-zinc-900/10 p-1.5 -m-1.5 rounded-xl transition-all active:scale-[0.98]"
+                >
                   <div
                     className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white text-xs uppercase shrink-0"
                     style={{ backgroundColor: act.avatarColor }}
@@ -199,6 +355,16 @@ const LeaderboardPage = () => {
           )}
         </div>
       </div>
+
+      {/* User profile details modal */}
+      {selectedUser && (
+        <UserProfileModal
+          user={selectedUser}
+          progress={progress}
+          questions={questions}
+          onClose={() => setSelectedUser(null)}
+        />
+      )}
     </div>
   );
 };
