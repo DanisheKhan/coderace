@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -8,11 +8,14 @@ import {
   BarChart3, 
   LogOut,
   Code2,
-  Award
+  Award,
+  Settings
 } from 'lucide-react';
+import EditProfileModal from '../EditProfileModal';
 
 const Sidebar = () => {
   const { profile, signOut } = useAuth();
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   const navItems = [
     { name: 'Dashboard',   path: '/dashboard',   icon: LayoutDashboard },
@@ -58,7 +61,11 @@ const Sidebar = () => {
       {/* Bottom Profile */}
       {profile && (
         <div className="p-3 border-t border-[#1f1f23]">
-          <div className="flex items-center gap-3 px-2 py-2 rounded-xl">
+          <div 
+            onClick={() => setIsEditProfileOpen(true)}
+            className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-zinc-800/50 cursor-pointer transition-colors group"
+            title="Click to edit profile"
+          >
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-sm shrink-0 overflow-hidden"
               style={{ backgroundColor: profile.avatar_url ? 'transparent' : (profile.avatar_color || '#6366f1') }}
@@ -70,9 +77,10 @@ const Sidebar = () => {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-zinc-100 truncate leading-tight">{profile.display_name}</p>
-              <p className="text-xxs text-zinc-500 truncate mt-0.5">Racer</p>
+              <p className="text-sm font-semibold text-zinc-100 truncate leading-tight group-hover:text-violet-400 transition-colors">{profile.display_name}</p>
+              <p className="text-xxs text-zinc-500 truncate mt-0.5">Edit profile ✎</p>
             </div>
+            <Settings className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
           </div>
           <button
             onClick={() => signOut()}
@@ -83,6 +91,11 @@ const Sidebar = () => {
           </button>
         </div>
       )}
+
+      <EditProfileModal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+      />
     </aside>
   );
 };

@@ -76,6 +76,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateProfile = async (updates) => {
+    if (!user) return { error: new Error('User not logged in') };
+    try {
+      const payload = {
+        ...updates,
+        updated_at: new Date().toISOString(),
+      };
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(payload)
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setProfile(data);
+      return { data, error: null };
+    } catch (err) {
+      console.error('Error updating profile in Supabase:', err.message);
+      return { data: null, error: err };
+    }
+  };
+
   const value = {
     user,
     session,
@@ -85,7 +108,8 @@ export const AuthProvider = ({ children }) => {
     signUp,
     signIn,
     signOut,
-    refreshProfile
+    refreshProfile,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

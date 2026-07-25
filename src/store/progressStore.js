@@ -100,15 +100,7 @@ export const useProgressStore = create((set, get) => ({
         .from('user_progress')
         .upsert(payload, { onConflict: 'user_id,question_id' });
 
-      if (error) {
-        // If DB schema doesn't have solve_method column yet, retry without it
-        if (error.message?.includes('solve_method') || error.code === 'PGRST204') {
-          delete payload.solve_method;
-          await supabase.from('user_progress').upsert(payload, { onConflict: 'user_id,question_id' });
-        } else {
-          throw error;
-        }
-      }
+      if (error) throw error;
     } catch (err) {
       console.error('Failed to sync progress to database, reverting...', err.message);
       // Revert optimistic update

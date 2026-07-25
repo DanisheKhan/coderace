@@ -9,8 +9,9 @@ import {
   Bookmark, BookmarkCheck, FileText,
   Link2, Trash2, CheckCircle2,
   Clock, AlertCircle, RotateCcw, Circle,
-  Sparkles, Copy, Lightbulb, Eye,
+  Sparkles, Copy, Lightbulb, Eye, Plus
 } from 'lucide-react';
+import AddQuestionModal from '../components/AddQuestionModal';
 
 // ── Portal Dropdown ──────────────────────────────────────────────────────────
 const PortalDropdown = ({ anchor, open, children, onClose }) => {
@@ -363,8 +364,7 @@ const MySheetPage = () => {
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [filterRevisit, setFilterRevisit] = useState(false);
   const [expandedTopics, setExpandedTopics] = useState({});
-  const [surpriseQuestion, setSurpriseQuestion] = useState(null);
-
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [activeNotes, setActiveNotes] = useState(null);
   const [notesText, setNotesText] = useState('');
   const [solutionLink, setSolutionLink] = useState('');
@@ -479,14 +479,28 @@ const MySheetPage = () => {
             <span className="text-xs text-zinc-500 font-mono">{totalDone}/{questions.length} solved</span>
           </div>
         </div>
-        <button
-          onClick={handleSurpriseMe}
-          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg border border-[#2a2a2e] text-zinc-400 hover:border-violet-500/40 hover:text-violet-400 hover:bg-violet-500/5 transition-all cursor-pointer"
-        >
-          <Shuffle className="w-3.5 h-3.5" />
-          Surprise Me
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white shadow-md shadow-violet-600/20 transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Problem
+          </button>
+          <button
+            onClick={handleSurpriseMe}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg border border-[#2a2a2e] text-zinc-400 hover:border-violet-500/40 hover:text-violet-400 hover:bg-violet-500/5 transition-all cursor-pointer"
+          >
+            <Shuffle className="w-3.5 h-3.5" />
+            Surprise Me
+          </button>
+        </div>
       </div>
+
+      <AddQuestionModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+      />
 
       {/* ── Surprise banner ── */}
       {surpriseQuestion && (

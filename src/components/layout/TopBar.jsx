@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
+import EditProfileModal from '../EditProfileModal';
+
 // Map routes → page titles
 const PAGE_TITLES = {
   '/dashboard':   'Dashboard',
@@ -32,6 +34,7 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   // Close dropdown on outside click
@@ -168,8 +171,10 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
 
           {/* Avatar */}
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-sm shadow-sm select-none overflow-hidden"
+            onClick={() => setIsEditProfileOpen(true)}
+            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-sm shadow-sm select-none overflow-hidden cursor-pointer hover:ring-2 hover:ring-violet-500/50 transition-all"
             style={{ backgroundColor: profile.avatar_url ? 'transparent' : (profile.avatar_color || '#6366f1') }}
+            title="Edit profile"
           >
             {profile.avatar_url ? (
               <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
@@ -179,6 +184,11 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
           </div>
         </div>
       )}
+
+      <EditProfileModal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+      />
     </header>
   );
 };
