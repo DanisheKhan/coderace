@@ -58,10 +58,14 @@ const Sidebar = () => {
         <div className="p-3 border-t border-[#1f1f23]">
           <div className="flex items-center gap-3 px-2 py-2 rounded-xl">
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-sm shrink-0"
-              style={{ backgroundColor: profile.avatar_color || '#6366f1' }}
+              className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-sm shrink-0 overflow-hidden"
+              style={{ backgroundColor: profile.avatar_url ? 'transparent' : (profile.avatar_color || '#6366f1') }}
             >
-              {profile.display_name?.charAt(0) || '?'}
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
+              ) : (
+                profile.display_name?.charAt(0) || '?'
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-zinc-100 truncate leading-tight">{profile.display_name}</p>

@@ -86,10 +86,14 @@ const ComparePage = () => {
             {userCompletionRankings.map((user) => (
               <div key={user.id} className="flex items-center gap-3 bg-zinc-900/40 border border-[#1f1f23] p-3 rounded-xl">
                 <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-sm uppercase shrink-0"
-                  style={{ backgroundColor: user.avatar_color || '#6366f1' }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-sm uppercase shrink-0 overflow-hidden"
+                  style={{ backgroundColor: user.avatar_url ? 'transparent' : (user.avatar_color || '#6366f1') }}
                 >
-                  {user.display_name.charAt(0)}
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt={user.display_name} className="w-full h-full object-cover" />
+                  ) : (
+                    user.display_name.charAt(0)
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-zinc-300 truncate">{user.display_name}</p>

@@ -168,10 +168,14 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
 
           {/* Avatar */}
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-sm shadow-sm select-none"
-            style={{ backgroundColor: profile.avatar_color || '#6366f1' }}
+            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-sm shadow-sm select-none overflow-hidden"
+            style={{ backgroundColor: profile.avatar_url ? 'transparent' : (profile.avatar_color || '#6366f1') }}
           >
-            {profile.display_name?.charAt(0) || '?'}
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
+            ) : (
+              profile.display_name?.charAt(0) || '?'
+            )}
           </div>
         </div>
       )}

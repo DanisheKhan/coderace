@@ -56,10 +56,14 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#1f1f23]">
           <div className="flex items-center gap-3">
             <div
-              className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-white text-lg uppercase shrink-0"
-              style={{ backgroundColor: user.avatar_color || '#6366f1' }}
+              className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-white text-lg uppercase shrink-0 overflow-hidden"
+              style={{ backgroundColor: user.avatar_url ? 'transparent' : (user.avatar_color || '#6366f1') }}
             >
-              {user.display_name?.charAt(0) || '?'}
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt={user.display_name} className="w-full h-full object-cover" />
+              ) : (
+                user.display_name?.charAt(0) || '?'
+              )}
             </div>
             <div>
               <h3 className="font-semibold text-zinc-100 text-base leading-tight">{user.display_name}</h3>
@@ -217,6 +221,7 @@ const LeaderboardPage = () => {
           userId: p.user_id,
           userName: u?.display_name || 'Racer',
           avatarColor: u?.avatar_color || '#6366f1',
+          avatarUrl: u?.avatar_url || '',
           problemName: q?.problem_name || 'a problem',
           topic: q?.topic || '',
           updatedAt: p.updated_at,
@@ -264,10 +269,14 @@ const LeaderboardPage = () => {
 
                   {/* Avatar */}
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm uppercase shrink-0"
-                    style={{ backgroundColor: user.avatar_color || '#6366f1' }}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm uppercase shrink-0 overflow-hidden"
+                    style={{ backgroundColor: user.avatar_url ? 'transparent' : (user.avatar_color || '#6366f1') }}
                   >
-                    {user.display_name?.charAt(0) || '?'}
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt={user.display_name} className="w-full h-full object-cover" />
+                    ) : (
+                      user.display_name?.charAt(0) || '?'
+                    )}
                   </div>
 
                   {/* Details */}
@@ -333,10 +342,14 @@ const LeaderboardPage = () => {
                   className="flex gap-3 cursor-pointer hover:bg-zinc-900/10 p-1.5 -m-1.5 rounded-xl transition-all active:scale-[0.98]"
                 >
                   <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white text-xs uppercase shrink-0"
-                    style={{ backgroundColor: act.avatarColor }}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white text-xs uppercase shrink-0 overflow-hidden"
+                    style={{ backgroundColor: act.avatarUrl ? 'transparent' : act.avatarColor }}
                   >
-                    {act.userName.charAt(0)}
+                    {act.avatarUrl ? (
+                      <img src={act.avatarUrl} alt={act.userName} className="w-full h-full object-cover" />
+                    ) : (
+                      act.userName.charAt(0)
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium text-zinc-300 truncate">{act.userName}</p>

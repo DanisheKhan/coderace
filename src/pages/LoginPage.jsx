@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Code2, Mail, Lock, AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Code2, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
 
 const InputField = ({ label, type, value, onChange, placeholder, icon: Icon, disabled }) => (
   <div>
@@ -21,13 +22,14 @@ const InputField = ({ label, type, value, onChange, placeholder, icon: Icon, dis
 
 const LoginPage = () => {
   const { signIn, signUp } = useAuth();
+  const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,7 +42,7 @@ const LoginPage = () => {
       if (isSignUp) {
         const { error: err } = await signUp(email, password);
         if (err) throw err;
-        setSuccess(true);
+        navigate('/onboarding', { replace: true });
       } else {
         const { error: err } = await signIn(email, password);
         if (err) throw err;
@@ -80,16 +82,7 @@ const LoginPage = () => {
           </div>
         )}
 
-        {/* Success */}
-        {success && (
-          <div className="mb-5 p-3.5 rounded-xl bg-emerald-500/8 border border-emerald-500/20 text-emerald-400 text-xs flex items-start gap-2.5">
-            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Account created!</p>
-              <p className="mt-0.5 text-emerald-400/70">Check your email to confirm, or sign in if confirmations are disabled.</p>
-            </div>
-          </div>
-        )}
+
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -120,7 +113,7 @@ const LoginPage = () => {
           <p className="text-zinc-500 text-xs">
             {isSignUp ? 'Already have an account?' : 'Need to join the sheet?'}{' '}
             <button
-              onClick={() => { setIsSignUp(!isSignUp); setError(''); setSuccess(false); }}
+              onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
               className="text-violet-400 hover:text-violet-300 font-semibold cursor-pointer transition-colors"
               disabled={loading}
             >
