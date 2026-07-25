@@ -8,8 +8,16 @@ import {
 } from 'recharts';
 import {
   Trophy, Flame, Calendar, ListTodo,
-  TrendingUp, Percent, ExternalLink, Target, Activity, Zap, Clock, Layers,
+  TrendingUp, Percent, ExternalLink, Target, Activity, Zap, Clock, Layers, Award, Sparkles, BookOpen, Workflow, BookmarkCheck, Network
 } from 'lucide-react';
+import { calculateUserAchievements } from '../lib/achievements';
+
+const IconMap = {
+  Award, Zap, Flame, Trophy, Calendar, Activity,
+  Layers, Sparkles, BookOpen, Workflow,
+  BookmarkCheck, Network
+};
+
 
 const tooltipStyle = {
   backgroundColor: '#111113',
@@ -62,6 +70,21 @@ const DashboardPage = () => {
     () => progress.filter(p => p.user_id === profile?.id),
     [progress, profile]
   );
+
+  const { achievementsList, totalXP, unlockedCount } = useMemo(() => {
+    if (!profile) return { achievementsList: [], totalXP: 0, unlockedCount: 0 };
+    return calculateUserAchievements(profile.id, progress, questions);
+  }, [profile, progress, questions]);
+
+  const nextBadge = useMemo(() => {
+    const locked = achievementsList.filter(ach => !ach.unlocked);
+    if (locked.length === 0) return null;
+    return locked.reduce((closest, current) => {
+      const currentPct = current.maxProgress > 0 ? current.currentProgress / current.maxProgress : 0;
+      const closestPct = closest.maxProgress > 0 ? closest.currentProgress / closest.maxProgress : 0;
+      return currentPct > closestPct ? current : closest;
+    }, locked[0]);
+  }, [achievementsList]);
 
   const stats = useMemo(() => {
     const total = questions.length;
@@ -187,8 +210,9 @@ const DashboardPage = () => {
         <p className="text-zinc-500 text-sm mt-1">Your DSA progress snapshot.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label="Total Solved" value={stats.solved} unit={`/ ${stats.total}`} sub={<><Percent className="w-3 h-3" /> {stats.pct}% complete</>} subColor="text-violet-400" icon={Trophy} iconBg="bg-violet-500/8 border border-violet-500/15 text-violet-400" />
+        <StatCard label="Power Score" value={totalXP} unit="XP" sub={<><Award className="w-3.5 h-3.5" /> {unlockedCount} badges</>} subColor="text-violet-400" icon={Award} iconBg="bg-violet-500/8 border border-violet-500/15 text-violet-400" />
         <StatCard label="Current Streak" value={streak} unit={`day${streak !== 1 ? 's' : ''}`} sub={<><TrendingUp className="w-3 h-3" /> Active streak</>} subColor="text-orange-400" icon={Flame} iconBg="bg-orange-500/8 border border-orange-500/15 text-orange-400" />
         <StatCard label="Solved This Week" value={stats.solvedThisWeek} unit="solved" sub={<><Calendar className="w-3 h-3" /> Last 7 days</>} subColor="text-emerald-400" icon={Calendar} iconBg="bg-emerald-500/8 border border-emerald-500/15 text-emerald-400" />
         <StatCard label="Remaining" value={stats.remaining} unit="questions" sub={`${stats.attempted} attempted`} icon={ListTodo} iconBg="bg-zinc-800 border border-zinc-700/40 text-zinc-400" />
@@ -252,6 +276,33 @@ const DashboardPage = () => {
               </div>
             )}
           </div>
+
+          {nextBadge && (
+            <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between min-h-[140px]">
+              <PanelHeader label="Next Badge" icon={Award} />
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center border shrink-0 bg-violet-500/10 border-violet-500/20 text-violet-400">
+                  {(() => {
+                    const Icon = IconMap[nextBadge.icon] || Award;
+                    return <Icon className="w-4 h-4" />;
+                  })()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-xs font-bold text-zinc-200 truncate leading-snug">{nextBadge.title}</h4>
+                  <p className="text-[10px] text-zinc-500 truncate mt-0.5">{nextBadge.description}</p>
+                </div>
+              </div>
+              <div className="mt-3.5 space-y-1.5">
+                <div className="flex justify-between items-center text-xxs text-zinc-400">
+                  <span>Progress</span>
+                  <span className="font-mono tabular-nums">{nextBadge.currentProgress} / {nextBadge.maxProgress}</span>
+                </div>
+                <div className="w-full bg-zinc-800/60 h-1 rounded-full overflow-hidden">
+                  <div className="bg-violet-500 h-full transition-all duration-500 rounded-full" style={{ width: `${(nextBadge.currentProgress / nextBadge.maxProgress) * 100}%` }} />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

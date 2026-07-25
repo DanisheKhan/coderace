@@ -2,12 +2,23 @@ import React, { useState, useMemo } from 'react';
 import { useProgressStore } from '../store/progressStore';
 import { useQuestions } from '../contexts/QuestionsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Trophy, Flame, Calendar, Activity, Crown, Award, X } from 'lucide-react';
+import { Trophy, Flame, Calendar, Activity, Crown, Award, X, Zap, Sparkles, BookOpen, Workflow, BookmarkCheck, Layers, Network } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { calculateUserAchievements } from '../lib/achievements';
+
+const IconMap = {
+  Award, Zap, Flame, Trophy, Calendar, Activity,
+  Layers, Sparkles, BookOpen, Workflow,
+  BookmarkCheck, Network
+};
 
 // ── User Profile Modal ────────────────────────────────────────────────────────
 const UserProfileModal = ({ user, progress, questions, onClose }) => {
   const userProgress = useMemo(() => progress.filter(p => p.user_id === user.id), [progress, user.id]);
+
+  const { achievementsList, totalXP, unlockedCount } = useMemo(() => {
+    return calculateUserAchievements(user.id, progress, questions);
+  }, [user.id, progress, questions]);
 
   const stats = useMemo(() => {
     const solved = userProgress.filter(p => p.status === 'done').length;
@@ -78,25 +89,29 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
         {/* Body */}
         <div className="p-6 overflow-y-auto space-y-5">
           {/* Stats overview */}
-          <div className="grid grid-cols-3 gap-2.5">
-            <div className="bg-zinc-900/40 border border-[#1f1f23] p-3.5 rounded-xl text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="bg-zinc-900/40 border border-[#1f1f23] p-2.5 rounded-xl text-center">
               <span className="text-xxs text-zinc-500 uppercase block font-semibold">Solved</span>
-              <span className="text-lg font-bold text-zinc-200 mt-1 block">{stats.solved} / {totalQ}</span>
-              <span className="text-[10px] text-violet-400 font-bold mt-0.5 block">{pct}% complete</span>
+              <span className="text-sm font-bold text-zinc-200 mt-1 block">{stats.solved} / {totalQ}</span>
+              <span className="text-[10px] text-violet-400 font-bold block">{pct}%</span>
             </div>
-            <div className="bg-zinc-900/40 border border-[#1f1f23] p-3.5 rounded-xl text-center flex flex-col justify-center items-center">
+            <div className="bg-zinc-900/40 border border-[#1f1f23] p-2.5 rounded-xl text-center flex flex-col justify-center items-center">
               <span className="text-xxs text-zinc-500 uppercase block font-semibold">Streak</span>
-              <span className="text-lg font-bold text-zinc-200 mt-1 flex items-center gap-1">
-                <Flame className="w-4 h-4 text-orange-400 shrink-0" />
+              <span className="text-sm font-bold text-zinc-200 mt-1 flex items-center gap-0.5">
+                <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
                 {user.streak}d
               </span>
             </div>
-            <div className="bg-zinc-900/40 border border-[#1f1f23] p-3.5 rounded-xl text-center flex flex-col justify-center items-center">
+            <div className="bg-zinc-900/40 border border-[#1f1f23] p-2.5 rounded-xl text-center flex flex-col justify-center items-center">
               <span className="text-xxs text-zinc-500 uppercase block font-semibold">This Week</span>
-              <span className="text-lg font-bold text-zinc-200 mt-1 flex items-center gap-1">
-                <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="text-sm font-bold text-zinc-200 mt-1 flex items-center gap-0.5">
+                <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 +{user.solvedThisWeek}
               </span>
+            </div>
+            <div className="bg-zinc-900/40 border border-violet-500/20 p-2.5 rounded-xl text-center flex flex-col justify-center items-center bg-violet-500/5">
+              <span className="text-xxs text-violet-400 uppercase block font-semibold font-bold">Racer Score</span>
+              <span className="text-sm font-bold text-zinc-100 mt-1 block">⭐ {totalXP} XP</span>
             </div>
           </div>
 
@@ -112,6 +127,35 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+          </div>
+
+          {/* Unlocked Badges */}
+          <div className="space-y-3">
+            <p className="section-label">Unlocked Badges ({unlockedCount} / {achievementsList.length})</p>
+            {unlockedCount === 0 ? (
+              <p className="text-xs text-zinc-650 py-1 text-center bg-zinc-900/20 rounded-xl border border-zinc-800/30">No badges unlocked yet.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {achievementsList.filter(ach => ach.unlocked).map(ach => {
+                  const Icon = IconMap[ach.icon] || Award;
+                  return (
+                    <div
+                      key={ach.id}
+                      className={`flex items-center gap-2 p-2.5 rounded-xl border bg-gradient-to-br ${ach.color} text-zinc-100`}
+                      title={ach.description}
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                        <Icon className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xxs font-bold truncate leading-tight">{ach.title}</p>
+                        <p className="text-[8px] text-zinc-350 truncate mt-0.5">+{ach.points} XP</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Recently solved feed */}
@@ -204,9 +248,10 @@ const LeaderboardPage = () => {
       const solved = up.filter(pr => pr.status === 'done').length;
       const solvedThisWeek = up.filter(pr => pr.status === 'done' && new Date(pr.updated_at).getTime() >= sevenAgo).length;
       const streak = calculateUserStreak(p.id, progress);
-      return { ...p, solved, solvedThisWeek, streak };
+      const { totalXP } = calculateUserAchievements(p.id, progress, questions);
+      return { ...p, solved, solvedThisWeek, streak, totalXP };
     }).sort((a, b) => b.solved !== a.solved ? b.solved - a.solved : b.streak - a.streak);
-  }, [profiles, progress]);
+  }, [profiles, progress, questions]);
 
   const recentActivities = useMemo(() => {
     return progress
@@ -309,6 +354,9 @@ const LeaderboardPage = () => {
                       <div className="flex items-center gap-1 text-xxs text-zinc-500">
                         <Calendar className="w-3.5 h-3.5 text-emerald-500" />
                         <span>+{user.solvedThisWeek} this week</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xxs text-violet-400 font-semibold bg-violet-500/10 px-1.5 py-0.5 rounded-md border border-violet-500/20">
+                        <span>⭐ {user.totalXP} XP</span>
                       </div>
                     </div>
                   </div>

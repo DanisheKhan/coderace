@@ -11,7 +11,8 @@ import {
   BarChart3, 
   LogOut,
   X,
-  Code2
+  Code2,
+  Award
 } from 'lucide-react';
 
 const Layout = () => {
@@ -33,6 +34,7 @@ const Layout = () => {
     { name: 'My Sheet',    path: '/sheet',        icon: TableProperties },
     { name: 'Leaderboard', path: '/leaderboard',  icon: Trophy },
     { name: 'Compare',     path: '/compare',      icon: BarChart3 },
+    { name: 'Achievements', path: '/achievements', icon: Award },
   ];
 
   return (

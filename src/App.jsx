@@ -10,6 +10,7 @@ import MySheetPage from './pages/MySheetPage';
 import DashboardPage from './pages/DashboardPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import ComparePage from './pages/ComparePage';
+import AchievementsPage from './pages/AchievementsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Layout
@@ -124,6 +125,7 @@ function AppRoutes() {
         <Route path="sheet" element={<MySheetPage />} />
         <Route path="leaderboard" element={<LeaderboardPage />} />
         <Route path="compare" element={<ComparePage />} />
+        <Route path="achievements" element={<AchievementsPage />} />
       </Route>
 
       {/* 404 Route */}
