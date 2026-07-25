@@ -196,8 +196,8 @@ const DashboardPage = () => {
     [progress, profile]
   );
 
-  const { achievementsList, totalXP, unlockedCount } = useMemo(() => {
-    if (!profile) return { achievementsList: [], totalXP: 0, unlockedCount: 0 };
+  const { achievementsList, unlockedCount } = useMemo(() => {
+    if (!profile) return { achievementsList: [], unlockedCount: 0 };
     return calculateUserAchievements(profile.id, progress, questions);
   }, [profile, progress, questions]);
 
@@ -336,7 +336,7 @@ const DashboardPage = () => {
       {/* Top 5 Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
         <StatCard label="Total Solved" value={stats.solved} unit={`/ ${stats.total}`} sub={<><Percent className="w-3 h-3" /> {stats.pct}% complete</>} subColor="text-violet-400" icon={Trophy} iconBg="bg-violet-500/8 border border-violet-500/15 text-violet-400" />
-        <StatCard label="Power Score" value={totalXP} unit="XP" sub={<><Award className="w-3.5 h-3.5" /> {unlockedCount} badges</>} subColor="text-violet-400" icon={Award} iconBg="bg-violet-500/8 border border-violet-500/15 text-violet-400" />
+        <StatCard label="Badges Unlocked" value={unlockedCount} unit={`/ ${achievementsList.length}`} sub={<><Award className="w-3.5 h-3.5" /> Milestones</>} subColor="text-violet-400" icon={Award} iconBg="bg-violet-500/8 border border-violet-500/15 text-violet-400" />
         <StatCard label="Current Streak" value={streak} unit={`day${streak !== 1 ? 's' : ''}`} sub={<><TrendingUp className="w-3 h-3" /> Active streak</>} subColor="text-orange-400" icon={Flame} iconBg="bg-orange-500/8 border border-orange-500/15 text-orange-400" />
         <StatCard label="Solved This Week" value={stats.solvedThisWeek} unit="solved" sub={<><Calendar className="w-3 h-3" /> Last 7 days</>} subColor="text-emerald-400" icon={Calendar} iconBg="bg-emerald-500/8 border border-emerald-500/15 text-emerald-400" />
         <StatCard label="Remaining" value={stats.remaining} unit="questions" sub={`${stats.attempted} attempted`} icon={ListTodo} iconBg="bg-zinc-800 border border-zinc-700/40 text-zinc-400" />

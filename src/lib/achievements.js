@@ -27,7 +27,6 @@ export const ACHIEVEMENTS = [
     id: 'first_solve',
     title: 'First Blood',
     description: 'Log your first completed problem',
-    points: 50,
     category: 'solved',
     maxProgress: 1,
     icon: 'Zap',
@@ -38,7 +37,6 @@ export const ACHIEVEMENTS = [
     id: 'solve_10',
     title: 'Speed Racer',
     description: 'Solve 10 problems',
-    points: 100,
     category: 'solved',
     maxProgress: 10,
     icon: 'Flame',
@@ -49,7 +47,6 @@ export const ACHIEVEMENTS = [
     id: 'solve_50',
     title: 'Grand Prix Winner',
     description: 'Solve 50 problems',
-    points: 250,
     category: 'solved',
     maxProgress: 50,
     icon: 'Trophy',
@@ -60,7 +57,6 @@ export const ACHIEVEMENTS = [
     id: 'streak_3',
     title: 'Daily Driver',
     description: 'Achieve a 3-day coding streak',
-    points: 100,
     category: 'streak',
     maxProgress: 3,
     icon: 'Calendar',
@@ -71,7 +67,6 @@ export const ACHIEVEMENTS = [
     id: 'streak_7',
     title: 'Championship Streak',
     description: 'Achieve a 7-day coding streak',
-    points: 200,
     category: 'streak',
     maxProgress: 7,
     icon: 'Activity',
@@ -82,7 +77,6 @@ export const ACHIEVEMENTS = [
     id: 'topic_arrays',
     title: 'Array Assassin',
     description: 'Solve 5 Array problems',
-    points: 100,
     category: 'topic',
     maxProgress: 5,
     icon: 'Code2',
@@ -96,7 +90,6 @@ export const ACHIEVEMENTS = [
     id: 'topic_recursion',
     title: 'Recursion Wizard',
     description: 'Solve 3 Recursion problems',
-    points: 100,
     category: 'topic',
     maxProgress: 3,
     icon: 'Layers',
@@ -110,7 +103,6 @@ export const ACHIEVEMENTS = [
     id: 'topic_trees',
     title: 'Tree Whisperer',
     description: 'Solve 5 Tree problems',
-    points: 150,
     category: 'topic',
     maxProgress: 5,
     icon: 'Layers',
@@ -124,7 +116,6 @@ export const ACHIEVEMENTS = [
     id: 'topic_graphs',
     title: 'Graph Path Finder',
     description: 'Solve 3 Graph problems',
-    points: 150,
     category: 'topic',
     maxProgress: 3,
     icon: 'Network',
@@ -138,7 +129,6 @@ export const ACHIEVEMENTS = [
     id: 'topic_dp',
     title: 'DP Sorcerer',
     description: 'Solve 5 DP problems',
-    points: 200,
     category: 'topic',
     maxProgress: 5,
     icon: 'Sparkles',
@@ -152,7 +142,6 @@ export const ACHIEVEMENTS = [
     id: 'no_ai_10',
     title: 'Self-Reliant Coder',
     description: 'Solve 10 problems without AI/GPT or Copy-Paste',
-    points: 150,
     category: 'quality',
     maxProgress: 10,
     icon: 'BookOpen',
@@ -163,7 +152,6 @@ export const ACHIEVEMENTS = [
     id: 'both_approaches',
     title: 'Double Trouble',
     description: 'Solve 5 problems with both Brute Force & Optimal approaches logged',
-    points: 150,
     category: 'quality',
     maxProgress: 5,
     icon: 'Workflow',
@@ -174,7 +162,6 @@ export const ACHIEVEMENTS = [
     id: 'revisit_5',
     title: 'Diligent Scholar',
     description: 'Mark 5 problems as revisited',
-    points: 100,
     category: 'revisit',
     maxProgress: 5,
     icon: 'BookmarkCheck',
@@ -187,7 +174,6 @@ export const calculateUserAchievements = (userId, progress, questions) => {
   const userProgress = progress.filter(p => p.user_id === userId);
   const streak = calculateStreak(userProgress);
 
-  let totalXP = 0;
   let unlockedCount = 0;
 
   const achievementsList = ACHIEVEMENTS.map(ach => {
@@ -198,10 +184,8 @@ export const calculateUserAchievements = (userId, progress, questions) => {
     let unlockedAt = null;
     if (unlocked) {
       unlockedCount++;
-      totalXP += ach.points;
 
       // Find when it was unlocked (use the max updated_at from completed questions in this category)
-      // Since it's client-side, we approximate it by finding the last date of qualifying solves
       const doneSub = userProgress.filter(p => p.status === 'done');
       if (doneSub.length > 0) {
         const sortedDone = [...doneSub].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
@@ -221,7 +205,6 @@ export const calculateUserAchievements = (userId, progress, questions) => {
 
   return {
     achievementsList,
-    totalXP,
     unlockedCount,
     totalCount: ACHIEVEMENTS.length
   };

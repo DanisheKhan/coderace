@@ -21,9 +21,9 @@ const AchievementsPage = () => {
   const { progress } = useProgressStore();
   const [activeCategory, setActiveCategory] = useState('all');
 
-  const { achievementsList, totalXP, unlockedCount, totalCount } = useMemo(() => {
+  const { achievementsList, unlockedCount, totalCount } = useMemo(() => {
     if (!profile) {
-      return { achievementsList: [], totalXP: 0, unlockedCount: 0, totalCount: 0 };
+      return { achievementsList: [], unlockedCount: 0, totalCount: 0 };
     }
     return calculateUserAchievements(profile.id, progress, questions);
   }, [profile, progress, questions]);
@@ -73,25 +73,25 @@ const AchievementsPage = () => {
       {/* Page Header */}
       <div>
         <h1 className="text-xl font-bold tracking-tight text-zinc-100">Achievements & Badges</h1>
-        <p className="text-zinc-500 text-sm mt-1">Gamified milestones. Keep solving to rank up your profile and earn XP.</p>
+        <p className="text-zinc-500 text-sm mt-1">Track your problem-solving milestones and badges.</p>
       </div>
 
       {/* Overview Dashboard Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Total XP */}
+        {/* Total Milestones */}
         <div className="glass-panel p-5 rounded-2xl flex items-center justify-between">
           <div className="space-y-1.5">
-            <p className="section-label">Racer Power Score</p>
+            <p className="section-label">Total Milestones</p>
             <h3 className="text-3xl font-bold tracking-tight leading-none text-zinc-100 flex items-center gap-2">
-              ⭐ {totalXP}
-              <span className="text-zinc-500 text-sm font-normal uppercase tracking-wider">XP</span>
+              {totalCount}
+              <span className="text-zinc-500 text-sm font-normal uppercase tracking-wider">Badges</span>
             </h3>
             <p className="text-xxs text-violet-400 font-semibold flex items-center gap-1">
-              Earned from completed badges
+              Available to unlock
             </p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center">
-            <Award className="w-6 h-6 animate-pulse" />
+            <Award className="w-6 h-6" />
           </div>
         </div>
 
@@ -197,12 +197,12 @@ const AchievementsPage = () => {
                   <Icon className="w-5 h-5" />
                 </div>
                 <div className="text-right flex flex-col items-end">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
                     ach.unlocked
                       ? 'bg-white/10 text-zinc-200'
                       : 'bg-zinc-800/80 text-zinc-500'
                   }`}>
-                    +{ach.points} XP
+                    {ach.category}
                   </span>
                   {ach.unlocked && (
                     <span className="text-[9px] text-zinc-400 mt-1 font-mono uppercase">

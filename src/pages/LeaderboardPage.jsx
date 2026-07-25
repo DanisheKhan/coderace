@@ -20,7 +20,7 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
   const [modalSearch, setModalSearch] = useState('');
   const [expandedModalTopics, setExpandedModalTopics] = useState({});
 
-  const { achievementsList, totalXP, unlockedCount } = useMemo(() => {
+  const { achievementsList, unlockedCount } = useMemo(() => {
     return calculateUserAchievements(user.id, progress, questions);
   }, [user.id, progress, questions]);
 
@@ -141,8 +141,8 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
                   </span>
                 </div>
                 <div className="bg-zinc-900/40 border border-violet-500/20 p-2.5 rounded-xl text-center flex flex-col justify-center items-center bg-violet-500/5">
-                  <span className="text-xxs text-violet-400 uppercase block font-semibold font-bold">Racer Score</span>
-                  <span className="text-sm font-bold text-zinc-100 mt-1 block">⭐ {totalXP} XP</span>
+                  <span className="text-xxs text-violet-400 uppercase block font-semibold font-bold">Badges</span>
+                  <span className="text-sm font-bold text-zinc-100 mt-1 block">{unlockedCount} Unlocked</span>
                 </div>
               </div>
 
@@ -274,7 +274,7 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
                         </div>
                         <div className="min-w-0">
                           <p className="text-xxs font-bold truncate leading-tight">{ach.title}</p>
-                          <p className="text-[8px] text-zinc-350 truncate mt-0.5">+{ach.points} XP</p>
+                          <p className="text-[8px] text-zinc-350 truncate mt-0.5 uppercase">{ach.category}</p>
                         </div>
                       </div>
                     );
@@ -411,8 +411,8 @@ const LeaderboardPage = () => {
       const solved = up.filter(pr => pr.status === 'done').length;
       const solvedThisWeek = up.filter(pr => pr.status === 'done' && new Date(pr.updated_at).getTime() >= sevenAgo).length;
       const streak = calculateUserStreak(p.id, progress);
-      const { totalXP } = calculateUserAchievements(p.id, progress, questions);
-      return { ...p, solved, solvedThisWeek, streak, totalXP };
+      const { unlockedCount } = calculateUserAchievements(p.id, progress, questions);
+      return { ...p, solved, solvedThisWeek, streak, unlockedCount };
     }).sort((a, b) => b.solved !== a.solved ? b.solved - a.solved : b.streak - a.streak);
   }, [profiles, progress, questions]);
 
@@ -566,7 +566,7 @@ const LeaderboardPage = () => {
                         <span>+{user.solvedThisWeek} this week</span>
                       </div>
                       <div className="flex items-center gap-1 text-xxs text-violet-300 font-semibold bg-violet-500/10 px-2 py-0.5 rounded-md border border-violet-500/20 font-mono">
-                        <span>⭐ {user.totalXP} XP</span>
+                        <span>{user.unlockedCount} Badges</span>
                       </div>
                     </div>
                   </div>

@@ -169,12 +169,12 @@ const ComparePage = () => {
   const compProgress = useMemo(() => progress.filter(p => p.user_id === duelCompetitorId), [progress, duelCompetitorId]);
 
   const myAchievements = useMemo(() => {
-    if (!currentProfile) return { totalXP: 0, unlockedCount: 0 };
+    if (!currentProfile) return { unlockedCount: 0 };
     return calculateUserAchievements(currentProfile.id, progress, questions);
   }, [currentProfile, progress, questions]);
 
   const compAchievements = useMemo(() => {
-    if (!duelCompetitorId) return { totalXP: 0, unlockedCount: 0 };
+    if (!duelCompetitorId) return { unlockedCount: 0 };
     return calculateUserAchievements(duelCompetitorId, progress, questions);
   }, [duelCompetitorId, progress, questions]);
 
@@ -427,7 +427,7 @@ const ComparePage = () => {
                 <div className="space-y-1">
                   <span className="px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 text-[9px] font-bold uppercase tracking-wider">YOU</span>
                   <h3 className="text-lg font-bold text-zinc-100">{currentProfile.display_name}</h3>
-                  <p className="text-xxs text-zinc-500">⭐ {myAchievements.totalXP} XP Score</p>
+                  <p className="text-xxs text-zinc-500">{myAchievements.unlockedCount} Badges</p>
                 </div>
               </div>
             )}
@@ -448,7 +448,7 @@ const ComparePage = () => {
                       onChange={setDuelCompetitorId}
                       options={duelCompetitors}
                     />
-                    <p className="text-xxs text-zinc-500">⭐ {compAchievements.totalXP} XP Score</p>
+                    <p className="text-xxs text-zinc-500">{compAchievements.unlockedCount} Badges</p>
                   </div>
                   <div
                     className="w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-white text-2xl uppercase border-2 border-zinc-800 shrink-0 overflow-hidden"
@@ -532,27 +532,27 @@ const ComparePage = () => {
                 </div>
               </div>
 
-              {/* Achievement XP comparison */}
+              {/* Badges comparison */}
               <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="section-label">Badges & XP</span>
+                  <span className="section-label">Badges Unlocked</span>
                   <Award className="w-4 h-4 text-violet-400" />
                 </div>
                 <div className="flex justify-between items-baseline mt-4">
                   <div className="text-center flex-1">
                     <p className="text-xxs text-zinc-500">You</p>
-                    <p className="text-2xl font-bold text-violet-400 mt-1">{myAchievements.unlockedCount} <span className="text-[10px] font-normal text-zinc-500">({myAchievements.totalXP} XP)</span></p>
+                    <p className="text-2xl font-bold text-violet-400 mt-1">{myAchievements.unlockedCount}</p>
                   </div>
                   <div className="px-3 text-zinc-700 font-bold">:</div>
                   <div className="text-center flex-1">
                     <p className="text-xxs text-zinc-500">{competitorProfile.display_name}</p>
-                    <p className="text-2xl font-bold text-zinc-300 mt-1">{compAchievements.unlockedCount} <span className="text-[10px] font-normal text-zinc-500">({compAchievements.totalXP} XP)</span></p>
+                    <p className="text-2xl font-bold text-zinc-300 mt-1">{compAchievements.unlockedCount}</p>
                   </div>
                 </div>
                 <div className="text-center mt-3 text-[10px] text-zinc-400 font-medium flex items-center justify-center gap-1">
-                  {myAchievements.totalXP > compAchievements.totalXP ? (
-                    <span>⭐ Higher Power Score</span>
-                  ) : myAchievements.totalXP < compAchievements.totalXP ? (
+                  {myAchievements.unlockedCount > compAchievements.unlockedCount ? (
+                    <span>More badges unlocked</span>
+                  ) : myAchievements.unlockedCount < compAchievements.unlockedCount ? (
                     <span>Rival has more achievements</span>
                   ) : (
                     <span>Badges are tied!</span>
