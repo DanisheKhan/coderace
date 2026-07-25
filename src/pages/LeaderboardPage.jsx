@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useProgressStore } from '../store/progressStore';
 import { useQuestions } from '../contexts/QuestionsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Trophy, Flame, Calendar, Activity, Crown, Award, X, Zap, Sparkles, BookOpen, Workflow, BookmarkCheck, Layers, Network } from 'lucide-react';
+import { Trophy, Flame, Calendar, Activity, Crown, Award, X, Zap, Sparkles, BookOpen, Workflow, BookmarkCheck, Layers, Network, ExternalLink } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { calculateUserAchievements } from '../lib/achievements';
 
@@ -15,6 +15,10 @@ const IconMap = {
 // ── User Profile Modal ────────────────────────────────────────────────────────
 const UserProfileModal = ({ user, progress, questions, onClose }) => {
   const userProgress = useMemo(() => progress.filter(p => p.user_id === user.id), [progress, user.id]);
+
+  const [showAllSolved, setShowAllSolved] = useState(false);
+  const [modalSearch, setModalSearch] = useState('');
+  const [expandedModalTopics, setExpandedModalTopics] = useState({});
 
   const { achievementsList, totalXP, unlockedCount } = useMemo(() => {
     return calculateUserAchievements(user.id, progress, questions);
@@ -57,14 +61,37 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
       .filter(Boolean);
   }, [userProgress, questions]);
 
+  const allSolvedGrouped = useMemo(() => {
+    const solvedProgress = userProgress.filter(p => p.status === 'done');
+    const solvedQuestions = solvedProgress
+      .map(p => {
+        const q = questions.find(qi => qi.id === p.question_id);
+        return q ? { ...q, solvedAt: p.updated_at } : null;
+      })
+      .filter(Boolean)
+      .filter(q => {
+        if (!modalSearch.trim()) return true;
+        return q.problem_name.toLowerCase().includes(modalSearch.toLowerCase()) ||
+               q.topic.toLowerCase().includes(modalSearch.toLowerCase()) ||
+               (q.subtopic || '').toLowerCase().includes(modalSearch.toLowerCase());
+      });
+
+    const groups = {};
+    solvedQuestions.forEach(q => {
+      if (!groups[q.topic]) groups[q.topic] = [];
+      groups[q.topic].push(q);
+    });
+    return groups;
+  }, [userProgress, questions, modalSearch]);
+
   const totalQ = questions.length || 502;
   const pct = Math.round((stats.solved / totalQ) * 100);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-[#0f0f11] border border-[#252528] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+      <div className="w-full max-w-5xl bg-[#0f0f11] border border-[#252528] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col h-[90vh] max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1f1f23]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1f1f23] shrink-0">
           <div className="flex items-center gap-3">
             <div
               className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-white text-lg uppercase shrink-0 overflow-hidden"
@@ -87,112 +114,204 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto space-y-5">
-          {/* Stats overview */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="bg-zinc-900/40 border border-[#1f1f23] p-2.5 rounded-xl text-center">
-              <span className="text-xxs text-zinc-500 uppercase block font-semibold">Solved</span>
-              <span className="text-sm font-bold text-zinc-200 mt-1 block">{stats.solved} / {totalQ}</span>
-              <span className="text-[10px] text-violet-400 font-bold block">{pct}%</span>
-            </div>
-            <div className="bg-zinc-900/40 border border-[#1f1f23] p-2.5 rounded-xl text-center flex flex-col justify-center items-center">
-              <span className="text-xxs text-zinc-500 uppercase block font-semibold">Streak</span>
-              <span className="text-sm font-bold text-zinc-200 mt-1 flex items-center gap-0.5">
-                <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-                {user.streak}d
-              </span>
-            </div>
-            <div className="bg-zinc-900/40 border border-[#1f1f23] p-2.5 rounded-xl text-center flex flex-col justify-center items-center">
-              <span className="text-xxs text-zinc-500 uppercase block font-semibold">This Week</span>
-              <span className="text-sm font-bold text-zinc-200 mt-1 flex items-center gap-0.5">
-                <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                +{user.solvedThisWeek}
-              </span>
-            </div>
-            <div className="bg-zinc-900/40 border border-violet-500/20 p-2.5 rounded-xl text-center flex flex-col justify-center items-center bg-violet-500/5">
-              <span className="text-xxs text-violet-400 uppercase block font-semibold font-bold">Racer Score</span>
-              <span className="text-sm font-bold text-zinc-100 mt-1 block">⭐ {totalXP} XP</span>
-            </div>
-          </div>
-
-          {/* Topic Progress chart */}
-          <div className="bg-zinc-950/40 border border-zinc-800/40 p-4 rounded-xl">
-            <p className="section-label mb-3">Topic Completion (%)</p>
-            <div className="h-44 overflow-y-auto pr-1 custom-scrollbar">
-              <ResponsiveContainer width="100%" height={600}>
-                <BarChart data={topicData} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
-                  <XAxis type="number" domain={[0, 100]} hide />
-                  <YAxis dataKey="name" type="category" stroke="#52525b" tick={{ fill: '#71717a', fontSize: 9 }} width={100} interval={0} />
-                  <Bar dataKey="completed" fill="#8b5cf6" radius={[0, 3, 3, 0]} barSize={8} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Unlocked Badges */}
-          <div className="space-y-3">
-            <p className="section-label">Unlocked Badges ({unlockedCount} / {achievementsList.length})</p>
-            {unlockedCount === 0 ? (
-              <p className="text-xs text-zinc-650 py-1 text-center bg-zinc-900/20 rounded-xl border border-zinc-800/30">No badges unlocked yet.</p>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {achievementsList.filter(ach => ach.unlocked).map(ach => {
-                  const Icon = IconMap[ach.icon] || Award;
-                  return (
-                    <div
-                      key={ach.id}
-                      className={`flex items-center gap-2 p-2.5 rounded-xl border bg-gradient-to-br ${ach.color} text-zinc-100`}
-                      title={ach.description}
-                    >
-                      <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                        <Icon className="w-4 h-4 text-white" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xxs font-bold truncate leading-tight">{ach.title}</p>
-                        <p className="text-[8px] text-zinc-350 truncate mt-0.5">+{ach.points} XP</p>
-                      </div>
-                    </div>
-                  );
-                })}
+        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            
+            {/* Left Column: Stats & Progress */}
+            <div className="space-y-5">
+              {/* Stats overview */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="bg-zinc-900/40 border border-[#1f1f23] p-2.5 rounded-xl text-center">
+                  <span className="text-xxs text-zinc-500 uppercase block font-semibold">Solved</span>
+                  <span className="text-sm font-bold text-zinc-200 mt-1 block">{stats.solved} / {totalQ}</span>
+                  <span className="text-[10px] text-violet-400 font-bold block">{pct}%</span>
+                </div>
+                <div className="bg-zinc-900/40 border border-[#1f1f23] p-2.5 rounded-xl text-center flex flex-col justify-center items-center">
+                  <span className="text-xxs text-zinc-500 uppercase block font-semibold">Streak</span>
+                  <span className="text-sm font-bold text-zinc-200 mt-1 flex items-center gap-0.5">
+                    <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                    {user.streak}d
+                  </span>
+                </div>
+                <div className="bg-zinc-900/40 border border-[#1f1f23] p-2.5 rounded-xl text-center flex flex-col justify-center items-center">
+                  <span className="text-xxs text-zinc-500 uppercase block font-semibold">This Week</span>
+                  <span className="text-sm font-bold text-zinc-200 mt-1 flex items-center gap-0.5">
+                    <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    +{user.solvedThisWeek}
+                  </span>
+                </div>
+                <div className="bg-zinc-900/40 border border-violet-500/20 p-2.5 rounded-xl text-center flex flex-col justify-center items-center bg-violet-500/5">
+                  <span className="text-xxs text-violet-400 uppercase block font-semibold font-bold">Racer Score</span>
+                  <span className="text-sm font-bold text-zinc-100 mt-1 block">⭐ {totalXP} XP</span>
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Recently solved feed */}
-          <div className="space-y-3">
-            <p className="section-label">Recently Solved</p>
-            {recentlySolved.length === 0 ? (
-              <p className="text-xs text-zinc-600 py-2">No solved questions yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {recentlySolved.map(q => (
-                  <div key={q.id} className="flex items-center justify-between gap-3 bg-zinc-900/30 border border-[#1f1f23]/60 px-3.5 py-2.5 rounded-xl">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-zinc-200 truncate">{q.problem_name}</p>
-                      <p className="text-[10px] text-zinc-500 mt-0.5">{q.topic} · {q.subtopic}</p>
-                    </div>
-                    <span className="text-[10px] text-zinc-600 shrink-0">
-                      {formatRelativeTime(q.solvedAt)}
-                    </span>
+              {/* Topic Progress chart */}
+              <div className="bg-zinc-950/40 border border-zinc-800/40 p-4 rounded-xl">
+                <p className="section-label mb-3">Topic Completion (%)</p>
+                <div className="h-44 overflow-y-auto pr-1 custom-scrollbar">
+                  <ResponsiveContainer width="100%" height={600}>
+                    <BarChart data={topicData} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
+                      <XAxis type="number" domain={[0, 100]} hide />
+                      <YAxis dataKey="name" type="category" stroke="#52525b" tick={{ fill: '#71717a', fontSize: 9 }} width={100} interval={0} />
+                      <Bar dataKey="completed" fill="#8b5cf6" radius={[0, 3, 3, 0]} barSize={8} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Solved Questions Explorer */}
+              <div className="border-t border-[#1f1f23] pt-4 space-y-4">
+                <button
+                  onClick={() => setShowAllSolved(v => !v)}
+                  className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-zinc-800 bg-zinc-900/10 hover:bg-zinc-900/30 text-xs font-semibold text-zinc-300 transition-colors cursor-pointer select-none"
+                >
+                  <span>View All Solved Questions ({stats.solved})</span>
+                  <span className="text-zinc-500">{showAllSolved ? '▲' : '▼'}</span>
+                </button>
+
+                {showAllSolved && (
+                  <div className="space-y-3 animate-fadeIn">
+                    {/* Search query box */}
+                    {stats.solved > 0 && (
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={modalSearch}
+                          onChange={e => setModalSearch(e.target.value)}
+                          placeholder="Search solved problems..."
+                          className="w-full pl-3 pr-3 py-2 text-xs rounded-lg glass-input text-zinc-200 placeholder:text-zinc-650 focus:outline-none"
+                        />
+                      </div>
+                    )}
+
+                    {Object.keys(allSolvedGrouped).length === 0 ? (
+                      <p className="text-xs text-zinc-600 text-center py-4">No completed problems match your search.</p>
+                    ) : (
+                      <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
+                        {Object.entries(allSolvedGrouped).map(([topic, topicQs]) => {
+                          const isExpanded = !!expandedModalTopics[topic];
+                          return (
+                            <div key={topic} className="border border-[#1f1f23] rounded-xl overflow-hidden bg-zinc-950/20">
+                              {/* Topic sub-header */}
+                              <button
+                                onClick={() => setExpandedModalTopics(prev => ({ ...prev, [topic]: !isExpanded }))}
+                                className="w-full flex items-center justify-between px-3.5 py-2 text-left cursor-pointer hover:bg-zinc-900/40 transition-colors group select-none"
+                              >
+                                <span className="text-xxs font-bold uppercase tracking-wider text-zinc-400">{topic} ({topicQs.length})</span>
+                                <span className="text-zinc-600 group-hover:text-zinc-400 text-xxs">{isExpanded ? '▲' : '▼'}</span>
+                              </button>
+
+                              {/* Problem list inside topic */}
+                              {isExpanded && (
+                                <div className="divide-y divide-[#1f1f23] border-t border-[#1f1f23] bg-zinc-900/10">
+                                  {topicQs.map(q => (
+                                    <div key={q.id} className="flex items-center justify-between gap-3 px-3.5 py-2 hover:bg-zinc-900/30 transition-colors">
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xxs font-mono text-zinc-600">#{q.sr_no}</span>
+                                          <span className="text-xs text-zinc-300 font-medium truncate leading-tight">{q.problem_name}</span>
+                                        </div>
+                                        <p className="text-[9px] text-zinc-550 mt-0.5 ml-6">{q.subtopic}</p>
+                                      </div>
+                                      <div className="flex items-center gap-3 shrink-0">
+                                        <span className="text-[9px] text-zinc-600">
+                                          {formatRelativeTime(q.solvedAt)}
+                                        </span>
+                                        {q.link && (
+                                          <a
+                                            href={q.link}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+                                          >
+                                            <ExternalLink className="w-3 h-3" />
+                                          </a>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        {/* Footer */}
-        <div className="flex justify-end px-6 py-4 border-t border-[#1f1f23]">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors cursor-pointer"
-          >
-            Close
-          </button>
+          {/* Right Column: Badges & Feed */}
+          <div className="space-y-5">
+            {/* Unlocked Badges */}
+            <div className="space-y-3">
+              <p className="section-label">Unlocked Badges ({unlockedCount} / {achievementsList.length})</p>
+              {unlockedCount === 0 ? (
+                <p className="text-xs text-zinc-655 py-2 text-center bg-zinc-900/20 rounded-xl border border-zinc-800/30">No badges unlocked yet.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {achievementsList.filter(ach => ach.unlocked).map(ach => {
+                    const Icon = IconMap[ach.icon] || Award;
+                    return (
+                      <div
+                        key={ach.id}
+                        className={`flex items-center gap-2 p-2.5 rounded-xl border bg-gradient-to-br ${ach.color} text-zinc-100`}
+                        title={ach.description}
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                          <Icon className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xxs font-bold truncate leading-tight">{ach.title}</p>
+                          <p className="text-[8px] text-zinc-350 truncate mt-0.5">+{ach.points} XP</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Recently solved feed */}
+            <div className="space-y-3">
+              <p className="section-label">Recently Solved</p>
+              {recentlySolved.length === 0 ? (
+                <p className="text-xs text-zinc-600 py-2">No solved questions yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {recentlySolved.map(q => (
+                    <div key={q.id} className="flex items-center justify-between gap-3 bg-zinc-900/30 border border-[#1f1f23]/60 px-3.5 py-2.5 rounded-xl">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-zinc-200 truncate">{q.problem_name}</p>
+                        <p className="text-[10px] text-zinc-500 mt-0.5">{q.topic} · {q.subtopic}</p>
+                      </div>
+                      <span className="text-[10px] text-zinc-600 shrink-0">
+                        {formatRelativeTime(q.solvedAt)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
+
+      {/* Footer */}
+      <div className="flex justify-end px-6 py-4 border-t border-[#1f1f23] shrink-0">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors cursor-pointer"
+        >
+          Close
+        </button>
+      </div>
     </div>
-  );
+  </div>
+);
 };
 
 const formatRelativeTime = (dateString) => {
