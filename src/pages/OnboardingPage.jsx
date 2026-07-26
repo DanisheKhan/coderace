@@ -29,6 +29,8 @@ const OnboardingPage = () => {
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
 
+  const [takenColors, setTakenColors] = useState([]);
+
   useEffect(() => {
     if (user?.email) {
       // Pre-fill display name from email prefix
@@ -36,6 +38,39 @@ const OnboardingPage = () => {
       setDisplayName(username.charAt(0).toUpperCase() + username.slice(1));
     }
   }, [user]);
+
+  // Fetch already selected profile colors
+  useEffect(() => {
+    const fetchTakenColors = async () => {
+      try {
+        const { data } = await supabase.from('profiles').select('avatar_color');
+        if (data) {
+          const colors = data.map(p => p.avatar_color.toLowerCase());
+          setTakenColors(colors);
+          
+          // Ensure default selected color is unique
+          setSelectedColor(prevColor => {
+            if (colors.includes(prevColor.toLowerCase())) {
+              const availableDefault = COLORS.find(c => !colors.includes(c.value.toLowerCase()));
+              if (availableDefault) {
+                return availableDefault.value;
+              } else {
+                let randomHex;
+                do {
+                  randomHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+                } while (colors.includes(randomHex.toLowerCase()));
+                return randomHex;
+              }
+            }
+            return prevColor;
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching taken colors:', err);
+      }
+    };
+    fetchTakenColors();
+  }, []);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -67,6 +102,21 @@ const OnboardingPage = () => {
     setError('');
 
     try {
+      // Double check that the color is still available (concurrency validation)
+      const { data: takenCheck } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('avatar_color', selectedColor)
+        .maybeSingle();
+
+      if (takenCheck) {
+        setError('This color was just taken by another racer! Please choose or generate a different one.');
+        setLoading(false);
+        // Refresh taken colors list
+        const { data: refreshColors } = await supabase.from('profiles').select('avatar_color');
+        if (refreshColors) setTakenColors(refreshColors.map(p => p.avatar_color.toLowerCase()));
+        return;
+      }
       let avatarUrl = '';
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
@@ -188,7 +238,7 @@ const OnboardingPage = () => {
           <div>
             <label className="section-label block mb-3">Avatar Color</label>
             <div className="grid grid-cols-4 gap-3">
-              {COLORS.map((color) => {
+              {COLORS.filter(color => !takenColors.includes(color.value.toLowerCase())).map((color) => {
                 const isSelected = selectedColor.toLowerCase() === color.value.toLowerCase();
                 return (
                   <button
@@ -198,6 +248,7 @@ const OnboardingPage = () => {
                     className="h-12 rounded-xl relative flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md"
                     style={{ backgroundColor: color.value }}
                     disabled={loading}
+                    title={color.name}
                   >
                     {isSelected && (
                       <span className="bg-black/30 w-6 h-6 rounded-full flex items-center justify-center text-white">
@@ -227,7 +278,12 @@ const OnboardingPage = () => {
             <button
               type="button"
               onClick={() => {
-                const randomHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+                let randomHex;
+                let attempts = 0;
+                do {
+                  randomHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+                  attempts++;
+                } while (takenColors.includes(randomHex.toLowerCase()) && attempts < 100);
                 setSelectedColor(randomHex);
               }}
               disabled={loading}

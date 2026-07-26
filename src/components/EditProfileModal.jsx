@@ -25,6 +25,8 @@ const EditProfileModal = ({ isOpen, onClose }) => {
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
 
+  const [takenColors, setTakenColors] = useState([]);
+
   // Sync state whenever modal is opened or profile data updates
   useEffect(() => {
     if (isOpen && profile) {
@@ -33,6 +35,21 @@ const EditProfileModal = ({ isOpen, onClose }) => {
       setAvatarPreview(profile.avatar_url || '');
       setAvatarFile(null);
       setError('');
+      
+      const fetchTakenColors = async () => {
+        try {
+          const { data } = await supabase
+            .from('profiles')
+            .select('avatar_color')
+            .neq('id', profile.id);
+          if (data) {
+            setTakenColors(data.map(p => p.avatar_color.toLowerCase()));
+          }
+        } catch (err) {
+          console.error('Error fetching taken colors:', err);
+        }
+      };
+      fetchTakenColors();
     }
   }, [isOpen, profile]);
 
@@ -62,6 +79,25 @@ const EditProfileModal = ({ isOpen, onClose }) => {
     setError('');
 
     try {
+      // Check that the color is still available (excluding self)
+      const { data: takenCheck } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('avatar_color', selectedColor)
+        .neq('id', profile.id)
+        .maybeSingle();
+
+      if (takenCheck) {
+        setError('This color is already taken by another racer! Please choose or generate a different one.');
+        setLoading(false);
+        // Refresh taken colors list
+        const { data: refreshColors } = await supabase
+          .from('profiles')
+          .select('avatar_color')
+          .neq('id', profile.id);
+        if (refreshColors) setTakenColors(refreshColors.map(p => p.avatar_color.toLowerCase()));
+        return;
+      }
       let avatarUrl = profile.avatar_url || '';
 
       if (avatarFile) {
@@ -177,7 +213,7 @@ const EditProfileModal = ({ isOpen, onClose }) => {
           <div>
             <label className="section-label block mb-2">Avatar Fallback Color</label>
             <div className="grid grid-cols-4 gap-2.5">
-              {COLORS.map((color) => {
+              {COLORS.filter(color => !takenColors.includes(color.value.toLowerCase())).map((color) => {
                 const isSelected = selectedColor.toLowerCase() === color.value.toLowerCase();
                 return (
                   <button
@@ -187,6 +223,7 @@ const EditProfileModal = ({ isOpen, onClose }) => {
                     className="h-10 rounded-xl relative flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md"
                     style={{ backgroundColor: color.value }}
                     disabled={loading}
+                    title={color.name}
                   >
                     {isSelected && (
                       <span className="bg-black/30 w-5 h-5 rounded-full flex items-center justify-center text-white">
@@ -216,7 +253,12 @@ const EditProfileModal = ({ isOpen, onClose }) => {
             <button
               type="button"
               onClick={() => {
-                const randomHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+                let randomHex;
+                let attempts = 0;
+                do {
+                  randomHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+                  attempts++;
+                } while (takenColors.includes(randomHex.toLowerCase()) && attempts < 100);
                 setSelectedColor(randomHex);
               }}
               disabled={loading}
