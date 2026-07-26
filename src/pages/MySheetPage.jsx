@@ -14,15 +14,30 @@ import {
 import AddQuestionModal from '../components/AddQuestionModal';
 
 // ── Portal Dropdown ──────────────────────────────────────────────────────────
-const PortalDropdown = ({ anchor, open, children, onClose }) => {
+const PortalDropdown = ({ anchor, open, children, onClose, align = 'auto' }) => {
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
   const portalRef = useRef(null);
 
   useEffect(() => {
     if (!open || !anchor) return;
-    const rect = anchor.getBoundingClientRect();
-    setPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
-  }, [open, anchor]);
+    const updatePosition = () => {
+      const rect = anchor.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      let left = rect.left;
+      const menuWidth = portalRef.current ? portalRef.current.offsetWidth : 200;
+
+      if (align === 'right' || left + menuWidth > viewportWidth - 12) {
+        left = Math.max(12, rect.right - menuWidth);
+      }
+      left = Math.max(12, Math.min(left, viewportWidth - menuWidth - 12));
+
+      setPos({ top: rect.bottom + 4, left, width: rect.width });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    return () => window.removeEventListener('resize', updatePosition);
+  }, [open, anchor, align]);
 
   useEffect(() => {
     if (!open) return;
@@ -178,18 +193,10 @@ const RowMenu = ({ question, prog, onOpenNotes, onIncrementRevisit, onToggleRevi
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const solveMethod = prog?.solve_method || null;
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
   const hasNotes = !!(prog?.notes || prog?.solution_link);
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative inline-block" ref={ref}>
       <button
         onClick={() => setOpen(v => !v)}
         className={`p-1.5 rounded-lg cursor-pointer transition-all ${open ? 'text-zinc-200 bg-white/[0.06]' : 'text-zinc-700 hover:text-zinc-300 hover:bg-white/[0.04]'}`}
@@ -198,8 +205,8 @@ const RowMenu = ({ question, prog, onOpenNotes, onIncrementRevisit, onToggleRevi
         <MoreHorizontal className="w-4 h-4" />
       </button>
 
-      {open && (
-        <div className="absolute right-0 z-50 mt-1.5 w-56 border border-white/[0.06] rounded-xl shadow-2xl shadow-black/80 overflow-hidden py-1.5" style={{ top: '100%', background: '#0d0d0f' }}>
+      <PortalDropdown anchor={ref.current} open={open} onClose={() => setOpen(false)} align="right">
+        <div className="w-56 border border-white/[0.06] rounded-xl shadow-2xl shadow-black/90 overflow-hidden py-1.5 animate-fadeIn" style={{ background: '#0d0d0f' }}>
           {/* How Solved */}
           <div className="px-3 py-2.5 border-b border-white/[0.04] mb-1">
             <span className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest block mb-2">How Solved?</span>
@@ -283,7 +290,7 @@ const RowMenu = ({ question, prog, onOpenNotes, onIncrementRevisit, onToggleRevi
             <Trash2 className="w-3.5 h-3.5" /> Reset Progress
           </button>
         </div>
-      )}
+      </PortalDropdown>
     </div>
   );
 };

@@ -148,14 +148,28 @@
 }
 
 /* ─────────────────────────────────────────
-   BASE
+   BASE & MOBILE RESETS
 ──────────────────────────────────────────── */
+html {
+  -webkit-text-size-adjust: 100%;
+  box-sizing: border-box;
+}
+
+*, *:before, *:after {
+  box-sizing: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   background-color: #09090b;
   color: #f4f4f5;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
+  width: 100%;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ── Native selects ── */
@@ -186,3 +200,16 @@ table { border-collapse: collapse; }
 
 /* ── Amber utility ── */
 .bg-amber-950\/8 { background-color: rgba(120, 53, 15, 0.05); }
+
+/* ── Touch Target Helpers ── */
+.touch-target {
+  position: relative;
+}
+.touch-target::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  left: -6px;
+  right: -6px;
+}

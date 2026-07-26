@@ -77,30 +77,30 @@ const AchievementsPage = () => {
       </div>
 
       {/* Overview Dashboard Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4">
         {/* Total Milestones */}
-        <div className="glass-panel p-5 rounded-2xl flex items-center justify-between">
-          <div className="space-y-1.5">
+        <div className="glass-panel p-4 sm:p-5 rounded-2xl flex items-center justify-between">
+          <div className="space-y-1 sm:space-y-1.5">
             <p className="section-label">Total Milestones</p>
-            <h3 className="text-3xl font-bold tracking-tight leading-none text-zinc-100 flex items-center gap-2">
+            <h3 className="text-2xl sm:text-3xl font-bold tracking-tight leading-none text-zinc-100 flex items-center gap-2">
               {totalCount}
-              <span className="text-zinc-500 text-sm font-normal uppercase tracking-wider">Badges</span>
+              <span className="text-zinc-500 text-xs sm:text-sm font-normal uppercase tracking-wider">Badges</span>
             </h3>
             <p className="text-xxs text-violet-400 font-semibold flex items-center gap-1">
               Available to unlock
             </p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center">
-            <Award className="w-6 h-6" />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center shrink-0">
+            <Award className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
         {/* Badges Progress */}
-        <div className="glass-panel p-5 rounded-2xl flex items-center justify-between">
-          <div className="space-y-1.5 flex-1 pr-4">
+        <div className="glass-panel p-4 sm:p-5 rounded-2xl flex items-center justify-between">
+          <div className="space-y-1 sm:space-y-1.5 flex-1 pr-3 sm:pr-4">
             <p className="section-label">Badges Unlocked</p>
-            <h3 className="text-3xl font-bold tracking-tight leading-none text-zinc-100">
-              {unlockedCount} <span className="text-zinc-500 text-base font-normal">/ {totalCount}</span>
+            <h3 className="text-2xl sm:text-3xl font-bold tracking-tight leading-none text-zinc-100">
+              {unlockedCount} <span className="text-zinc-500 text-sm sm:text-base font-normal">/ {totalCount}</span>
             </h3>
             <div className="w-full bg-zinc-800/80 h-1.5 rounded-full overflow-hidden mt-2">
               <div
@@ -112,17 +112,17 @@ const AchievementsPage = () => {
               {completionPct}% of all achievements completed
             </p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-6 h-6" />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
         {/* Next Badge Goal */}
-        <div className="glass-panel p-5 rounded-2xl flex items-center justify-between">
+        <div className="glass-panel p-4 sm:p-5 rounded-2xl flex items-center justify-between sm:col-span-2 md:col-span-1">
           {nextClosestAchievement ? (
-            <div className="space-y-1.5 flex-1 pr-4">
+            <div className="space-y-1 sm:space-y-1.5 flex-1 pr-3 sm:pr-4 min-w-0">
               <p className="section-label">Next Up</p>
-              <h4 className="text-sm font-semibold text-zinc-200 truncate leading-snug">
+              <h4 className="text-xs sm:text-sm font-semibold text-zinc-200 truncate leading-snug">
                 {nextClosestAchievement.title}
               </h4>
               <p className="text-xxs text-zinc-500 truncate leading-none">
@@ -141,27 +141,27 @@ const AchievementsPage = () => {
               </p>
             </div>
           ) : (
-            <div className="space-y-1.5 flex-1">
+            <div className="space-y-1.5 flex-1 min-w-0">
               <p className="section-label">Next Up</p>
-              <h4 className="text-sm font-semibold text-zinc-200">All Achievements Unlocked!</h4>
+              <h4 className="text-xs sm:text-sm font-semibold text-zinc-200 truncate">All Achievements Unlocked!</h4>
               <p className="text-xxs text-zinc-500 mt-1">You are a DSA Grandmaster.</p>
             </div>
           )}
-          <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-700/40 text-zinc-400 flex items-center justify-center shrink-0">
-            <ChevronRight className="w-5 h-5 text-zinc-500" />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-zinc-800 border border-zinc-700/40 text-zinc-400 flex items-center justify-center shrink-0">
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-500" />
           </div>
         </div>
       </div>
 
       {/* Category Navigation / Filters */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto custom-scrollbar pb-1">
         {categories.map(cat => (
           <button
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-all select-none border ${
+            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-all select-none border whitespace-nowrap ${
               activeCategory === cat.id
-                ? 'bg-violet-500/10 text-violet-400 border-violet-500/35'
+                ? 'bg-violet-500/10 text-violet-400 border-violet-500/35 font-semibold'
                 : 'bg-zinc-900/40 text-zinc-500 border-[#1f1f23] hover:text-zinc-200 hover:bg-zinc-800/40'
             }`}
           >
@@ -171,7 +171,7 @@ const AchievementsPage = () => {
       </div>
 
       {/* Badges Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4">
         {filteredAchievements.map(ach => {
           const Icon = IconMap[ach.icon] || Award;
           const pct = Math.min(100, Math.round((ach.currentProgress / ach.maxProgress) * 100));

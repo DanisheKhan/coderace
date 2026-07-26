@@ -33,17 +33,17 @@ const panelBg  = { background: 'rgba(11,11,14,0.8)' };
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, unit, sub, subColor = 'text-zinc-600', icon: Icon, accentBorder, accentBg, accentIcon }) => (
-  <div className={`${panelCls} p-4 flex items-center justify-between gap-3`} style={panelBg}>
-    <div className="space-y-1 min-w-0">
-      <p className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest">{label}</p>
-      <div className="flex items-baseline gap-1.5 leading-none">
-        <span className="text-2xl font-black text-zinc-100 tracking-tight">{value}</span>
+  <div className={`${panelCls} p-3 sm:p-4 flex items-center justify-between gap-2.5 sm:gap-3`} style={panelBg}>
+    <div className="space-y-0.5 sm:space-y-1 min-w-0">
+      <p className="text-[8.5px] sm:text-[9px] text-zinc-600 uppercase font-bold tracking-widest truncate">{label}</p>
+      <div className="flex items-baseline gap-1 leading-none">
+        <span className="text-xl sm:text-2xl font-black text-zinc-100 tracking-tight">{value}</span>
         {unit && <span className="text-zinc-600 text-xs font-normal">{unit}</span>}
       </div>
-      <p className={`text-[10px] font-medium flex items-center gap-1 ${subColor}`}>{sub}</p>
+      <p className={`text-[9.5px] sm:text-[10px] font-medium flex items-center gap-1 truncate ${subColor}`}>{sub}</p>
     </div>
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${accentBorder} ${accentBg} ${accentIcon}`}>
-      <Icon className="w-4.5 h-4.5 w-[18px] h-[18px]" />
+    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 border ${accentBorder} ${accentBg} ${accentIcon}`}>
+      <Icon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
     </div>
   </div>
 );
@@ -51,9 +51,9 @@ const StatCard = ({ label, value, unit, sub, subColor = 'text-zinc-600', icon: I
 // ── Panel Section Header ──────────────────────────────────────────────────────
 const PanelHeader = ({ label, icon: Icon, extra }) => (
   <div className="flex items-center justify-between mb-3">
-    <div className="flex items-center gap-2">
-      {Icon && <Icon className="w-3.5 h-3.5 text-violet-400" />}
-      <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">{label}</p>
+    <div className="flex items-center gap-2 min-w-0">
+      {Icon && <Icon className="w-3.5 h-3.5 text-violet-400 shrink-0" />}
+      <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest truncate">{label}</p>
     </div>
     {extra}
   </div>
@@ -87,24 +87,24 @@ const TopicCompletionPanel = ({ topicData }) => {
   return (
     <div className={`${panelCls} flex flex-col lg:col-span-2 h-[482px]`} style={panelBg}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-white/[0.04] shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3.5 sm:px-4 pt-3.5 sm:pt-4 pb-3 border-b border-white/[0.04] shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-violet-500/[0.08] border border-violet-500/15 flex items-center justify-center text-violet-400 shrink-0">
             <Target className="w-4 h-4" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-zinc-200">Topic Completion</h3>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-xs sm:text-sm font-bold text-zinc-200 truncate">Topic Completion</h3>
               <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/[0.08] text-violet-400 border border-violet-500/15 font-mono">
                 {activeCount}/{topicData.length} started
               </span>
             </div>
-            <p className="text-[10px] text-zinc-600 mt-0.5">Problem solving progress per topic</p>
+            <p className="text-[10px] text-zinc-600 mt-0.5 truncate">Problem solving progress per topic</p>
           </div>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex items-center gap-1 bg-[#111115] p-1 rounded-xl border border-white/[0.05] shrink-0">
+        <div className="flex items-center gap-1 bg-[#111115] p-1 rounded-xl border border-white/[0.05] shrink-0 overflow-x-auto custom-scrollbar max-w-full">
           {[
             { key: 'all',    label: `All (${topicData.length})` },
             { key: 'active', label: `Active (${activeCount - doneCount})` },

@@ -433,12 +433,12 @@ const ComparePage = () => {
             {/* Ambient glow strip */}
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
 
-            <div className="flex flex-col md:flex-row items-center gap-6 p-6 relative">
+            <div className="flex flex-col md:flex-row items-center gap-4 sm:gap-6 p-4 sm:p-6 relative">
               {/* You */}
               {currentProfile && (
-                <div className="flex items-center gap-4 flex-1 w-full">
+                <div className="flex items-center gap-3.5 sm:gap-4 flex-1 w-full">
                   <div
-                    className="w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-white text-2xl uppercase overflow-hidden border border-violet-500/20 shrink-0"
+                    className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold text-white text-xl sm:text-2xl uppercase overflow-hidden border border-violet-500/20 shrink-0"
                     style={{
                       backgroundColor: currentProfile.avatar_url ? 'transparent' : (currentProfile.avatar_color || '#6366f1'),
                       boxShadow: `0 0 32px ${currentProfile.avatar_color || '#6366f1'}33`,
@@ -449,33 +449,27 @@ const ComparePage = () => {
                       : currentProfile.display_name.charAt(0)
                     }
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-0.5 sm:space-y-1 min-w-0">
                     <span className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-[9px] font-bold uppercase tracking-widest border border-violet-500/15">YOU</span>
-                    <h3 className="text-lg font-bold text-zinc-100 leading-tight">{currentProfile.display_name}</h3>
-                    <p className="text-[10px] text-zinc-600">{myAchievements.unlockedCount} Badges · {myStreak}d streak</p>
+                    <h3 className="text-base sm:text-lg font-bold text-zinc-100 leading-tight truncate">{currentProfile.display_name}</h3>
+                    <p className="text-[10px] text-zinc-600 truncate">{myAchievements.unlockedCount} Badges · {myStreak}d streak</p>
                   </div>
                 </div>
               )}
 
               {/* VS */}
-              <div className="flex flex-col items-center shrink-0 gap-1">
-                <div className="w-10 h-10 rounded-full border border-violet-500/20 bg-violet-500/[0.06] flex items-center justify-center">
+              <div className="flex flex-col items-center shrink-0 gap-1 my-1 md:my-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-violet-500/20 bg-violet-500/[0.06] flex items-center justify-center">
                   <Swords className="w-4 h-4 text-violet-400" />
                 </div>
                 <span className="text-[9px] font-black text-violet-500 tracking-widest">VS</span>
               </div>
 
               {/* Opponent */}
-              <div className="flex items-center gap-4 flex-1 w-full justify-end text-right">
+              <div className="flex items-center gap-3.5 sm:gap-4 flex-1 w-full justify-start md:justify-end text-left md:text-right">
                 {competitorProfile ? (
                   <>
-                    <div className="space-y-1.5 flex flex-col items-end">
-                      <span className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest">Opponent</span>
-                      <CompetitorSelect value={duelCompetitorId} onChange={setDuelCompetitorId} options={duelCompetitors} />
-                      <p className="text-[10px] text-zinc-600">{compAchievements.unlockedCount} Badges · {compStreak}d streak</p>
-                    </div>
-                    <div
-                      className="w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-white text-2xl uppercase overflow-hidden border border-white/10 shrink-0"
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold text-white text-xl sm:text-2xl uppercase overflow-hidden border border-white/10 shrink-0 order-1 md:order-2"
                       style={{
                         backgroundColor: competitorProfile.avatar_url ? 'transparent' : (competitorProfile.avatar_color || '#10b981'),
                         boxShadow: `0 0 32px ${competitorProfile.avatar_color || '#10b981'}33`,
@@ -485,6 +479,11 @@ const ComparePage = () => {
                         ? <img src={competitorProfile.avatar_url} alt={competitorProfile.display_name} className="w-full h-full object-cover" />
                         : competitorProfile.display_name.charAt(0)
                       }
+                    </div>
+                    <div className="space-y-1 flex flex-col items-start md:items-end min-w-0 order-2 md:order-1">
+                      <span className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest">Opponent</span>
+                      <CompetitorSelect value={duelCompetitorId} onChange={setDuelCompetitorId} options={duelCompetitors} />
+                      <p className="text-[10px] text-zinc-600 truncate">{compAchievements.unlockedCount} Badges · {compStreak}d streak</p>
                     </div>
                   </>
                 ) : (

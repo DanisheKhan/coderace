@@ -157,14 +157,14 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
   const pct = Math.round((stats.solved / totalQ) * 100);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-fadeIn">
-      <div className="w-full max-w-4xl bg-[#0d0d0f] border border-white/[0.07] rounded-2xl shadow-2xl shadow-black/90 overflow-hidden flex flex-col h-[88vh] max-h-[820px]" style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px -16px rgba(0,0,0,0.9)' }}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-black/85 backdrop-blur-xl animate-fadeIn">
+      <div className="w-full max-w-4xl bg-[#0d0d0f] border border-white/[0.07] rounded-2xl shadow-2xl shadow-black/90 overflow-hidden flex flex-col h-[90vh] max-h-[820px] mx-auto" style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px -16px rgba(0,0,0,0.9)' }}>
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.05] shrink-0" style={{ background: 'linear-gradient(to bottom, rgba(18,18,22,0.95), rgba(13,13,15,0.9))' }}>
-          <div className="flex items-center gap-3.5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/[0.05] shrink-0 gap-3" style={{ background: 'linear-gradient(to bottom, rgba(18,18,22,0.95), rgba(13,13,15,0.9))' }}>
+          <div className="flex items-center gap-3 min-w-0">
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white text-lg uppercase shrink-0 overflow-hidden border border-white/10"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-bold text-white text-base sm:text-lg uppercase shrink-0 overflow-hidden border border-white/10"
               style={{ 
                 backgroundColor: user.avatar_url ? 'transparent' : (user.avatar_color || '#6366f1'),
                 boxShadow: `0 0 20px ${user.avatar_color || '#6366f1'}33`
@@ -176,22 +176,22 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
                 user.display_name?.charAt(0) || '?'
               )}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-zinc-100 text-base leading-tight tracking-tight">{user.display_name}</h3>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/15 font-mono">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-zinc-100 text-sm sm:text-base leading-tight tracking-tight truncate">{user.display_name}</h3>
+                <span className="text-[9px] sm:text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/15 font-mono">
                   Racer Profile
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-600 mt-0.5">Stats, achievements & solved questions</p>
+              <p className="text-[10px] sm:text-[11px] text-zinc-600 mt-0.5 truncate">Stats, achievements & solved questions</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex bg-[#111115] p-1 rounded-xl border border-white/[0.05]">
+          <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+            <div className="flex bg-[#111115] p-1 rounded-xl border border-white/[0.05] overflow-x-auto custom-scrollbar">
               <button
                 onClick={() => setActiveModalTab('overview')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none flex items-center gap-1.5 whitespace-nowrap ${
                   activeModalTab === 'overview'
                     ? 'bg-violet-600 text-white shadow-sm shadow-violet-600/30'
                     : 'text-zinc-500 hover:text-zinc-300'
@@ -202,7 +202,7 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
               </button>
               <button
                 onClick={() => setActiveModalTab('solved')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none flex items-center gap-1.5 whitespace-nowrap ${
                   activeModalTab === 'solved'
                     ? 'bg-violet-600 text-white shadow-sm shadow-violet-600/30'
                     : 'text-zinc-500 hover:text-zinc-300'
@@ -212,8 +212,8 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
                 <span>Solved ({stats.solved})</span>
               </button>
             </div>
-            <button onClick={onClose} className="text-zinc-600 hover:text-zinc-200 cursor-pointer p-1.5 rounded-lg transition-colors hover:bg-white/5">
-              <X className="w-4 h-4" />
+            <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 cursor-pointer p-2 rounded-lg transition-colors hover:bg-white/5 touch-target flex items-center justify-center shrink-0">
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -542,6 +542,7 @@ const DiffDot = ({ d }) => {
 };
 
 // ── Podium Card (Top 3) ────────────────────────────────────────────────────────
+// ── Podium Card (Top 3) ────────────────────────────────────────────────────────
 const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
   const totalQ = questions.length || 502;
   const pct = Math.round((user.solved / totalQ) * 100);
@@ -550,7 +551,7 @@ const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
   const configs = {
     1: {
       order: 'order-2',
-      height: 'h-44',
+      height: 'h-36 sm:h-44',
       glow: 'rgba(251,191,36,0.15)',
       border: 'border-amber-400/25',
       bg: 'from-amber-500/8 to-transparent',
@@ -564,7 +565,7 @@ const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
     },
     2: {
       order: 'order-1',
-      height: 'h-36',
+      height: 'h-28 sm:h-36',
       glow: 'rgba(161,161,170,0.1)',
       border: 'border-zinc-400/20',
       bg: 'from-zinc-300/5 to-transparent',
@@ -578,7 +579,7 @@ const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
     },
     3: {
       order: 'order-3',
-      height: 'h-32',
+      height: 'h-24 sm:h-32',
       glow: 'rgba(180,120,60,0.1)',
       border: 'border-amber-700/25',
       bg: 'from-amber-700/6 to-transparent',
@@ -597,15 +598,15 @@ const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
   const Icon = c.icon;
 
   return (
-    <div className={`flex flex-col items-center gap-2 cursor-pointer group ${c.order}`} onClick={onClick}>
+    <div className={`flex flex-col items-center gap-1.5 sm:gap-2 cursor-pointer group ${c.order} flex-1 max-w-[100px] xs:max-w-[110px] sm:max-w-none`} onClick={onClick}>
       {/* Avatar & Info above podium */}
-      <div className="flex flex-col items-center gap-1.5 mb-1">
+      <div className="flex flex-col items-center gap-1 mb-0.5">
         <div className="relative">
           <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-white text-xl uppercase shrink-0 overflow-hidden border border-white/10 group-hover:scale-105 transition-transform"
+            className="w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold text-white text-base sm:text-xl uppercase shrink-0 overflow-hidden border border-white/10 group-hover:scale-105 transition-transform"
             style={{ 
               backgroundColor: user.avatar_url ? 'transparent' : (user.avatar_color || '#6366f1'),
-              boxShadow: `0 0 24px ${c.glow}, 0 4px 12px rgba(0,0,0,0.5)`,
+              boxShadow: `0 0 20px ${c.glow}, 0 4px 12px rgba(0,0,0,0.5)`,
             }}
           >
             {user.avatar_url ? (
@@ -615,41 +616,38 @@ const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
             )}
           </div>
           {/* Rank Icon Badge */}
-          <div className={`absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-gradient-to-br ${c.badge} flex items-center justify-center shadow-lg ${c.badgeShadow} border border-white/20`}>
-            <Icon className="w-3 h-3 text-zinc-950" />
+          <div className={`absolute -bottom-1.5 -right-1.5 w-4.5 h-4.5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br ${c.badge} flex items-center justify-center shadow-lg ${c.badgeShadow} border border-white/20`}>
+            <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-zinc-950" />
           </div>
         </div>
 
-        <div className="text-center">
-          <p className="text-xs font-bold text-zinc-100 leading-tight">
+        <div className="text-center w-full min-w-0">
+          <p className="text-[11px] sm:text-xs font-bold text-zinc-100 leading-tight truncate max-w-[90px] xs:max-w-[100px] sm:max-w-none mx-auto">
             {user.display_name}
-            {isCurrent && (
-              <span className="ml-1 text-[9px] bg-violet-500/20 text-violet-400 border border-violet-500/20 px-1 py-0.5 rounded-full">YOU</span>
-            )}
           </p>
-          <p className={`text-[10px] font-semibold ${c.labelColor}`}>{c.label}</p>
+          <p className={`text-[9px] sm:text-[10px] font-semibold ${c.labelColor} truncate`}>{c.label}</p>
         </div>
 
         <div className="text-center">
-          <span className="text-sm font-extrabold font-mono text-zinc-100">{user.solved}</span>
-          <span className="text-[10px] text-zinc-600 font-mono"> /{totalQ}</span>
+          <span className="text-xs sm:text-sm font-extrabold font-mono text-zinc-100">{user.solved}</span>
+          <span className="text-[9px] sm:text-[10px] text-zinc-600 font-mono"> /{totalQ}</span>
         </div>
       </div>
 
       {/* Podium block */}
       <div
-        className={`w-28 ${c.height} rounded-t-xl bg-gradient-to-t ${c.bg} border-t border-l border-r ${c.border} flex flex-col items-center justify-start pt-3 gap-1.5 relative overflow-hidden`}
+        className={`w-full sm:w-28 ${c.height} rounded-t-xl bg-gradient-to-t ${c.bg} border-t border-l border-r ${c.border} flex flex-col items-center justify-start pt-2 sm:pt-3 gap-1 relative overflow-hidden`}
         style={{ boxShadow: `0 -4px 24px ${c.glow}` }}
       >
-        <span className="text-2xl font-black font-mono" style={{ color: c.iconColor, opacity: 0.15, position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }}>
+        <span className="text-xl sm:text-2xl font-black font-mono" style={{ color: c.iconColor, opacity: 0.15, position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }}>
           {c.rankText}
         </span>
-        <div className="flex items-center gap-1 text-[10px] text-zinc-500 z-10">
-          <Flame className="w-3 h-3 text-orange-400" />
+        <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-zinc-500 z-10">
+          <Flame className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-orange-400" />
           <span>{user.streak}d</span>
         </div>
-        <div className="flex items-center gap-1 text-[10px] text-zinc-500 z-10">
-          <Star className="w-3 h-3 text-violet-400" />
+        <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-zinc-500 z-10">
+          <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-violet-400" />
           <span>{user.unlockedCount}</span>
         </div>
       </div>

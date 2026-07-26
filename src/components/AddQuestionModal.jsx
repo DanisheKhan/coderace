@@ -66,18 +66,19 @@ const AddQuestionModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="w-full max-w-lg glass-panel rounded-2xl p-6 relative z-10 shadow-2xl shadow-black/80 border border-[#252528]">
-        <div className="flex items-center justify-between pb-4 border-b border-[#1f1f23] mb-5">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+      <div className="w-full max-w-lg glass-panel rounded-2xl p-4 sm:p-6 relative z-10 shadow-2xl shadow-black/80 border border-[#252528] max-h-[92vh] overflow-y-auto custom-scrollbar">
+        <div className="flex items-center justify-between pb-3.5 sm:pb-4 border-b border-[#1f1f23] mb-4 sm:mb-5">
           <div className="flex items-center gap-2">
             <Plus className="w-4 h-4 text-violet-400" />
-            <h2 className="text-lg font-bold text-zinc-100">Add New DSA Problem</h2>
+            <h2 className="text-base sm:text-lg font-bold text-zinc-100">Add New DSA Problem</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/60 transition-colors"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors touch-target flex items-center justify-center"
+            aria-label="Close"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
