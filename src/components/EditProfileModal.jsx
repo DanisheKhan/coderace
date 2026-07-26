@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { X, User, Camera, Check, Sparkles } from 'lucide-react';
@@ -24,6 +24,17 @@ const EditProfileModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
+
+  // Sync state whenever modal is opened or profile data updates
+  useEffect(() => {
+    if (isOpen && profile) {
+      setDisplayName(profile.display_name || '');
+      setSelectedColor(profile.avatar_color || COLORS[0].value);
+      setAvatarPreview(profile.avatar_url || '');
+      setAvatarFile(null);
+      setError('');
+    }
+  }, [isOpen, profile]);
 
   if (!isOpen || !profile) return null;
 
