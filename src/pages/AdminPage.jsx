@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Users, UserCheck, UserMinus, ShieldAlert, 
-  Search, Mail, Calendar, Sparkles, RefreshCw, Trash2
+  Search, Mail, Calendar, Sparkles, RefreshCw, Trash2, Clock
 } from 'lucide-react';
 
 const AdminPage = () => {
