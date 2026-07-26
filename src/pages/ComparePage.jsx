@@ -147,18 +147,23 @@ const ComparePage = () => {
   const { profile: currentProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('group');
 
+  // Only show approved profiles
+  const approvedProfiles = useMemo(() => {
+    return profiles.filter(p => p.approved || p.is_admin);
+  }, [profiles]);
+
   const uniqueTopics = useMemo(() => [...new Set(questions.map(q => q.topic))], [questions]);
   const [activeCompareTopic, setActiveCompareTopic] = useState(uniqueTopics[0] || '');
 
   // ── Group Arena ──────────────────────────────────────────────────────────────
   const [selectedProfileIds, setSelectedProfileIds] = useState([]);
   useEffect(() => {
-    if (profiles.length > 0 && selectedProfileIds.length === 0) {
-      setSelectedProfileIds(profiles.map(p => p.id));
+    if (approvedProfiles.length > 0 && selectedProfileIds.length === 0) {
+      setSelectedProfileIds(approvedProfiles.map(p => p.id));
     }
-  }, [profiles, selectedProfileIds]);
+  }, [approvedProfiles, selectedProfileIds]);
 
-  const activeProfiles = useMemo(() => profiles.filter(p => selectedProfileIds.includes(p.id)), [profiles, selectedProfileIds]);
+  const activeProfiles = useMemo(() => approvedProfiles.filter(p => selectedProfileIds.includes(p.id)), [approvedProfiles, selectedProfileIds]);
 
   const topicComparisonData = useMemo(() => {
     if (!activeProfiles.length || !questions.length) return [];
@@ -209,7 +214,7 @@ const ComparePage = () => {
   }, [activeProfiles, progress, questions]);
 
   // ── 1v1 Duel ────────────────────────────────────────────────────────────────
-  const duelCompetitors = useMemo(() => profiles.filter(p => p.id !== currentProfile?.id), [profiles, currentProfile]);
+  const duelCompetitors = useMemo(() => approvedProfiles.filter(p => p.id !== currentProfile?.id), [approvedProfiles, currentProfile]);
   const [duelCompetitorId, setDuelCompetitorId] = useState('');
 
   useEffect(() => {
@@ -218,7 +223,7 @@ const ComparePage = () => {
     }
   }, [duelCompetitors, duelCompetitorId]);
 
-  const competitorProfile = useMemo(() => profiles.find(p => p.id === duelCompetitorId), [profiles, duelCompetitorId]);
+  const competitorProfile = useMemo(() => approvedProfiles.find(p => p.id === duelCompetitorId), [approvedProfiles, duelCompetitorId]);
   const myProgress = useMemo(() => progress.filter(p => p.user_id === currentProfile?.id), [progress, currentProfile]);
   const compProgress = useMemo(() => progress.filter(p => p.user_id === duelCompetitorId), [progress, duelCompetitorId]);
   const myAchievements = useMemo(() => currentProfile ? calculateUserAchievements(currentProfile.id, progress, questions) : { unlockedCount: 0 }, [currentProfile, progress, questions]);
@@ -303,7 +308,7 @@ const ComparePage = () => {
               <span className="ml-2 text-zinc-700 font-mono">({selectedProfileIds.length} selected)</span>
             </p>
             <div className="flex flex-wrap gap-2">
-              {profiles.map(p => {
+              {approvedProfiles.map(p => {
                 const isSelected = selectedProfileIds.includes(p.id);
                 return (
                   <button

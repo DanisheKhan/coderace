@@ -12,6 +12,8 @@ import LeaderboardPage from './pages/LeaderboardPage';
 import ComparePage from './pages/ComparePage';
 import AchievementsPage from './pages/AchievementsPage';
 import NotFoundPage from './pages/NotFoundPage';
+import PendingApprovalPage from './pages/PendingApprovalPage';
+import AdminPage from './pages/AdminPage';
 
 // Layout
 import Layout from './components/layout/Layout';
@@ -42,6 +44,11 @@ const ProtectedRoute = ({ children }) => {
   // If user exists but has no profile, they must onboarding (unless they are already on the onboarding page)
   if (!profile && !profileLoading) {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  // Redirect to pending approval if user profile is not approved and they are not admin
+  if (profile && !profile.approved && !profile.is_admin) {
+    return <Navigate to="/pending-approval" replace />;
   }
 
   return children;
@@ -84,6 +91,52 @@ const OnboardingRoute = ({ children }) => {
   return children;
 };
 
+// Pending Approval Route Wrapper
+const PendingApprovalRoute = ({ children }) => {
+  const { user, profile, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!profile) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (profile.approved || profile.is_admin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
+
+// Admin Route Wrapper
+const AdminRoute = ({ children }) => {
+  const { user, profile, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!profile) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (!profile.is_admin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
+
 function AppRoutes() {
   const { loading } = useAuth();
 
@@ -110,6 +163,14 @@ function AppRoutes() {
           </OnboardingRoute>
         }
       />
+      <Route
+        path="/pending-approval"
+        element={
+          <PendingApprovalRoute>
+            <PendingApprovalPage />
+          </PendingApprovalRoute>
+        }
+      />
 
       {/* Protected App Routes */}
       <Route
@@ -126,6 +187,7 @@ function AppRoutes() {
         <Route path="leaderboard" element={<LeaderboardPage />} />
         <Route path="compare" element={<ComparePage />} />
         <Route path="achievements" element={<AchievementsPage />} />
+        <Route path="admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
       </Route>
 
       {/* 404 Route */}

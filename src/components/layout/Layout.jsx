@@ -12,22 +12,56 @@ import {
   LogOut,
   X,
   Code2,
-  Award
+  Award,
+  ShieldAlert,
+  UserPlus
 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 const Layout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { fetchProfiles, fetchProgress, subscribeToRealtime } = useProgressStore();
+  const { profiles, fetchProfiles, fetchProgress, subscribeToRealtime } = useProgressStore();
   const { profile, signOut } = useAuth();
+  const [toasts, setToasts] = useState([]);
+
+  const addToast = (toast) => {
+    const id = Math.random().toString(36).substring(2);
+    setToasts(prev => [...prev, { ...toast, id }]);
+  };
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   useEffect(() => {
     fetchProfiles();
     fetchProgress();
+    
+    // Listen for new profiles if the user is an admin
+    if (profile?.is_admin) {
+      useProgressStore.setState({
+        onNewProfile: (newProfile) => {
+          if (!newProfile.approved) {
+            addToast({
+              title: 'New Access Request',
+              message: `${newProfile.display_name} is waiting for account activation.`,
+              profile: newProfile
+            });
+          }
+        }
+      });
+    }
+
     const unsubscribe = subscribeToRealtime();
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      unsubscribe();
+      useProgressStore.setState({ onNewProfile: null });
+    };
+  }, [profile]);
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(v => !v);
+
+  const pendingCount = profiles.filter(p => !p.approved && !p.is_admin).length;
 
   const navItems = [
     { name: 'Dashboard',   path: '/dashboard',   icon: LayoutDashboard },
@@ -36,6 +70,15 @@ const Layout = () => {
     { name: 'Compare',     path: '/compare',      icon: BarChart3 },
     { name: 'Achievements', path: '/achievements', icon: Award },
   ];
+
+  if (profile?.is_admin) {
+    navItems.push({
+      name: 'Approvals',
+      path: '/admin',
+      icon: ShieldAlert,
+      badge: pendingCount > 0 ? pendingCount : null
+    });
+  }
 
   return (
     <div className="min-h-screen bg-[#09090b] flex text-zinc-100 relative">
@@ -88,7 +131,12 @@ const Layout = () => {
                   `}
                 >
                   <item.icon className="w-4 h-4 shrink-0" />
-                  <span>{item.name}</span>
+                  <span className="flex-1">{item.name}</span>
+                  {item.badge && (
+                    <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full bg-violet-600 text-zinc-100 leading-none">
+                      {item.badge}
+                    </span>
+                  )}
                 </NavLink>
               ))}
             </nav>
@@ -131,6 +179,65 @@ const Layout = () => {
         <main className="flex-1 p-3 xs:p-4 sm:p-6 min-w-0">
           <Outlet />
         </main>
+      </div>
+      
+      {/* Real-time Toasts Container */}
+      <div className="fixed bottom-5 right-5 z-[200] flex flex-col gap-3 max-w-xs sm:max-w-sm w-full pointer-events-none px-4 sm:px-0">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className="pointer-events-auto w-full p-4 rounded-xl border border-violet-500/20 bg-[#0d0d0f]/90 backdrop-blur-md shadow-2xl animate-in slide-in-from-bottom duration-300 flex items-start gap-3.5 relative overflow-hidden"
+          >
+            {/* Accent glow on the left border */}
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-violet-500" />
+            
+            {/* Icon */}
+            <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0 text-violet-400">
+              <UserPlus className="w-4.5 h-4.5" />
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs font-bold text-zinc-100">{toast.title}</h4>
+              <p className="text-[11px] text-zinc-400 mt-1 leading-snug">{toast.message}</p>
+              
+              {/* Approve actions directly in Toast */}
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      const { error } = await supabase
+                        .from('profiles')
+                        .update({ approved: true })
+                        .eq('id', toast.profile.id);
+                      if (error) throw error;
+                      removeToast(toast.id);
+                      fetchProfiles(); // Refresh local list
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-bold transition-all cursor-pointer shadow-sm shadow-violet-600/20"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => removeToast(toast.id)}
+                  className="px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-[10px] font-semibold transition-all cursor-pointer border border-white/[0.04]"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+            
+            {/* Dismiss button top right */}
+            <button
+              onClick={() => removeToast(toast.id)}
+              className="p-1 text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -178,7 +178,7 @@ const EditProfileModal = ({ isOpen, onClose }) => {
             <label className="section-label block mb-2">Avatar Fallback Color</label>
             <div className="grid grid-cols-4 gap-2.5">
               {COLORS.map((color) => {
-                const isSelected = selectedColor === color.value;
+                const isSelected = selectedColor.toLowerCase() === color.value.toLowerCase();
                 return (
                   <button
                     key={color.name}
@@ -196,7 +196,35 @@ const EditProfileModal = ({ isOpen, onClose }) => {
                   </button>
                 );
               })}
+              
+              {/* Show custom color box if not in defaults */}
+              {!COLORS.some(color => color.value.toLowerCase() === selectedColor.toLowerCase()) && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedColor(selectedColor)}
+                  className="h-10 rounded-xl relative flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md border border-white/20 animate-fadeIn"
+                  style={{ backgroundColor: selectedColor }}
+                  disabled={loading}
+                >
+                  <span className="bg-black/30 w-5 h-5 rounded-full flex items-center justify-center text-white">
+                    <Check className="w-3.5 h-3.5" />
+                  </span>
+                </button>
+              )}
             </div>
+            
+            <button
+              type="button"
+              onClick={() => {
+                const randomHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+                setSelectedColor(randomHex);
+              }}
+              disabled={loading}
+              className="w-full mt-2.5 py-1.5 px-3 border border-dashed border-zinc-700 hover:border-violet-500/50 rounded-xl text-xxs font-semibold text-zinc-400 hover:text-zinc-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer bg-zinc-900/10 hover:bg-violet-500/5 active:scale-[0.99] select-none"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-violet-400 animate-pulse" />
+              <span>Generate Custom Color</span>
+            </button>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#1f1f23]">

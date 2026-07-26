@@ -9,13 +9,18 @@ import {
   LogOut,
   Code2,
   Award,
-  Settings
+  Settings,
+  ShieldAlert
 } from 'lucide-react';
 import EditProfileModal from '../EditProfileModal';
+import { useProgressStore } from '../../store/progressStore';
 
 const Sidebar = () => {
   const { profile, signOut } = useAuth();
+  const { profiles } = useProgressStore();
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+
+  const pendingCount = profiles.filter(p => !p.approved && !p.is_admin).length;
 
   const navItems = [
     { name: 'Dashboard',   path: '/dashboard',   icon: LayoutDashboard },
@@ -24,6 +29,15 @@ const Sidebar = () => {
     { name: 'Compare',     path: '/compare',      icon: BarChart3 },
     { name: 'Achievements', path: '/achievements', icon: Award },
   ];
+
+  if (profile?.is_admin) {
+    navItems.push({
+      name: 'Approvals',
+      path: '/admin',
+      icon: ShieldAlert,
+      badge: pendingCount > 0 ? pendingCount : null
+    });
+  }
 
   return (
     <>
@@ -54,7 +68,12 @@ const Sidebar = () => {
               `}
             >
               <item.icon className="w-4 h-4 shrink-0" />
-              <span>{item.name}</span>
+              <span className="flex-1">{item.name}</span>
+              {item.badge && (
+                <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full bg-violet-600 text-zinc-100 leading-none">
+                  {item.badge}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

@@ -5,6 +5,7 @@ export const useProgressStore = create((set, get) => ({
   profiles: [],
   progress: [], // All progress rows for all users
   loading: false,
+  onNewProfile: null,
 
   fetchProfiles: async () => {
     try {
@@ -149,6 +150,9 @@ export const useProgressStore = create((set, get) => ({
           if (eventType === 'INSERT') {
             if (!currentProfiles.some(p => p.id === newRow.id)) {
               set({ profiles: [...currentProfiles, newRow] });
+              if (get().onNewProfile) {
+                get().onNewProfile(newRow);
+              }
             }
           } else if (eventType === 'UPDATE') {
             const updated = currentProfiles.map(p => p.id === newRow.id ? newRow : p);

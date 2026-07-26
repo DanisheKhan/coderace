@@ -19,7 +19,10 @@ const OnboardingPage = () => {
   const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
-  const [selectedColor, setSelectedColor] = useState(COLORS[0].value);
+  const [selectedColor, setSelectedColor] = useState(() => {
+    const randomIndex = Math.floor(Math.random() * COLORS.length);
+    return COLORS[randomIndex].value;
+  });
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
   const [loading, setLoading] = useState(false);
@@ -89,7 +92,8 @@ const OnboardingPage = () => {
           id: user.id,
           display_name: displayName.trim(),
           avatar_color: selectedColor,
-          avatar_url: avatarUrl
+          avatar_url: avatarUrl,
+          email: user.email
         });
 
       if (insertErr) throw insertErr;
@@ -185,7 +189,7 @@ const OnboardingPage = () => {
             <label className="section-label block mb-3">Avatar Color</label>
             <div className="grid grid-cols-4 gap-3">
               {COLORS.map((color) => {
-                const isSelected = selectedColor === color.value;
+                const isSelected = selectedColor.toLowerCase() === color.value.toLowerCase();
                 return (
                   <button
                     key={color.name}
@@ -203,7 +207,35 @@ const OnboardingPage = () => {
                   </button>
                 );
               })}
+              
+              {/* Show custom color box if not in defaults */}
+              {!COLORS.some(color => color.value.toLowerCase() === selectedColor.toLowerCase()) && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedColor(selectedColor)}
+                  className="h-12 rounded-xl relative flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md border border-white/20 animate-fadeIn"
+                  style={{ backgroundColor: selectedColor }}
+                  disabled={loading}
+                >
+                  <span className="bg-black/30 w-6 h-6 rounded-full flex items-center justify-center text-white">
+                    <Check className="w-4 h-4" />
+                  </span>
+                </button>
+              )}
             </div>
+            
+            <button
+              type="button"
+              onClick={() => {
+                const randomHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+                setSelectedColor(randomHex);
+              }}
+              disabled={loading}
+              className="w-full mt-3 py-2 px-3 border border-dashed border-zinc-700 hover:border-violet-500/50 rounded-xl text-xxs font-semibold text-zinc-400 hover:text-zinc-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer bg-zinc-900/10 hover:bg-violet-500/5 active:scale-[0.99] select-none"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-violet-400 animate-pulse" />
+              <span>Generate Custom Color</span>
+            </button>
           </div>
 
           <button

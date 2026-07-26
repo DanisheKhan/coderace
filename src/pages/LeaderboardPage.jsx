@@ -692,9 +692,14 @@ const LeaderboardPage = () => {
   const { profile: currentProfile } = useAuth();
   const [selectedUser, setSelectedUser] = useState(null);
 
+  // Only show approved users
+  const approvedProfiles = useMemo(() => {
+    return profiles.filter(p => p.approved || p.is_admin);
+  }, [profiles]);
+
   const leaderboard = useMemo(() => {
     const sevenAgo = Date.now() - 7 * 86400000;
-    return profiles.map(p => {
+    return approvedProfiles.map(p => {
       const up = progress.filter(pr => pr.user_id === p.id);
       const solved = up.filter(pr => pr.status === 'done').length;
       const solvedThisWeek = up.filter(pr => pr.status === 'done' && new Date(pr.updated_at).getTime() >= sevenAgo).length;
@@ -702,7 +707,7 @@ const LeaderboardPage = () => {
       const { unlockedCount } = calculateUserAchievements(p.id, progress, questions);
       return { ...p, solved, solvedThisWeek, streak, unlockedCount };
     }).sort((a, b) => b.solved !== a.solved ? b.solved - a.solved : b.streak - a.streak);
-  }, [profiles, progress, questions]);
+  }, [approvedProfiles, progress, questions]);
 
   const recentActivities = useMemo(() => {
     const seen = new Set();
@@ -715,7 +720,8 @@ const LeaderboardPage = () => {
       const key = `${p.user_id}-${p.question_id}`;
       if (!seen.has(key)) {
         seen.add(key);
-        const u = profiles.find(pr => pr.id === p.user_id);
+        const u = approvedProfiles.find(pr => pr.id === p.user_id);
+        if (!u) continue; // Skip activities of unapproved users
         const q = questions.find(qn => qn.id === p.question_id);
         list.push({
           id: p.id,
@@ -732,7 +738,7 @@ const LeaderboardPage = () => {
       }
     }
     return list;
-  }, [progress, profiles, questions]);
+  }, [progress, approvedProfiles, questions]);
 
   const top3 = leaderboard.slice(0, 3);
   const restList = leaderboard.slice(3);
