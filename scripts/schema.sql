@@ -7,7 +7,8 @@ begin
   new.updated_at = now();
   return new;
 end;
-$$ language plpgsql;
+$$ language plpgsql set search_path = public;
+
 
 -- 2. CREATE TABLES
 
@@ -16,6 +17,10 @@ create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
   display_name text not null,
   avatar_color text not null,
+  avatar_url text,
+  is_admin boolean default false,
+  approved boolean default false,
+  email text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -90,14 +95,29 @@ drop policy if exists "Allow users to insert their own profile" on public.profil
 create policy "Allow users to insert their own profile"
   on public.profiles for insert
   to authenticated
-  with check (auth.uid() = id);
+  with check ((select auth.uid()) = id);
 
 drop policy if exists "Allow users to update their own profile" on public.profiles;
-create policy "Allow users to update their own profile"
+drop policy if exists "Allow users or admins to update profiles" on public.profiles;
+create policy "Allow users or admins to update profiles"
   on public.profiles for update
   to authenticated
-  using (auth.uid() = id)
-  with check (auth.uid() = id);
+  using (
+    (select auth.uid()) = id OR 
+    (select is_admin from public.profiles where id = (select auth.uid())) = true
+  )
+  with check (
+    (select auth.uid()) = id OR 
+    (select is_admin from public.profiles where id = (select auth.uid())) = true
+  );
+
+drop policy if exists "Allow admins to delete profiles" on public.profiles;
+create policy "Allow admins to delete profiles"
+  on public.profiles for delete
+  to authenticated
+  using (
+    (select is_admin from public.profiles where id = (select auth.uid())) = true
+  );
 
 -- Questions Policies
 drop policy if exists "Allow all authenticated users to view questions" on public.questions;
@@ -117,20 +137,20 @@ drop policy if exists "Allow users to insert their own progress" on public.user_
 create policy "Allow users to insert their own progress"
   on public.user_progress for insert
   to authenticated
-  with check (auth.uid() = user_id);
+  with check ((select auth.uid()) = user_id);
 
 drop policy if exists "Allow users to update their own progress" on public.user_progress;
 create policy "Allow users to update their own progress"
   on public.user_progress for update
   to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 drop policy if exists "Allow users to delete their own progress" on public.user_progress;
 create policy "Allow users to delete their own progress"
   on public.user_progress for delete
   to authenticated
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 
 -- 5. REALTIME DATABASE REPLICATION
