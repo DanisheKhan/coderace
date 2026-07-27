@@ -32,6 +32,7 @@ const Layout = () => {
   const { pathname } = useLocation();
   const outlet = useOutlet();
 
+  // Reset scroll position on route change
   useEffect(() => {
     if (mainRef.current) {
       mainRef.current.scrollTop = 0;

@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { QuestionsProvider } from './contexts/QuestionsContext';
+import SmoothScroll from './components/SmoothScroll';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -221,11 +222,13 @@ function AppRoutes() {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <QuestionsProvider>
-          <AppRoutes />
-        </QuestionsProvider>
-      </AuthProvider>
+      <SmoothScroll>
+        <AuthProvider>
+          <QuestionsProvider>
+            <AppRoutes />
+          </QuestionsProvider>
+        </AuthProvider>
+      </SmoothScroll>
     </Router>
   );
 }

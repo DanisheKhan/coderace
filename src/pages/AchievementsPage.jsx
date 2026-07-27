@@ -8,6 +8,8 @@ import {
   Code2, Layers, Sparkles, BookOpen, Workflow,
   BookmarkCheck, Lock, Network, CheckCircle2, ChevronRight
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { pageTransition, staggerContainer, fadeUp, cardHover } from '../lib/animations';
 
 const IconMap = {
   Award, Zap, Flame, Trophy, Calendar, Activity,
@@ -69,7 +71,13 @@ const AchievementsPage = () => {
   const completionPct = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="space-y-6 pb-12 font-sans">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      variants={pageTransition}
+      className="space-y-6 pb-12 font-sans transform-gpu"
+    >
       {/* Page Header */}
       <div className="pb-4 border-b border-zinc-800/80">
         <h1 className="text-lg font-bold tracking-tight text-white">Achievements & Badges</h1>
@@ -77,9 +85,9 @@ const AchievementsPage = () => {
       </div>
 
       {/* Overview Dashboard Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4">
+      <motion.div variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4">
         {/* Total Milestones */}
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between">
+        <motion.div variants={fadeUp} className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Total Milestones</p>
             <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
@@ -91,10 +99,10 @@ const AchievementsPage = () => {
           <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center shrink-0">
             <Award className="w-4 h-4" />
           </div>
-        </div>
+        </motion.div>
 
         {/* Badges Progress */}
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between">
+        <motion.div variants={fadeUp} className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between">
           <div className="space-y-1 flex-1 pr-3">
             <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Badges Unlocked</p>
             <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
@@ -113,10 +121,10 @@ const AchievementsPage = () => {
           <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 text-emerald-400 flex items-center justify-center shrink-0">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-        </div>
+        </motion.div>
 
         {/* Next Badge Goal */}
-        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between sm:col-span-2 md:col-span-1">
+        <motion.div variants={fadeUp} className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between sm:col-span-2 md:col-span-1">
           {nextClosestAchievement ? (
             <div className="space-y-1 flex-1 pr-3 min-w-0">
               <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Next Up</p>
@@ -144,35 +152,48 @@ const AchievementsPage = () => {
           <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 text-violet-400 flex items-center justify-center shrink-0">
             <Zap className="w-4 h-4" />
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      {/* Category Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
-              activeCategory === cat.id
-                ? 'bg-white text-zinc-900 font-semibold'
-                : 'border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {cat.label}
-          </button>
-        ))}
+      {/* Category Tabs with Animated Pill */}
+      <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1 relative">
+        {categories.map((cat) => {
+          const isActive = activeCategory === cat.id;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`relative px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap select-none ${
+                isActive
+                  ? 'text-zinc-900 font-semibold'
+                  : 'border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="categoryActivePill"
+                  transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                  className="absolute inset-0 bg-white rounded-lg -z-0"
+                />
+              )}
+              <span className="relative z-10">{cat.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Badges Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4">
+      <motion.div variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4">
         {filteredAchievements.map(ach => {
           const Icon = IconMap[ach.icon] || Award;
           const pct = Math.min(100, Math.round((ach.currentProgress / ach.maxProgress) * 100));
 
           return (
-            <div
+            <motion.div
               key={ach.id}
+              variants={fadeUp}
+              whileHover={cardHover}
+              whileTap={{ scale: 0.98 }}
               className={`glass-panel p-5 rounded-2xl flex flex-col justify-between relative overflow-hidden transition-all duration-300 border ${
                 ach.unlocked
                   ? `bg-gradient-to-br ${ach.color} shadow-lg shadow-black/30`
@@ -245,11 +266,11 @@ const AchievementsPage = () => {
                   <Lock className="w-3 h-3" />
                 </div>
               )}
-            </div>
+            </motion.div>
           );
         })}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

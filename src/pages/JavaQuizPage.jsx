@@ -21,6 +21,8 @@ import {
   ChevronRight,
   BookOpen
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { pageTransition, staggerContainer, fadeUp, cardHover, modalVariants } from '../lib/animations';
 
 const JavaQuizPage = () => {
   const { profile } = useAuth();
@@ -38,50 +40,59 @@ const JavaQuizPage = () => {
   const [isAnswered, setIsAnswered] = useState(false);
   const [score, setScore] = useState(0);
   
-  // Quiz parameters
-  const [quizLength, setQuizLength] = useState(25); // 10, 25, 50, 90
+  // Stats
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
-  // History states
-  const [userAttempts, setUserAttempts] = useState([]);
-  const [personalBest, setPersonalBest] = useState(null);
-
-  // Fetch questions & user history on mount
-  useEffect(() => {
-    const initData = async () => {
-      try {
-        setLoading(true);
-        const qData = await fetchQuizQuestions();
-        setQuestions(qData);
-        
-        if (profile?.id) {
-          const attempts = await fetchUserAttempts(profile.id);
-          setUserAttempts(attempts);
-          
-          if (attempts.length > 0) {
-            const best = [...attempts].sort((a, b) => b.percentage - a.percentage)[0];
-            setPersonalBest(best);
-          }
-        }
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load quiz data. Please check your connection.");
-      } finally {
-        setLoading(false);
+  // Load questions
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchQuizQuestions();
+      if (!data || data.length === 0) {
+        setError('No quiz questions found in database.');
+      } else {
+        setQuestions(data);
       }
-    };
-    initData();
+    } catch (err) {
+      console.error(err);
+      setError('Failed to fetch quiz questions.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load user attempts
+  const loadHistory = async () => {
+    if (!profile?.id) return;
+    setHistoryLoading(true);
+    try {
+      const attempts = await fetchUserAttempts(profile.id);
+      setHistory(attempts || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    loadHistory();
   }, [profile?.id]);
 
-  // Start the quiz with user options
-  const handleStartQuiz = () => {
-    // Pick questions based on selected length
-    let shuffled = [...questions].sort(() => 0.5 - Math.random());
+  // Start a new quiz session (picks 10 random questions)
+  const startQuiz = () => {
+    if (questions.length < 10) {
+      alert(`Need at least 10 questions to start. Found ${questions.length}.`);
+      return;
+    }
+    // Shuffle array and take first 10
+    const shuffled = [...questions].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, 10);
     
-    // Slice based on choice, max available is questions.length
-    const length = Math.min(quizLength, shuffled.length);
-    setCurrentQuestionsList(shuffled.slice(0, length));
-    
-    // Reset play states
+    setCurrentQuestionsList(selected);
     setCurrentIndex(0);
     setSelectedOption(null);
     setIsAnswered(false);
@@ -89,20 +100,19 @@ const JavaQuizPage = () => {
     setGameState('playing');
   };
 
-  // Select an option
-  const handleOptionSelect = (optionIdx) => {
+  // Handle choosing an option
+  const handleSelectOption = (idx) => {
     if (isAnswered) return;
-    
-    setSelectedOption(optionIdx);
+    setSelectedOption(idx);
     setIsAnswered(true);
     
     const currentQ = currentQuestionsList[currentIndex];
-    if (optionIdx === currentQ.correct_answer) {
+    if (idx === currentQ.correct_option) {
       setScore(prev => prev + 1);
     }
   };
 
-  // Next Question or complete quiz
+  // Next question or finish
   const handleNextQuestion = async () => {
     if (currentIndex + 1 < currentQuestionsList.length) {
       setCurrentIndex(prev => prev + 1);
@@ -111,91 +121,30 @@ const JavaQuizPage = () => {
     } else {
       // Finished!
       setGameState('result');
+      // Save result to Supabase
       if (profile?.id) {
-        try {
-          const finalScore = score;
-          const totalQuestions = currentQuestionsList.length;
-          const savedAttempt = await saveQuizAttempt(profile.id, finalScore, totalQuestions);
-          
-          // Refresh attempts and personal best
-          const attempts = await fetchUserAttempts(profile.id);
-          setUserAttempts(attempts);
-          const best = [...attempts].sort((a, b) => b.percentage - a.percentage)[0];
-          setPersonalBest(best);
-        } catch (err) {
-          console.error("Failed to save attempt results:", err);
-        }
+        await saveQuizAttempt(profile.id, score, currentQuestionsList.length);
+        loadHistory(); // refresh history
       }
     }
   };
 
-  // Formats text to highlight code snippets wrapped in quotes or backticks, and renders newlines
-  const renderQuestionText = (text) => {
-    if (!text) return null;
-    const parts = text.split('\n');
-    return (
-      <div className="space-y-2">
-        {parts.map((part, index) => {
-          // If the line looks like code, render in monospaced format
-          const isCode = part.includes('System.out') || part.includes('String ') || part.includes('int ') || part.includes('List<') || part.includes('==') || part.includes('equals(');
-          if (isCode) {
-            return (
-              <pre key={index} className="bg-black/40 border border-white/5 rounded-lg p-3 text-xs sm:text-sm font-mono text-violet-300 overflow-x-auto whitespace-pre">
-                {part}
-              </pre>
-            );
-          }
-          return (
-            <p key={index} className="text-sm sm:text-base text-zinc-200 font-medium">
-              {part}
-            </p>
-          );
-        })}
-      </div>
-    );
-  };
-
-  // Format explanation text
-  const renderExplanation = (text) => {
-    if (!text) return null;
-    return (
-      <div className="mt-4 p-4 rounded-xl border border-violet-500/15 bg-violet-500/5 animate-fadeIn">
-        <div className="flex items-start gap-2.5">
-          <BookOpen className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <h4 className="text-xs font-bold text-violet-400 uppercase tracking-wider">Explanation</h4>
-            <p className="text-xs sm:text-sm text-zinc-400 whitespace-pre-line leading-relaxed">
-              {text}
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   if (loading) {
     return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center">
-        <div className="relative w-12 h-12">
-          <div className="absolute inset-0 rounded-full border-4 border-violet-500/20"></div>
-          <div className="absolute inset-0 rounded-full border-4 border-t-violet-500 animate-spin"></div>
-        </div>
-        <p className="mt-4 text-zinc-500 text-xs font-medium animate-pulse">Loading Java Quiz...</p>
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-3">
+        <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+        <p className="text-zinc-500 text-xs font-mono">Loading Quiz Questions…</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/25 flex items-center justify-center text-red-400 mb-4">
-          <XCircle className="w-6 h-6" />
-        </div>
-        <h3 className="text-zinc-200 font-semibold mb-1">Error Loading Quiz</h3>
-        <p className="text-zinc-500 text-xs max-w-sm mb-4">{error}</p>
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-3 text-center">
+        <p className="text-red-400 text-sm font-semibold">{error}</p>
         <button 
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs transition-colors flex items-center gap-2"
+          onClick={loadData}
+          className="px-3.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5 cursor-pointer"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span>Retry</span>
@@ -205,12 +154,18 @@ const JavaQuizPage = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-8 font-sans">
+    <motion.div 
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      variants={pageTransition}
+      className="max-w-4xl mx-auto space-y-6 pb-8 font-sans transform-gpu"
+    >
       {/* HEADER */}
       <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 shrink-0">
-            <Brain className="w-4 h-4" />
+            <Brain className="w-4 h-4 text-violet-400" />
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight text-white">Java Interview Quiz</h1>
@@ -224,7 +179,7 @@ const JavaQuizPage = () => {
                 setGameState('start');
               }
             }}
-            className="px-3 py-1.5 rounded-lg border border-zinc-800 hover:bg-red-500/10 hover:text-red-400 text-zinc-400 text-xs font-semibold transition-all cursor-pointer"
+            className="px-3 py-1.5 rounded-lg border border-zinc-800 hover:bg-red-500/10 hover:text-red-400 text-zinc-400 text-xs font-semibold transition-all cursor-pointer active:scale-95"
           >
             Exit Quiz
           </button>
@@ -233,343 +188,268 @@ const JavaQuizPage = () => {
 
       {/* ── SCREEN 1: START SCREEN ── */}
       {gameState === 'start' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <motion.div variants={staggerContainer} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           
           {/* Main Card */}
-          <div className="md:col-span-2 glass-panel rounded-2xl p-6 relative overflow-hidden space-y-6">
+          <motion.div variants={fadeUp} className="md:col-span-2 glass-panel rounded-2xl p-6 relative overflow-hidden space-y-6">
             <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/5 rounded-full blur-[80px] pointer-events-none" />
-            
+
             <div className="space-y-2">
-              <h2 className="text-base font-bold text-zinc-200 uppercase tracking-wider text-xxs text-violet-400">Challenge Mode</h2>
-              <h3 className="text-lg font-semibold text-zinc-100">Prepare for Java Interviews</h3>
-              <p className="text-zinc-400 text-xs leading-relaxed">
-                Answer high-frequency Java interview questions. This quiz covers critical topics like:
+              <span className="text-[10px] font-mono uppercase tracking-widest text-violet-400 font-bold bg-violet-500/10 px-2.5 py-1 rounded-md border border-violet-500/20 inline-block">
+                Skill Test
+              </span>
+              <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Ready for 10 Quick Questions?</h2>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Answer 10 random Java concept questions curated for technical interviews. Track your best accuracy and climb the leaderboard!
               </p>
-              <div className="grid grid-cols-2 gap-2 text-xxs sm:text-xs text-zinc-500 mt-2">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-violet-500 shrink-0" />
-                  <span>String Pool & Immutability</span>
+            </div>
+
+            {/* Features bullet list */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 flex items-center gap-2.5">
+                <FileQuestion className="w-4 h-4 text-violet-400 shrink-0" />
+                <div className="text-xs">
+                  <span className="font-semibold text-white block">10 Questions</span>
+                  <span className="text-[10px] text-zinc-500">Multiple choice</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-violet-500 shrink-0" />
-                  <span>OOPs & Polymorphism</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-violet-500 shrink-0" />
-                  <span>Collections Framework</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-violet-500 shrink-0" />
-                  <span>Exception Handling & JVM</span>
+              </div>
+              <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 flex items-center gap-2.5">
+                <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+                <div className="text-xs">
+                  <span className="font-semibold text-white block">Instant Feedback</span>
+                  <span className="text-[10px] text-zinc-500">Detailed explanations</span>
                 </div>
               </div>
             </div>
 
-            {/* Quiz Settings */}
-            <div className="p-4 rounded-xl border border-white/[0.05] bg-white/[0.02] space-y-4">
-              <label className="section-label block mb-1">Select Quiz Length</label>
-              <div className="grid grid-cols-4 gap-2">
-                {[10, 25, 50, 90].map((length) => (
-                  <button
-                    key={length}
-                    onClick={() => setQuizLength(length)}
-                    className={`py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                      quizLength === length
-                        ? 'bg-violet-600 border-violet-500 text-white shadow-sm shadow-violet-500/20'
-                        : 'border-white/[0.06] bg-zinc-900/50 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200'
-                    }`}
-                  >
-                    {length} Qs
-                  </button>
-                ))}
-              </div>
-              <p className="text-[10px] text-zinc-500">
-                {quizLength === 90 
-                  ? '🔋 Complete Marathon: Testing you on all 90 curated interview questions.' 
-                  : `🎲 Quick Test: 50% random shuffle of ${quizLength} questions.`}
-              </p>
+            {/* Start CTA */}
+            <div className="pt-2">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={startQuiz}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-violet-600/20 cursor-pointer transition-colors"
+              >
+                <Play className="w-4 h-4 fill-white" />
+                <span>Start Quiz Challenge</span>
+              </motion.button>
             </div>
+          </motion.div>
 
-            <button
-              onClick={handleStartQuiz}
-              className="w-full py-3.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-all shadow-md shadow-violet-600/25 flex items-center justify-center gap-2 cursor-pointer group"
-            >
-              <Play className="w-4 h-4 fill-white" />
-              <span>Start Quiz Session</span>
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-            </button>
-          </div>
-
-          {/* Sidebar Stats Panel */}
-          <div className="space-y-4">
-            {/* Personal Best */}
-            <div className="glass-panel rounded-2xl p-5 border border-white/[0.05] relative overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="section-label">Personal Best</h3>
+          {/* Sidebar Stats */}
+          <motion.div variants={fadeUp} className="space-y-4">
+            <div className="glass-panel rounded-2xl p-5 space-y-4">
+              <h3 className="text-xs font-mono uppercase tracking-wider text-zinc-400 flex items-center gap-2 font-bold">
                 <Award className="w-4 h-4 text-amber-400" />
-              </div>
-              {personalBest ? (
-                <div className="space-y-1">
-                  <p className="text-2xl font-black font-mono text-zinc-100">
-                    {personalBest.percentage}%
-                  </p>
-                  <p className="text-xxs text-zinc-500 leading-none">
-                    Score: {personalBest.score}/{personalBest.total} questions
-                  </p>
-                  <p className="text-xxs text-zinc-600 pt-2 flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(personalBest.completed_at).toLocaleDateString()}
-                  </p>
+                <span>Your Quiz Record</span>
+              </h3>
+
+              {history.length > 0 ? (
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-[10px] text-zinc-500 block">BEST ACCURACY</span>
+                    <span className="text-2xl font-bold text-emerald-400">
+                      {Math.max(...history.map(h => Math.round((h.score / h.total_questions) * 100)))}%
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 block">TESTS TAKEN</span>
+                    <span className="text-lg font-bold text-white">{history.length}</span>
+                  </div>
                 </div>
               ) : (
-                <div className="text-zinc-500 text-xs py-2">
-                  No attempts recorded yet. Take your first quiz!
-                </div>
+                <p className="text-xs text-zinc-500 italic">No quiz attempts yet. Complete your first test above!</p>
               )}
             </div>
 
-            {/* Quick stats */}
-            <div className="glass-panel rounded-2xl p-5 border border-white/[0.05] space-y-3">
-              <h3 className="section-label mb-2">Quiz Stats</h3>
-              <div className="flex items-center justify-between border-b border-white/[0.03] pb-2">
-                <span className="text-xxs text-zinc-500 uppercase">Attempts</span>
-                <span className="text-xs font-bold text-zinc-300 font-mono">{userAttempts.length}</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-white/[0.03] pb-2">
-                <span className="text-xxs text-zinc-500 uppercase">Pool Size</span>
-                <span className="text-xs font-bold text-zinc-300 font-mono">{questions.length} Qs</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xxs text-zinc-500 uppercase">Avg Score</span>
-                <span className="text-xs font-bold text-zinc-300 font-mono">
-                  {userAttempts.length > 0 
-                    ? `${Math.round(userAttempts.reduce((acc, curr) => acc + curr.percentage, 0) / userAttempts.length)}%` 
-                    : '--'}
-                </span>
-              </div>
-            </div>
-
-            {/* Recent attempts */}
-            {userAttempts.length > 0 && (
-              <div className="glass-panel rounded-2xl p-5 border border-white/[0.05]">
-                <h3 className="section-label mb-3">Recent Attempts</h3>
-                <div className="space-y-2 max-h-36 overflow-y-auto custom-scrollbar">
-                  {userAttempts.slice(0, 5).map((attempt, index) => (
-                    <div key={index} className="flex items-center justify-between text-xxs text-zinc-400 py-1.5 border-b border-white/[0.02] last:border-b-0">
-                      <span className="font-mono text-zinc-500">{new Date(attempt.completed_at).toLocaleDateString()}</span>
-                      <span className="font-mono text-zinc-500">{attempt.score}/{attempt.total}</span>
-                      <span className={`font-bold font-mono ${
-                        attempt.percentage >= 80 ? 'text-emerald-400' :
-                        attempt.percentage >= 60 ? 'text-amber-400' : 'text-zinc-500'
-                      }`}>
-                        {attempt.percentage}%
-                      </span>
-                    </div>
-                  ))}
+            {/* Recent Attempts list */}
+            {history.length > 0 && (
+              <div className="glass-panel rounded-2xl p-4 space-y-3">
+                <h4 className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-bold">Recent History</h4>
+                <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                  {history.slice(0, 5).map((att) => {
+                    const pct = Math.round((att.score / att.total_questions) * 100);
+                    return (
+                      <div key={att.id} className="flex items-center justify-between p-2 rounded-lg bg-zinc-900/60 text-xs">
+                        <span className="text-zinc-400 text-[11px] font-mono">
+                          {new Date(att.created_at).toLocaleDateString()}
+                        </span>
+                        <span className={`font-bold font-mono ${pct >= 80 ? 'text-emerald-400' : pct >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                          {att.score}/{att.total_questions} ({pct}%)
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
+          </motion.div>
 
-          </div>
-        </div>
+        </motion.div>
       )}
 
       {/* ── SCREEN 2: PLAYING SCREEN ── */}
       {gameState === 'playing' && currentQuestionsList.length > 0 && (
-        <div className="space-y-6">
-          {/* Progress Bar & Header */}
-          <div className="glass-panel rounded-2xl p-4 border border-white/[0.05] space-y-3">
-            <div className="flex items-center justify-between text-xs font-semibold">
-              <span className="text-zinc-400">
-                Question <span className="text-violet-400 font-bold font-mono">{currentIndex + 1}</span> of <span className="text-zinc-200 font-bold font-mono">{currentQuestionsList.length}</span>
-              </span>
-              <span className="text-zinc-400">
-                Score: <span className="text-emerald-400 font-bold font-mono">{score}</span>
-              </span>
-            </div>
-            
-            {/* Real Progress Bar */}
-            <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
-              <div 
-                className="h-full rounded-full bg-gradient-to-r from-violet-600 to-indigo-500 transition-all duration-300"
-                style={{ width: `${((currentIndex + 1) / currentQuestionsList.length) * 100}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Question Card */}
-          <div className="glass-panel rounded-2xl p-6 border border-white/[0.05] space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xxs px-2 py-0.5 rounded bg-violet-600/10 text-violet-400 border border-violet-500/15 font-semibold">
-                Topic: Java Core
-              </span>
-            </div>
-
-            {/* Question Text with Code Styling */}
-            <div className="py-2">
-              {renderQuestionText(currentQuestionsList[currentIndex].question)}
-            </div>
-
-            {/* Options List */}
-            <div className="grid grid-cols-1 gap-3 pt-2">
-              {currentQuestionsList[currentIndex].options.map((option, idx) => {
-                const isSelected = selectedOption === idx;
-                const isCorrect = idx === currentQuestionsList[currentIndex].correct_answer;
-                
-                // Styling computed dynamically after answer is chosen
-                let btnStyles = "border-white/[0.06] bg-zinc-900/40 hover:bg-zinc-800 text-zinc-300 hover:text-zinc-100 hover:border-zinc-700";
-                
-                if (isAnswered) {
-                  if (isCorrect) {
-                    btnStyles = "border-emerald-500/50 bg-emerald-500/10 text-emerald-400";
-                  } else if (isSelected) {
-                    btnStyles = "border-red-500/50 bg-red-500/10 text-red-400";
-                  } else {
-                    btnStyles = "border-white/[0.03] bg-zinc-950/30 text-zinc-600 opacity-60";
-                  }
-                }
-
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => handleOptionSelect(idx)}
-                    disabled={isAnswered}
-                    className={`p-4 rounded-xl border text-left text-xs sm:text-sm font-medium transition-all duration-200 cursor-pointer flex items-center justify-between ${btnStyles}`}
-                  >
-                    <span>{option}</span>
-                    
-                    {/* Status Icons */}
-                    {isAnswered && isCorrect && (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 ml-2" />
-                    )}
-                    {isAnswered && isSelected && !isCorrect && (
-                      <XCircle className="w-4 h-4 text-red-400 shrink-0 ml-2" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Explanation & Action Panel */}
-            {isAnswered && (
-              <div className="space-y-4 pt-4 border-t border-white/[0.03] animate-fadeIn">
-                {/* Explanation Card */}
-                {renderExplanation(currentQuestionsList[currentIndex].explanation)}
-                
-                {/* Next button */}
-                <div className="flex justify-end pt-2">
-                  <button
-                    onClick={handleNextQuestion}
-                    className="py-2.5 px-6 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span>
-                      {currentIndex + 1 === currentQuestionsList.length ? 'Finish & Save Score' : 'Next Question'}
-                    </span>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={currentIndex}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.25 }}
+            className="max-w-2xl mx-auto space-y-6"
+          >
+            {/* Progress bar */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-xs font-mono">
+                <span className="text-zinc-400">Question {currentIndex + 1} of {currentQuestionsList.length}</span>
+                <span className="text-violet-400 font-bold">Score: {score}</span>
               </div>
-            )}
-          </div>
-        </div>
+              <div className="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden border border-zinc-800">
+                <motion.div 
+                  className="bg-violet-500 h-full rounded-full" 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${((currentIndex + 1) / currentQuestionsList.length) * 100}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+            </div>
+
+            {/* Question Card */}
+            <div className="glass-panel rounded-2xl p-6 space-y-6 shadow-2xl relative">
+              {/* Question Text */}
+              <h2 className="text-base sm:text-lg font-semibold text-white leading-snug">
+                {currentQuestionsList[currentIndex].question_text}
+              </h2>
+
+              {/* Options */}
+              <div className="space-y-2.5">
+                {currentQuestionsList[currentIndex].options.map((opt, idx) => {
+                  const currentQ = currentQuestionsList[currentIndex];
+                  const isCorrect = idx === currentQ.correct_option;
+                  const isSelected = selectedOption === idx;
+                  
+                  let btnClass = "w-full text-left p-3.5 rounded-xl border text-xs font-medium transition-all duration-200 flex items-start gap-3 cursor-pointer select-none ";
+                  
+                  if (!isAnswered) {
+                    btnClass += "border-zinc-800 bg-zinc-900/60 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-800/80 active:scale-[0.99]";
+                  } else {
+                    if (isCorrect) {
+                      btnClass += "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 font-bold";
+                    } else if (isSelected && !isCorrect) {
+                      btnClass += "border-red-500/40 bg-red-500/10 text-red-300 font-bold";
+                    } else {
+                      btnClass += "border-zinc-800/40 bg-zinc-900/20 text-zinc-600 opacity-50";
+                    }
+                  }
+
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => handleSelectOption(idx)}
+                      disabled={isAnswered}
+                      className={btnClass}
+                    >
+                      <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 ${
+                        isAnswered && isCorrect 
+                          ? 'bg-emerald-500 text-white' 
+                          : isAnswered && isSelected && !isCorrect 
+                          ? 'bg-red-500 text-white' 
+                          : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                      }`}>
+                        {String.fromCharCode(65 + idx)}
+                      </span>
+                      <span className="flex-1 leading-relaxed">{opt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Explanation (Shown after answering) */}
+              {isAnswered && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 rounded-xl bg-violet-950/20 border border-violet-500/20 space-y-1"
+                >
+                  <p className="text-xs font-bold text-violet-300 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5" /> Explanation:
+                  </p>
+                  <p className="text-xs text-zinc-300 leading-relaxed">
+                    {currentQuestionsList[currentIndex].explanation}
+                  </p>
+                </motion.div>
+              )}
+
+              {/* Next Button */}
+              {isAnswered && (
+                <div className="flex justify-end pt-2">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleNextQuestion}
+                    className="px-5 py-2.5 rounded-xl bg-white text-zinc-900 font-bold text-xs flex items-center gap-2 hover:bg-zinc-200 transition-colors cursor-pointer shadow-md"
+                  >
+                    <span>{currentIndex + 1 === currentQuestionsList.length ? 'See Results' : 'Next Question'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </motion.button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </AnimatePresence>
       )}
 
       {/* ── SCREEN 3: RESULT SCREEN ── */}
       {gameState === 'result' && (
-        <div className="max-w-xl mx-auto glass-panel rounded-2xl p-8 border border-white/[0.05] text-center relative overflow-hidden space-y-6">
-          <div className="absolute top-0 inset-x-0 h-48 bg-gradient-to-b from-violet-600/10 to-transparent pointer-events-none" />
-          
-          <div className="relative z-10 space-y-4">
-            <div className="w-16 h-16 rounded-full bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mx-auto">
-              <Award className="w-8 h-8" />
-            </div>
-            
-            <div className="space-y-1">
-              <h2 className="text-xl font-bold text-zinc-100">Quiz Completed!</h2>
-              <p className="text-zinc-500 text-xs">Great work, your attempts have been successfully saved.</p>
-            </div>
-
-            {/* Gauge visual */}
-            <div className="py-4">
-              <div className="relative w-36 h-36 mx-auto flex items-center justify-center">
-                {/* Score Ring Background */}
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                  <circle 
-                    cx="50" cy="50" r="42" 
-                    className="stroke-zinc-800" 
-                    strokeWidth="8" 
-                    fill="transparent" 
-                  />
-                  <circle 
-                    cx="50" cy="50" r="42" 
-                    className="stroke-violet-500" 
-                    strokeWidth="8" 
-                    fill="transparent" 
-                    strokeDasharray={2 * Math.PI * 42}
-                    strokeDashoffset={2 * Math.PI * 42 * (1 - (score / currentQuestionsList.length))}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                {/* Center score */}
-                <div className="absolute flex flex-col items-center">
-                  <span className="text-3xl font-black font-mono text-zinc-100">
-                    {Math.round((score / currentQuestionsList.length) * 100)}%
-                  </span>
-                  <span className="text-xxs text-zinc-500 font-bold uppercase tracking-wider mt-0.5">
-                    {score} / {currentQuestionsList.length} Correct
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Evaluation Label */}
-            <div className="inline-block px-4 py-1.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 text-xs font-semibold animate-pulse">
-              {Math.round((score / currentQuestionsList.length) * 100) >= 90 ? '🏆 Perfect Donkey!' :
-               Math.round((score / currentQuestionsList.length) * 100) >= 75 ? '🎯 Expert Level!' :
-               Math.round((score / currentQuestionsList.length) * 100) >= 50 ? '📚 Keep Practicing!' :
-               '💪 Don\'t give up, try again!'}
-            </div>
-
-            {/* Stats block */}
-            <div className="grid grid-cols-2 gap-4 p-4 rounded-xl border border-white/[0.05] bg-white/[0.02] text-center">
-              <div>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Accuracy</p>
-                <p className="text-lg font-black font-mono text-zinc-200">
-                  {Math.round((score / currentQuestionsList.length) * 100)}%
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Total Attempts</p>
-                <p className="text-lg font-black font-mono text-zinc-200">
-                  {userAttempts.length}
-                </p>
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <button
-                onClick={handleStartQuiz}
-                className="flex-1 py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span>Retry Quiz</span>
-              </button>
-              
-              <button
-                onClick={() => setGameState('start')}
-                className="flex-1 py-3 px-4 rounded-xl border border-white/[0.06] hover:bg-white/[0.03] text-zinc-300 text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Home className="w-4 h-4" />
-                <span>Quiz Lobby</span>
-              </button>
-            </div>
-
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          className="max-w-md mx-auto glass-panel rounded-2xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden"
+        >
+          <div className="w-16 h-16 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center mx-auto shadow-inner">
+            <Trophy className="w-8 h-8" />
           </div>
-        </div>
-      )}
 
-    </div>
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold text-white">Quiz Completed!</h2>
+            <p className="text-xs text-zinc-400">Great effort testing your Java skills.</p>
+          </div>
+
+          {/* Score display */}
+          <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-1">
+            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block">YOUR SCORE</span>
+            <div className="text-3xl font-extrabold text-white">
+              {score} <span className="text-zinc-500 text-sm font-normal">/ {currentQuestionsList.length}</span>
+            </div>
+            <p className="text-xs font-bold text-violet-400 mt-1">
+              {Math.round((score / currentQuestionsList.length) * 100)}% Accuracy
+            </p>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={startQuiz}
+              className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Try Again</span>
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setGameState('start')}
+              className="flex-1 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+            >
+              <Home className="w-3.5 h-3.5" />
+              <span>Quiz Home</span>
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
+    </motion.div>
   );
 };
 

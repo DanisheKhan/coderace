@@ -19,6 +19,7 @@ import {
 import EditProfileModal from '../EditProfileModal';
 import { useProgressStore } from '../../store/progressStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { APPLE_EASE } from '../../lib/animations';
 
 const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
   const { profile, signOut } = useAuth();
@@ -50,15 +51,19 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     <>
       <motion.aside 
         animate={{ width: isCollapsed ? 72 : 232 }}
-        transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-        className="bg-[#09090b] border-r border-zinc-800/80 flex flex-col h-screen sticky top-0 md:flex z-40 max-md:hidden relative font-sans"
+        transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+        className="bg-[#09090b] border-r border-zinc-800/80 flex flex-col h-screen sticky top-0 md:flex z-40 max-md:hidden relative font-sans transform-gpu"
       >
         {/* Brand Header */}
         <div className={`h-14 flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'} border-b border-zinc-800/80 shrink-0`}>
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-100 shrink-0">
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-100 shrink-0 shadow-sm"
+            >
               <Code2 className="w-4 h-4 text-violet-400" />
-            </div>
+            </motion.div>
             {!isCollapsed && (
               <span className="font-bold text-base tracking-tight text-white whitespace-nowrap">
                 Code<span className="text-violet-400">Race</span>
@@ -67,7 +72,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           </div>
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer shrink-0"
+            className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer shrink-0 active:scale-95"
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
@@ -75,7 +80,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-5 space-y-1 overflow-x-hidden">
+        <nav className="flex-1 px-3 py-5 space-y-1 overflow-x-hidden relative">
           <AnimatePresence initial={false}>
             {isCollapsed ? (
               <motion.div 
@@ -89,56 +94,71 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
-                transition={{ duration: 0.15 }}
-                className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider px-3 mb-3 block"
+                transition={{ duration: 0.2, ease: APPLE_EASE }}
+                className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider px-3 mb-3 block select-none"
               >
                 Menu
               </motion.p>
             )}
           </AnimatePresence>
+
           {navItems.map((item) => (
             <NavLink
               key={item.name}
               to={item.path}
               title={isCollapsed ? item.name : undefined}
               className={({ isActive }) => `
-                flex items-center transition-colors cursor-pointer select-none text-xs font-medium
+                relative flex items-center transition-all cursor-pointer select-none text-xs font-medium rounded-lg
                 ${isCollapsed 
-                  ? 'justify-center w-10 h-10 mx-auto rounded-lg' 
-                  : 'gap-3 px-3 py-2 rounded-lg w-full'
+                  ? 'justify-center w-10 h-10 mx-auto' 
+                  : 'gap-3 px-3 py-2 w-full'
                 }
                 ${isActive
-                  ? 'bg-zinc-900 text-white border border-zinc-800 font-semibold'
-                  : 'text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200'
+                  ? 'text-white font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/40'
                 }
               `}
             >
-              <div className="relative flex items-center justify-center">
-                <item.icon className="w-4 h-4 shrink-0" />
-                {item.badge && isCollapsed && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-3.5 h-3.5 px-1 text-[8px] font-bold rounded-full bg-violet-600 text-white flex items-center justify-center">
-                    {item.badge}
-                  </span>
-                )}
-              </div>
-              <AnimatePresence initial={false}>
-                {!isCollapsed && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.15 }}
-                    className="flex-1 flex items-center justify-between min-w-0"
-                  >
-                    <span className="truncate">{item.name}</span>
-                    {item.badge && (
-                      <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-violet-600 text-white leading-none shrink-0">
+              {({ isActive }) => (
+                <>
+                  {/* Apple Smooth Active Background Pill */}
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeNavPill"
+                      transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                      className="absolute inset-0 bg-zinc-900 border border-zinc-800 rounded-lg -z-0 shadow-sm"
+                    />
+                  )}
+
+                  <div className="relative z-10 flex items-center justify-center">
+                    <item.icon className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isActive ? 'text-violet-400 scale-105' : ''}`} />
+                    {item.badge && isCollapsed && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-3.5 h-3.5 px-1 text-[8px] font-bold rounded-full bg-violet-600 text-white flex items-center justify-center">
                         {item.badge}
                       </span>
                     )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  </div>
+
+                  <AnimatePresence initial={false}>
+                    {!isCollapsed && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -8 }}
+                        transition={{ duration: 0.2, ease: APPLE_EASE }}
+                        className="relative z-10 flex-1 flex items-center justify-between min-w-0"
+                      >
+                        <span className="truncate">{item.name}</span>
+                        {item.badge && (
+                          <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-violet-600 text-white leading-none shrink-0">
+                            {item.badge}
+                          </span>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -153,12 +173,14 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.15 }}
+                  transition={{ duration: 0.18, ease: APPLE_EASE }}
                   className="flex flex-col items-center gap-3"
                 >
-                  <div 
+                  <motion.div 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setIsEditProfileOpen(true)}
-                    className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-white uppercase text-xs shrink-0 overflow-hidden cursor-pointer border border-zinc-700 hover:border-zinc-500 transition-colors"
+                    className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-white uppercase text-xs shrink-0 overflow-hidden cursor-pointer border border-zinc-700 hover:border-zinc-500 transition-colors shadow-sm"
                     style={{ backgroundColor: profile.avatar_url ? 'transparent' : (profile.avatar_color || '#6366f1') }}
                     title={`${profile.display_name} - Edit profile`}
                   >
@@ -167,10 +189,10 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                     ) : (
                       profile.display_name?.charAt(0) || '?'
                     )}
-                  </div>
+                  </motion.div>
                   <button
                     onClick={() => signOut()}
-                    className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-colors cursor-pointer"
+                    className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-colors cursor-pointer active:scale-95"
                     title="Sign out"
                   >
                     <LogOut className="w-4 h-4" />
@@ -179,18 +201,20 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
               ) : (
                 <motion.div 
                   key="expanded"
-                  initial={{ opacity: 0, x: -10 }}
+                  initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.15 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{ duration: 0.18, ease: APPLE_EASE }}
                 >
-                  <div 
+                  <motion.div 
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setIsEditProfileOpen(true)}
-                    className="flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-zinc-900/60 border border-transparent hover:border-zinc-800 cursor-pointer group transition-all select-none"
+                    className="flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-zinc-900/70 border border-transparent hover:border-zinc-800 cursor-pointer group transition-all select-none"
                     title="Edit profile"
                   >
                     <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-xs shrink-0 overflow-hidden border border-zinc-700"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-xs shrink-0 overflow-hidden border border-zinc-700 shadow-sm"
                       style={{ backgroundColor: profile.avatar_url ? 'transparent' : (profile.avatar_color || '#6366f1') }}
                     >
                       {profile.avatar_url ? (
@@ -204,10 +228,10 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                       <p className="text-[10px] text-zinc-500 truncate mt-0.5">Edit profile ✎</p>
                     </div>
                     <Settings className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
-                  </div>
+                  </motion.div>
                   <button
                     onClick={() => signOut()}
-                    className="w-full mt-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 text-xs font-medium cursor-pointer transition-colors"
+                    className="w-full mt-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 text-xs font-medium cursor-pointer transition-colors active:scale-98"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     <span>Sign out</span>
