@@ -75,7 +75,7 @@ export async function fetchMonkeytypeData(apeKey) {
       consistency_120: pb120.consistency,
       tests_started: statsData.startedTests || 0,
       tests_completed: statsData.completedTests || 0,
-      time_typing: statsData.timeTyping || 0,
+      time_typing: Math.round(statsData.timeTyping || 0),
     };
   } catch (err) {
     console.error('Error fetching Monkeytype data:', err);
