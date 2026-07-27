@@ -626,10 +626,10 @@ const MySheetPage = () => {
                               const isFirstSub   = qIdx === 0;
 
                               const rowBg =
-                                isSurprise             ? 'bg-violet-950/20' :
-                                revisit                ? 'bg-rose-950/10'   :
-                                status === 'done'      ? 'bg-emerald-950/8' :
-                                status === 'attempted' ? 'bg-amber-950/5'   : '';
+                                isSurprise             ? 'dsa-row-surprise' :
+                                revisit                ? 'dsa-row-revisit'  :
+                                status === 'done'      ? 'dsa-row-done'     :
+                                status === 'attempted' ? 'dsa-row-attempted' : '';
 
                               const borderL =
                                 isSurprise ? 'border-l-2 border-l-violet-500' :
@@ -639,9 +639,9 @@ const MySheetPage = () => {
                                 <tr
                                   key={q.id}
                                   className={[
-                                    'border-b border-white/[0.025] transition-colors',
+                                    'border-b border-white/[0.025] dsa-table-row',
                                     rowBg, borderL,
-                                    !isSurprise && !revisit ? 'hover:bg-white/[0.015]' : '',
+                                    !isSurprise && !revisit ? 'dsa-table-row-hover' : '',
                                   ].filter(Boolean).join(' ')}
                                 >
                                   {/* Sr No */}

@@ -213,3 +213,25 @@ table { border-collapse: collapse; }
   left: -6px;
   right: -6px;
 }
+
+/* ── DSA Sheet Table Row Styling ── */
+.dsa-table-row td {
+  transition: background-color 0.15s ease;
+}
+/* Default hover for rows without surprise or revisit colors */
+.dsa-table-row-hover:hover td:not([rowspan]) {
+  background-color: rgba(255, 255, 255, 0.015);
+}
+/* Target only non-rowspan cells for status backgrounds */
+.dsa-row-surprise td:not([rowspan]) {
+  background-color: rgba(139, 92, 246, 0.08); /* bg-violet-950/20 */
+}
+.dsa-row-revisit td:not([rowspan]) {
+  background-color: rgba(239, 68, 68, 0.05); /* bg-rose-950/10 */
+}
+.dsa-row-done td:not([rowspan]) {
+  background-color: rgba(16, 185, 129, 0.035); /* bg-emerald-950/8 */
+}
+.dsa-row-attempted td:not([rowspan]) {
+  background-color: rgba(245, 158, 11, 0.025); /* bg-amber-950/5 */
+}
