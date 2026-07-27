@@ -13,6 +13,7 @@ import {
   Eye,
   Settings,
   LogOut,
+  User
 } from 'lucide-react';
 
 import EditProfileModal from '../EditProfileModal';
@@ -34,18 +35,20 @@ const PAGE_TITLES = {
 const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
   const { profile, signOut } = useAuth();
   const { questions } = useQuestions();
-  const { progress, upsertProgress } = useProgressStore();
+  const { progress, upsertProgress, profiles } = useProgressStore();
   const location = useLocation();
 
   const pageTitle = PAGE_TITLES[location.pathname] ?? 'CodeRace';
 
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
+  const [searchResults, setSearchResults] = useState({ questions: [], users: [] });
   const [showResults, setShowResults] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [selectedSearchUser, setSelectedSearchUser] = useState(null);
+
   const dropdownRef = useRef(null);
   const userMenuRef = useRef(null);
   const mobileInputRef = useRef(null);
@@ -68,11 +71,31 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
   const handleSearchChange = (e) => {
     const query = e.target.value;
     setSearchQuery(query);
-    if (!query.trim()) { setSearchResults([]); return; }
-    const filtered = questions
-      .filter(q => q.problem_name.toLowerCase().includes(query.toLowerCase()))
-      .slice(0, 5);
-    setSearchResults(filtered);
+    if (!query.trim()) { 
+      setSearchResults({ questions: [], users: [] }); 
+      setShowResults(false);
+      return; 
+    }
+
+    const qLower = query.trim().toLowerCase();
+    const qClean = qLower.replace(/^@/, '');
+
+    // 1. Filter Questions
+    const matchedQuestions = questions
+      .filter(q => q.problem_name.toLowerCase().includes(qLower) || (q.topic && q.topic.toLowerCase().includes(qLower)))
+      .slice(0, 4);
+
+    // 2. Filter Users (by Username, Display Name, or User ID)
+    const matchedUsers = (profiles || [])
+      .filter(u => {
+        const uId = (u.id || '').toLowerCase();
+        const uName = (u.display_name || '').toLowerCase();
+        const uHandle = (u.username || '').toLowerCase();
+        return uId.includes(qLower) || uName.includes(qClean) || uHandle.includes(qClean);
+      })
+      .slice(0, 4);
+
+    setSearchResults({ questions: matchedQuestions, users: matchedUsers });
     setShowResults(true);
   };
 
@@ -80,7 +103,7 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
     if (!profile) return;
     await upsertProgress(profile.id, questionId, { status: 'done' });
     setSearchQuery('');
-    setSearchResults([]);
+    setSearchResults({ questions: [], users: [] });
     setShowResults(false);
     setIsMobileSearchOpen(false);
   };
@@ -127,6 +150,106 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
 
   const streak = calculateStreak();
 
+  const renderDropdownContent = () => {
+    const hasUsers = searchResults.users && searchResults.users.length > 0;
+    const hasQuestions = searchResults.questions && searchResults.questions.length > 0;
+
+    if (!hasUsers && !hasQuestions) {
+      return (
+        <div className="px-3 py-3 text-center text-xs text-zinc-500 font-mono">
+          No matching problems or racers found.
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        {/* User Search Results */}
+        {hasUsers && (
+          <div>
+            <div className="px-2.5 py-1 text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-wider">
+              Racers / User ID
+            </div>
+            <div className="space-y-0.5">
+              {searchResults.users.map((u) => (
+                <div
+                  key={u.id}
+                  onClick={() => {
+                    setSelectedSearchUser(u);
+                    setShowResults(false);
+                    setSearchQuery('');
+                    setIsMobileSearchOpen(false);
+                  }}
+                  className="flex items-center justify-between px-2.5 py-1.5 hover:bg-zinc-800/70 rounded-md transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div
+                      className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-white text-[10px] uppercase shrink-0 overflow-hidden border border-zinc-700"
+                      style={{ backgroundColor: u.avatar_url ? 'transparent' : (u.avatar_color || '#6366f1') }}
+                    >
+                      {u.avatar_url ? (
+                        <img src={u.avatar_url} alt={u.display_name} className="w-full h-full object-cover" />
+                      ) : (
+                        u.display_name?.charAt(0) || '?'
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-zinc-200 truncate group-hover:text-amber-400 transition-colors">
+                        {u.display_name}
+                      </p>
+                      <p className="text-[9px] font-mono text-zinc-500 truncate">
+                        {u.username ? `@${u.username}` : `ID: ${u.id.slice(0, 8)}...`}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-mono text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
+                    View Profile
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Question Search Results */}
+        {hasQuestions && (
+          <div>
+            <div className="px-2.5 py-1 text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-wider border-t border-zinc-800/60 pt-1.5">
+              Problems
+            </div>
+            <div className="space-y-0.5">
+              {searchResults.questions.map((q) => {
+                const done = isQuestionDone(q.id);
+                return (
+                  <div
+                    key={q.id}
+                    className="flex items-center justify-between px-2.5 py-1.5 hover:bg-zinc-800/70 rounded-md transition-colors"
+                  >
+                    <div className="min-w-0 flex-1 pr-2">
+                      <p className="text-[9px] text-zinc-500 truncate font-mono">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
+                      <p className="text-xs text-zinc-200 font-medium truncate mt-0.5">{q.problem_name}</p>
+                    </div>
+                    {done ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    ) : (
+                      <button
+                        onClick={() => handleQuickSolve(q.id)}
+                        className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center justify-center border border-zinc-700 shrink-0"
+                        title="Mark Solved"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <header className="h-[56px] border-b border-zinc-800/80 bg-[#09090b]/90 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 w-full font-sans">
@@ -149,7 +272,7 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                   type="text"
                   value={searchQuery}
                   onChange={handleSearchChange}
-                  placeholder="Search problem to quick solve…"
+                  placeholder="Search problem, @username, or User ID..."
                   className="w-full pl-9 pr-3 py-2 text-xs rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
                 />
               </div>
@@ -163,38 +286,15 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
 
               {/* Mobile Search Dropdown Results */}
               <AnimatePresence>
-                {showResults && searchResults.length > 0 && (
+                {showResults && (
                   <motion.div 
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 5 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute top-full left-3 right-3 mt-1.5 rounded-lg border border-zinc-800 bg-zinc-900 shadow-2xl p-1.5 z-50"
+                    className="absolute top-full left-3 right-3 mt-1.5 rounded-lg border border-zinc-800 bg-zinc-900 shadow-2xl p-1.5 z-50 max-h-80 overflow-y-auto"
                   >
-                    {searchResults.map((q) => {
-                      const done = isQuestionDone(q.id);
-                      return (
-                        <div
-                          key={q.id}
-                          className="flex items-center justify-between px-3 py-2 hover:bg-zinc-800/60 rounded-md transition-colors"
-                        >
-                          <div className="min-w-0 flex-1 pr-3">
-                            <p className="text-[10px] text-zinc-500 truncate font-mono">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
-                            <p className="text-xs text-zinc-200 font-medium truncate mt-0.5">{q.problem_name}</p>
-                          </div>
-                          {done ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                          ) : (
-                            <button
-                              onClick={() => handleQuickSolve(q.id)}
-                              className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer border border-zinc-700 shrink-0"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {renderDropdownContent()}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -221,53 +321,29 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
               </span>
             </div>
 
-            {/* Desktop Center: Quick Solve Search */}
-            <div className="hidden sm:block flex-1 max-w-[360px] mx-5 relative" ref={dropdownRef}>
+            {/* Desktop Center: Quick Solve & User Search */}
+            <div className="hidden sm:block flex-1 max-w-[380px] mx-5 relative" ref={dropdownRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={handleSearchChange}
-                  placeholder="Quick log: Today I solved…"
+                  placeholder="Search problem, @username, or User ID..."
                   className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-zinc-900/80 border border-zinc-800 focus:border-zinc-700 text-zinc-200 placeholder:text-zinc-500 focus:outline-none truncate transition-colors"
                 />
               </div>
 
               <AnimatePresence>
-                {showResults && searchResults.length > 0 && (
+                {showResults && (
                   <motion.div 
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 4 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute top-full left-0 right-0 mt-1.5 rounded-lg border border-zinc-800 bg-zinc-900 shadow-2xl p-1.5 z-50"
+                    className="absolute top-full left-0 right-0 mt-1.5 rounded-lg border border-zinc-800 bg-zinc-900 shadow-2xl p-1.5 z-50 max-h-80 overflow-y-auto"
                   >
-                    {searchResults.map((q) => {
-                      const done = isQuestionDone(q.id);
-                      return (
-                        <div
-                          key={q.id}
-                          className="flex items-center justify-between px-3 py-2 hover:bg-zinc-800/70 rounded-md transition-colors"
-                        >
-                          <div className="min-w-0 flex-1 pr-3">
-                            <p className="text-[10px] text-zinc-500 truncate font-mono">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
-                            <p className="text-xs text-zinc-200 font-medium truncate mt-0.5">{q.problem_name}</p>
-                          </div>
-                          {done ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                          ) : (
-                            <button
-                              onClick={() => handleQuickSolve(q.id)}
-                              className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center justify-center border border-zinc-700"
-                              title="Mark Solved"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {renderDropdownContent()}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -281,7 +357,7 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                   onClick={openMobileSearch}
                   className="sm:hidden w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 transition-all flex items-center justify-center cursor-pointer shrink-0"
                   aria-label="Search"
-                  title="Quick log solved problem"
+                  title="Search problems or racer profiles"
                 >
                   <Search className="w-3.5 h-3.5" />
                 </button>
@@ -298,7 +374,6 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                     onClick={() => setIsUserMenuOpen(prev => !prev)}
                     className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-xs shadow-sm select-none overflow-hidden cursor-pointer border border-zinc-700 hover:border-zinc-500 transition-colors shrink-0"
                     style={{ backgroundColor: profile.avatar_url ? 'transparent' : (profile.avatar_color || '#6366f1') }}
-                    title="User Menu"
                   >
                     {profile.avatar_url ? (
                       <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
@@ -307,49 +382,53 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                     )}
                   </div>
 
+                  {/* Dropdown Menu */}
                   <AnimatePresence>
                     {isUserMenuOpen && (
                       <motion.div 
-                        initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-zinc-800 bg-zinc-900 shadow-2xl p-1.5 z-50"
+                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                        transition={{ duration: 0.12 }}
+                        className="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-800 bg-zinc-950/95 backdrop-blur-md shadow-2xl p-1.5 z-50 text-xs font-sans"
                       >
-                        <div className="px-2.5 py-1.5 border-b border-zinc-800 mb-1">
-                          <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">Signed in as</p>
-                          <p className="text-xs font-semibold text-zinc-200 truncate mt-0.5">{profile.display_name}</p>
+                        <div className="px-3 py-2 border-b border-zinc-800/80 mb-1">
+                          <p className="font-semibold text-zinc-100 truncate">{profile.display_name}</p>
+                          <p className="text-[10px] text-zinc-500 truncate font-mono">
+                            {profile.username ? `@${profile.username}` : profile.email}
+                          </p>
                         </div>
+
                         <button
                           onClick={() => {
                             setIsUserMenuOpen(false);
                             setIsProfileOpen(true);
                           }}
-                          className="w-full text-left px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors flex items-center gap-2 cursor-pointer"
+                          className="w-full px-3 py-1.5 text-left rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800/60 transition-colors flex items-center gap-2 cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5 text-zinc-400" />
-                          View Profile
+                          <span>View Profile</span>
                         </button>
+
                         <button
                           onClick={() => {
                             setIsUserMenuOpen(false);
                             setIsEditProfileOpen(true);
                           }}
-                          className="w-full text-left px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors flex items-center gap-2 cursor-pointer"
+                          className="w-full px-3 py-1.5 text-left rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800/60 transition-colors flex items-center gap-2 cursor-pointer"
                         >
                           <Settings className="w-3.5 h-3.5 text-zinc-400" />
-                          Edit Profile
+                          <span>Edit Settings</span>
                         </button>
-                        <div className="h-px bg-zinc-800 my-1" />
+
+                        <div className="border-t border-zinc-800/80 my-1" />
+
                         <button
-                          onClick={() => {
-                            setIsUserMenuOpen(false);
-                            signOut();
-                          }}
-                          className="w-full text-left px-2.5 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors flex items-center gap-2 cursor-pointer"
+                          onClick={signOut}
+                          className="w-full px-3 py-1.5 text-left rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex items-center gap-2 cursor-pointer"
                         >
                           <LogOut className="w-3.5 h-3.5" />
-                          Sign Out
+                          <span>Sign Out</span>
                         </button>
                       </motion.div>
                     )}
@@ -361,17 +440,28 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
         )}
       </header>
 
-      <EditProfileModal
-        isOpen={isEditProfileOpen}
-        onClose={() => setIsEditProfileOpen(false)}
-      />
+      {/* Edit Profile Modal */}
+      {isEditProfileOpen && (
+        <EditProfileModal onClose={() => setIsEditProfileOpen(false)} />
+      )}
 
+      {/* Current User Profile Modal */}
       {isProfileOpen && profile && (
         <UserProfileModal
           user={profile}
           progress={progress}
           questions={questions}
           onClose={() => setIsProfileOpen(false)}
+        />
+      )}
+
+      {/* Search Result User Profile Modal */}
+      {selectedSearchUser && (
+        <UserProfileModal
+          user={selectedSearchUser}
+          progress={progress}
+          questions={questions}
+          onClose={() => setSelectedSearchUser(null)}
         />
       )}
     </>

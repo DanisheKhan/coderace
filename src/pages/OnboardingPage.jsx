@@ -34,10 +34,14 @@ const OnboardingPage = () => {
   const [takenColors, setTakenColors] = useState([]);
 
   useEffect(() => {
-    if (user?.email) {
-      // Pre-fill display name from email prefix
-      const username = user.email.split('@')[0];
-      setDisplayName(username.charAt(0).toUpperCase() + username.slice(1));
+    if (user) {
+      const metaName = user.user_metadata?.display_name;
+      if (metaName && metaName.trim()) {
+        setDisplayName(metaName.trim());
+      } else if (user.email) {
+        const username = user.email.split('@')[0];
+        setDisplayName(username.charAt(0).toUpperCase() + username.slice(1));
+      }
     }
   }, [user]);
 

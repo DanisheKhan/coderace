@@ -108,9 +108,19 @@ export default function UserProfileModal({ user, progress, questions, onClose })
   const [typingProfile, setTypingProfile] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState('');
+  const [copiedId, setCopiedId] = useState(false);
 
   const { currentUser } = useAuth();
   const isOwnProfile = currentUser?.id === user?.id;
+
+  const handleCopyId = (e) => {
+    e.stopPropagation();
+    if (user?.id) {
+      navigator.clipboard.writeText(user.id);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
+    }
+  };
 
   const userProgress = useMemo(() => {
     return progress.filter(p => p.user_id === user?.id);
@@ -152,32 +162,47 @@ export default function UserProfileModal({ user, progress, questions, onClose })
       setLoadingAttempts(true);
       fetchUserAttempts(user.id)
         .then(setQuizAttempts)
-        .catch(err => console.error('Error fetching quiz attempts:', err))
         .finally(() => setLoadingAttempts(false));
     }
   }, [user?.id]);
 
-  const quizStats = useMemo(() => {
-    if (!quizAttempts || quizAttempts.length === 0) {
-      return { best: null, total: 0, average: 0, recent: null };
-    }
-    const total = quizAttempts.length;
-    const percentages = quizAttempts.map(a => Number(a.percentage));
-    const best = [...quizAttempts].sort((a, b) => Number(b.percentage) - Number(a.percentage))[0];
-    const average = Math.round(percentages.reduce((sum, val) => sum + val, 0) / total);
-    const recent = quizAttempts[0];
-    return { best, total, average, recent };
-  }, [quizAttempts]);
-
-  const { achievementsList, unlockedCount } = useMemo(() => {
-    return calculateUserAchievements(user.id, progress, questions);
-  }, [user.id, progress, questions]);
-
   const stats = useMemo(() => {
+    const totalQ = questions.length;
     const solved = userProgress.filter(p => p.status === 'done').length;
-    const attempted = userProgress.filter(p => p.status === 'attempted').length;
-    return { solved, attempted };
-  }, [userProgress]);
+
+    const sevenDaysAgo = Date.now() - 7 * 86400000;
+    const solvedThisWeek = userProgress.filter(
+      p => p.status === 'done' && new Date(p.updated_at).getTime() >= sevenDaysAgo
+    ).length;
+
+    const doneDates = userProgress
+      .filter(p => p.status === 'done')
+      .map(p => {
+        const d = new Date(p.updated_at);
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      });
+
+    let streak = 0;
+    if (doneDates.length) {
+      const unique = [...new Set(doneDates)].sort((a, b) => b - a);
+      const today = new Date();
+      const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+      const yesterdayMs = todayMs - 86400000;
+      if (unique[0] === todayMs || unique[0] === yesterdayMs) {
+        streak = 1;
+        for (let i = 0; i < unique.length - 1; i++) {
+          if (unique[i] - unique[i + 1] === 86400000) streak++;
+          else if (unique[i] === unique[i + 1]) continue;
+          else break;
+        }
+      }
+    }
+
+    const { unlockedCount, achievementsList } = calculateUserAchievements(user?.id, progress, questions);
+    const achievements = achievementsList || [];
+
+    return { totalQ, solved, solvedThisWeek, streak, unlockedCount, achievements };
+  }, [userProgress, questions, user?.id, progress]);
 
   const topicData = useMemo(() => {
     const topics = {};
@@ -285,18 +310,18 @@ export default function UserProfileModal({ user, progress, questions, onClose })
       >
         {/* ── HEADER ─────────────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 sm:px-6 pt-4 pb-3.5 shrink-0 gap-3 border-b border-zinc-800/80">
-          {/* Avatar + Name */}
+          {/* Avatar + Name + User ID */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
               <div
                 className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white text-sm uppercase overflow-hidden border border-zinc-700"
                 style={{
-                  backgroundColor: user.avatar_url ? 'transparent' : accentColor,
+                  backgroundColor: user?.avatar_url ? 'transparent' : accentColor,
                 }}
               >
-                {user.avatar_url
+                {user?.avatar_url
                   ? <img src={user.avatar_url} alt={user.display_name} className="w-full h-full object-cover" />
-                  : user.display_name?.charAt(0) || '?'
+                  : user?.display_name?.charAt(0) || '?'
                 }
               </div>
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-[#09090b]" />
@@ -304,13 +329,36 @@ export default function UserProfileModal({ user, progress, questions, onClose })
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-bold text-white text-sm sm:text-base leading-tight tracking-tight truncate">
-                  {user.display_name}
+                  {user?.display_name}
                 </h3>
+                {user?.username && (
+                  <span className="text-xs font-mono text-amber-400 font-semibold">
+                    @{user.username}
+                  </span>
+                )}
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800">
-                  {user.is_admin ? 'ADMIN' : 'RACER'}
+                  {user?.is_admin ? 'ADMIN' : 'RACER'}
                 </span>
               </div>
-              <p className="text-[10px] text-zinc-500 mt-0.5 truncate">Stats, achievements & solved questions</p>
+              
+              {/* User ID & Copy Button */}
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <button
+                  onClick={handleCopyId}
+                  className="text-[10px] font-mono text-zinc-400 hover:text-zinc-200 bg-zinc-900/90 hover:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-800 flex items-center gap-1.5 cursor-pointer transition-colors group"
+                  title="Click to copy exact User ID"
+                >
+                  <span className="text-zinc-500 font-bold">ID:</span>
+                  <span className="text-zinc-300 font-semibold truncate max-w-[210px] xs:max-w-none">{user?.id}</span>
+                  {copiedId ? (
+                    <span className="text-emerald-400 font-bold text-[9px] flex items-center gap-0.5 shrink-0">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Copied!
+                    </span>
+                  ) : (
+                    <Copy className="w-3 h-3 text-zinc-500 group-hover:text-zinc-300 shrink-0" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -337,101 +385,112 @@ export default function UserProfileModal({ user, progress, questions, onClose })
               })}
             </div>
 
-            <div className="flex items-center gap-1.5">
+            {/* Sync Button */}
+            {isOwnProfile && (
               <button
                 onClick={handleSync}
                 disabled={syncing}
-                className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 text-xs"
-                title="Sync profile"
+                className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors flex items-center gap-1 text-xs cursor-pointer disabled:opacity-50"
+                title="Sync Monkeytype stats"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin text-violet-400' : ''}`} />
                 <span className="hidden sm:inline">Sync</span>
               </button>
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                title="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            )}
+
+            {/* Close */}
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* ── STATS BANNER ────────────────────────────────────────────────────── */}
-        <div className="px-5 sm:px-6 pt-4 pb-0 shrink-0 font-sans">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            {[
-              { label: 'Solved', value: stats.solved, sub: `${pct}% done`, icon: Trophy },
-              { label: 'Streak', value: `${user.streak ?? 0}d`, sub: 'Active streak', icon: Flame },
-              { label: 'This Week', value: `+${user.solvedThisWeek ?? 0}`, sub: 'Last 7 days', icon: Calendar },
-              { label: 'Badges', value: unlockedCount, sub: `/ ${achievementsList.length} total`, icon: Award },
-            ].map(({ label, value, sub, icon: Icon }) => (
-              <div
-                key={label}
-                className="p-3 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between"
-              >
-                <div>
-                  <span className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider block mb-1">{label}</span>
-                  <span className="text-lg font-bold text-white leading-none block">{value}</span>
-                  <span className="text-[10px] text-zinc-400 block mt-1">{sub}</span>
+        {/* ── MODAL BODY CONTENT ────────────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 custom-scrollbar">
+
+          {/* TAB 1: OVERVIEW */}
+          {activeModalTab === 'overview' && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Stat Cards Row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-zinc-500 uppercase font-mono font-bold">Solved</p>
+                    <p className="text-xl font-bold text-white font-mono mt-0.5">{stats.solved}</p>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{pct}% done</p>
+                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400">
+                    <Trophy className="w-4 h-4 text-amber-400" />
+                  </div>
                 </div>
-                <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center shrink-0">
-                  <Icon className="w-4 h-4" />
+
+                <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-zinc-500 uppercase font-mono font-bold">Streak</p>
+                    <p className="text-xl font-bold text-white font-mono mt-0.5">{stats.streak}d</p>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Active streak</p>
+                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400">
+                    <Flame className="w-4 h-4 text-orange-400" />
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-zinc-500 uppercase font-mono font-bold">This Week</p>
+                    <p className="text-xl font-bold text-emerald-400 font-mono mt-0.5">+{stats.solvedThisWeek}</p>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Last 7 days</p>
+                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400">
+                    <Calendar className="w-4 h-4 text-emerald-400" />
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-zinc-500 uppercase font-mono font-bold">Badges</p>
+                    <p className="text-xl font-bold text-white font-mono mt-0.5">{stats.unlockedCount}</p>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">/ 13 total</p>
+                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400">
+                    <Award className="w-4 h-4 text-violet-400" />
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* ── MAIN CONTENT ─────────────────────────────────────────────────────── */}
-        <div className="px-5 sm:px-6 pt-4 pb-5 flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col space-y-4">
+              {/* GitHub Style Activity Streak Matrix */}
+              <div className="space-y-2">
+                <GitHubStreakTracker userId={user?.id} progress={progress} userName={user?.display_name} />
+              </div>
 
-          {/* ── OVERVIEW TAB ─────────────────── */}
-          {activeModalTab === 'overview' && (
-            <div className="space-y-4 w-full font-sans">
-              {/* GitHub Contribution Heatmap */}
-              <GitHubStreakTracker
-                progress={progress}
-                userId={user.id}
-                title={`${user.display_name}'s Activity`}
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
-                {/* Topic Completion */}
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 flex flex-col min-h-[300px] overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800/80 shrink-0">
+              {/* Topic Completion + Achievements */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Topic Breakdown */}
+                <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800/80 space-y-3">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                        <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
-                      </div>
-                      <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Topic Completion</h4>
+                      <BookOpen className="w-4 h-4 text-violet-400" />
+                      <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">Topic Completion</h4>
                     </div>
                     <span className="text-[10px] font-mono text-zinc-500">
                       {topicData.filter(t => t.solved > 0).length}/{topicData.length} started
                     </span>
                   </div>
-                  <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 custom-scrollbar max-h-[260px]">
+
+                  <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
                     {topicData.map(t => (
                       <div key={t.name} className="space-y-1">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-zinc-200 font-medium truncate max-w-[180px]">{t.name}</span>
-                          <span className="text-[10px] font-mono text-zinc-400 shrink-0">
-                            <strong className="text-white">{t.solved}</strong>/{t.total}
-                            <span className="text-zinc-500 ml-1">({t.completed}%)</span>
-                          </span>
+                        <div className="flex justify-between text-xs font-semibold">
+                          <span className="text-zinc-300 truncate">{t.name}</span>
+                          <span className="text-zinc-500 font-mono text-[11px]">{t.solved}/{t.total} ({t.completed}%)</span>
                         </div>
-                        <div className="h-1.5 w-full rounded-full bg-zinc-900 border border-zinc-800 overflow-hidden">
+                        <div className="w-full bg-zinc-950 h-1.5 rounded-full overflow-hidden border border-zinc-800">
                           <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{
-                              width: `${Math.max(t.solved > 0 ? 4 : 0, t.completed)}%`,
-                              backgroundColor: t.completed === 100
-                                ? '#10b981'
-                                : t.solved > 0
-                                ? '#8b5cf6'
-                                : '#27272a',
-                            }}
+                            className="h-full bg-violet-500 rounded-full transition-all duration-500"
+                            style={{ width: `${t.completed}%` }}
                           />
                         </div>
                       </div>
@@ -439,268 +498,260 @@ export default function UserProfileModal({ user, progress, questions, onClose })
                   </div>
                 </div>
 
-                {/* Right column: Badges + Recent */}
-                <div className="flex flex-col gap-4">
-                  {/* Badges */}
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 flex flex-col min-h-[140px]">
-                    <div className="flex items-center justify-between pb-2.5 border-b border-zinc-800/80 shrink-0">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                          <Award className="w-3.5 h-3.5 text-zinc-400" />
-                        </div>
-                        <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Achievements</h4>
-                      </div>
-                      <span className="text-[10px] font-mono text-zinc-500">{unlockedCount}/{achievementsList.length}</span>
+                {/* Achievements Showcase */}
+                <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Award className="w-4 h-4 text-amber-400" />
+                      <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">Achievements</h4>
                     </div>
-
-                    <div className="flex items-center gap-2 overflow-x-auto pt-3 pb-1 custom-scrollbar">
-                      {achievementsList.map(ach => {
-                        const Icon = IconMap[ach.icon] || Award;
-                        return (
-                          <div
-                            key={ach.id}
-                            title={`${ach.title}: ${ach.description}`}
-                            className={`flex flex-col items-center justify-center p-2 rounded-lg border shrink-0 w-16 text-center select-none ${
-                              ach.unlocked
-                                ? 'bg-violet-500/10 border-violet-500/20 text-violet-300'
-                                : 'bg-zinc-900/40 border-zinc-800/50 text-zinc-600 opacity-40'
-                            }`}
-                          >
-                            <Icon className="w-4 h-4 mb-1" />
-                            <span className="text-[8px] font-semibold truncate w-full">{ach.title}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <span className="text-[10px] font-mono text-zinc-500">{stats.unlockedCount}/13</span>
                   </div>
 
-                  {/* Recently Solved */}
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 flex-1 flex flex-col min-h-[140px]">
-                    <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80 shrink-0">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                          <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                        </div>
-                        <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Recent Activity</h4>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 pt-2.5 flex-1 overflow-y-auto custom-scrollbar max-h-[150px]">
-                      {recentlySolved.map(q => (
-                        <div key={q.id} className="p-2.5 rounded-lg border border-zinc-800/70 bg-zinc-900/60 hover:bg-zinc-800/40 transition-colors flex flex-col gap-1.5">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs font-semibold text-zinc-200 truncate">{q.problem_name}</p>
-                              <p className="text-[10px] text-zinc-500 truncate mt-0.5">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
-                            </div>
-                            <span className="text-[9px] text-zinc-500 font-mono shrink-0">{formatRelativeTime(q.solvedAt)}</span>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
+                    {(stats.achievements || []).map(ach => {
+                      const IconComponent = IconMap[ach.icon] || Award;
+                      return (
+                        <div
+                          key={ach.id}
+                          className={`p-2.5 rounded-xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all ${
+                            ach.unlocked
+                              ? 'bg-violet-500/10 border-violet-500/25 text-zinc-100'
+                              : 'bg-zinc-950/60 border-zinc-800/60 text-zinc-600 opacity-50'
+                          }`}
+                          title={ach.description}
+                        >
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${ach.unlocked ? 'bg-violet-500/20 text-violet-300' : 'bg-zinc-900 text-zinc-600'}`}>
+                            <IconComponent className="w-3.5 h-3.5" />
                           </div>
+                          <p className="text-[10px] font-semibold leading-tight line-clamp-1">{ach.title}</p>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
+
+              {/* Recent Activity */}
+              {recentlySolved.length > 0 && (
+                <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800/80 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-emerald-400" />
+                    <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">Recent Activity</h4>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {recentlySolved.map(item => (
+                      <a
+                        key={item.id}
+                        href={item.leetcode_link || '#'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800/80 hover:border-zinc-700 transition-colors flex items-center justify-between group"
+                      >
+                        <div className="min-w-0 flex-1 pr-2">
+                          <p className="text-xs font-semibold text-zinc-200 truncate group-hover:text-amber-400 transition-colors">
+                            {item.problem_name}
+                          </p>
+                          <p className="text-[10px] text-zinc-500 font-mono mt-0.5 truncate">
+                            {item.topic} · {item.subtopic || 'General'}
+                          </p>
+                        </div>
+                        <span className="text-[9px] text-zinc-500 font-mono shrink-0">
+                          {formatRelativeTime(item.solvedAt)}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* ── SOLVED TAB ── */}
+          {/* TAB 2: SOLVED PROBLEMS */}
           {activeModalTab === 'solved' && (
-            <div className="space-y-4 font-sans animate-fadeIn">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="relative flex-1 min-w-[200px]">
+            <div className="space-y-4 animate-fadeIn">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2">
+                <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
                   <input
                     type="text"
-                    placeholder="Search solved problems…"
                     value={solvedSearch}
                     onChange={e => setSolvedSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-700"
+                    placeholder="Filter solved problems…"
+                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-200 placeholder:text-zinc-600 focus:outline-none"
                   />
                 </div>
-                <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-lg border border-zinc-800 text-xs font-mono">
-                  {['all', 'Easy', 'Medium', 'Hard'].map(d => (
+
+                <div className="flex items-center gap-1.5">
+                  {['all', 'Easy', 'Medium', 'Hard'].map(diff => (
                     <button
-                      key={d}
-                      onClick={() => setSolvedDiffFilter(d)}
-                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${
-                        solvedDiffFilter === d ? 'bg-white text-zinc-900' : 'text-zinc-400 hover:text-zinc-200'
+                      key={diff}
+                      onClick={() => setSolvedDiffFilter(diff)}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-mono capitalize transition-colors cursor-pointer ${
+                        solvedDiffFilter === diff
+                          ? 'bg-zinc-800 text-white font-semibold'
+                          : 'text-zinc-500 hover:text-zinc-300'
                       }`}
                     >
-                      {d}
+                      {diff}
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="space-y-2 max-h-[480px] overflow-y-auto custom-scrollbar pr-1">
-                {filteredSolvedList.map(q => (
-                  <div key={q.id} className="p-3 rounded-xl border border-zinc-800/80 bg-zinc-900/40 flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <DiffDot difficulty={q.difficulty} />
-                        <h4 className="text-xs font-semibold text-zinc-200 truncate">{q.problem_name}</h4>
-                      </div>
-                      <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
-                    </div>
-                    <span className="text-[9px] font-mono text-zinc-500 shrink-0">{formatRelativeTime(q.solvedAt)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── SPEED TAB ── */}
-          {activeModalTab === 'speed' && (
-            <div className="space-y-4 font-sans animate-fadeIn">
-              {typingProfile ? (
-                <div className="space-y-4">
-                  {/* Top WPM Summary Banner */}
-                  <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between flex-wrap gap-3">
-                    <div>
-                      <span className="text-[9px] uppercase font-mono text-zinc-500 font-bold block mb-1">Peak Speed · All Modes</span>
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-3xl font-extrabold text-amber-400 font-mono tracking-tight">{topWPM > 0 ? topWPM : '--'}</span>
-                        <span className="text-[10px] font-bold text-amber-500 uppercase">WPM</span>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="text-[9px] uppercase font-mono text-zinc-500 font-bold block mb-1">Tests Completed</span>
-                      <span className="text-xl font-bold text-zinc-200 font-mono">
-                        {typingProfile.tests_completed?.toLocaleString() || 0}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 4 Mode Benchmark Cards Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {speedModes.map((item) => {
-                      const isBest = item.wpm && item.wpm === topWPM && topWPM > 0;
-                      return (
-                        <div
-                          key={item.label}
-                          className={`p-3.5 rounded-xl border transition-all ${
-                            isBest 
-                              ? 'bg-amber-500/[0.08] border-amber-500/30 shadow-sm shadow-amber-500/10' 
-                              : 'bg-zinc-900/40 border-zinc-800/60'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[9px] font-mono text-zinc-500 uppercase font-bold">{item.label} Mode</span>
-                            {isBest && (
-                              <span className="text-[8px] font-bold font-mono text-amber-400 bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20">
-                                BEST
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xl font-extrabold font-mono text-zinc-100">
-                            {item.wpm != null ? `${item.wpm}` : '—'}
-                            <span className="text-[9px] text-zinc-500 font-normal ml-1">wpm</span>
-                          </div>
-
-                          <div className="mt-2 pt-2 border-t border-zinc-800/60 space-y-1 text-[9px] font-mono text-zinc-400">
-                            <div className="flex justify-between">
-                              <span className="text-zinc-500">Accuracy</span>
-                              <span className="font-bold text-emerald-400">{item.acc != null ? `${item.acc}%` : '—'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-zinc-500">Consistency</span>
-                              <span className="font-bold text-amber-400/80">{item.consistency != null ? `${item.consistency}%` : '—'}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Typing Metrics Footer Strip */}
-                  <div className="p-3.5 rounded-xl bg-zinc-900/40 border border-zinc-800/60 flex items-center justify-between text-xs font-mono text-zinc-400 flex-wrap gap-3">
-                    <div className="flex items-center gap-5 flex-wrap">
-                      <div>
-                        <span className="text-zinc-500 text-[10px] block">Completion</span>
-                        <strong className="text-emerald-400 font-bold text-sm">{completionRate}%</strong>
-                      </div>
-                      <div>
-                        <span className="text-zinc-500 text-[10px] block">Time Typing</span>
-                        <strong className="text-violet-300 font-bold text-sm">{formatTime(typingProfile.time_typing)}</strong>
-                      </div>
-                      <div>
-                        <span className="text-zinc-500 text-[10px] block">Tests Started</span>
-                        <strong className="text-zinc-200 font-bold text-sm">{typingProfile.tests_started?.toLocaleString() || 0}</strong>
-                      </div>
-                    </div>
-
-                    {user.monkeytype_username && (
-                      <a
-                        href={`https://monkeytype.com/profile/${user.monkeytype_username}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs text-amber-400 hover:underline flex items-center gap-1 font-mono shrink-0"
-                      >
-                        @{user.monkeytype_username} <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
-                  </div>
+              {filteredSolvedList.length === 0 ? (
+                <div className="text-center py-12 border border-zinc-800 rounded-xl bg-zinc-950/40">
+                  <CheckCircle2 className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+                  <p className="text-xs text-zinc-500 font-mono">No solved problems match criteria.</p>
                 </div>
               ) : (
-                <div className="py-12 text-center text-xs text-zinc-500 italic">No Monkeytype speed profile linked or cached for this racer.</div>
+                <div className="divide-y divide-zinc-800/60 border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950/40">
+                  {filteredSolvedList.map((item, idx) => (
+                    <div key={item.id} className="p-3 sm:p-3.5 flex items-center justify-between hover:bg-zinc-900/40 transition-colors gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-xs font-mono text-zinc-600 w-6 shrink-0 text-right">#{idx + 1}</span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <a
+                              href={item.leetcode_link || '#'}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs font-semibold text-zinc-100 hover:text-amber-400 transition-colors truncate"
+                            >
+                              {item.problem_name}
+                            </a>
+                            <DiffDot difficulty={item.difficulty} />
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-mono text-zinc-500">{item.topic}</span>
+                            <SolveTags prog={item.prog} />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] font-mono text-zinc-500">
+                          {formatRelativeTime(item.solvedAt)}
+                        </span>
+                        {item.leetcode_link && (
+                          <a
+                            href={item.leetcode_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}
 
-          {/* ── QUIZ TAB ── */}
+          {/* TAB 3: SPEED (MONKEYTYPE) */}
+          {activeModalTab === 'speed' && (
+            <div className="space-y-5 animate-fadeIn">
+              {/* Top Banner */}
+              <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Keyboard className="w-4 h-4 text-violet-400" />
+                    <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">Monkeytype Speed</h4>
+                  </div>
+                  <p className="text-xs text-zinc-400">
+                    {user?.monkeytype_username ? (
+                      <>Linked account: <a href={`https://monkeytype.com/profile/${user.monkeytype_username}`} target="_blank" rel="noreferrer" className="text-violet-400 underline hover:text-violet-300 font-mono">@{user.monkeytype_username}</a></>
+                    ) : (
+                      'No Monkeytype handle configured in settings.'
+                    )}
+                  </p>
+                </div>
+                <div className="text-right font-mono">
+                  <span className="text-2xl font-bold text-violet-400">{topWPM}</span>
+                  <span className="text-xs text-zinc-500 block">Peak WPM</span>
+                </div>
+              </div>
+
+              {/* Modes Breakdown Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {speedModes.map(mode => (
+                  <div key={mode.label} className="p-3.5 rounded-xl bg-zinc-900/40 border border-zinc-800/80 space-y-1">
+                    <span className="text-[10px] font-mono text-zinc-500 uppercase">{mode.label} Mode</span>
+                    <p className="text-xl font-bold text-white font-mono">{mode.wpm ?? '—'} <span className="text-xs text-zinc-500 font-normal">wpm</span></p>
+                    <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 pt-1 border-t border-zinc-800/60">
+                      <span>Acc: {mode.acc ? `${mode.acc}%` : '—'}</span>
+                      <span>Consist: {mode.consistency ? `${mode.consistency}%` : '—'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Extra Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80 text-center font-mono">
+                  <span className="text-[10px] text-zinc-500 uppercase block">Completion Rate</span>
+                  <span className="text-lg font-bold text-emerald-400">{completionRate}%</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80 text-center font-mono">
+                  <span className="text-[10px] text-zinc-500 uppercase block">Total Typing Time</span>
+                  <span className="text-lg font-bold text-amber-400">{formatTime(typingProfile?.time_typing)}</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80 text-center font-mono">
+                  <span className="text-[10px] text-zinc-500 uppercase block">Tests Completed</span>
+                  <span className="text-lg font-bold text-zinc-200">{typingProfile?.tests_completed || 0}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: JAVA QUIZ */}
           {activeModalTab === 'quiz' && (
-            <div className="space-y-4 font-sans animate-fadeIn">
-              {quizAttempts.length > 0 ? (
-                <div className="space-y-4">
-                  {/* Quiz Summary Bar */}
-                  <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between flex-wrap gap-3">
-                    <div>
-                      <span className="text-[9px] uppercase font-mono text-zinc-500 font-bold block mb-1">Highest Score</span>
-                      <span className="text-3xl font-extrabold text-emerald-400 font-mono tracking-tight">{quizStats.best ? `${quizStats.best.percentage}%` : '0%'}</span>
-                    </div>
+            <div className="space-y-4 animate-fadeIn">
+              <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-indigo-400" />
+                  <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">Java Concept Quizzes</h4>
+                </div>
+                <span className="text-xs font-mono text-zinc-400">{quizAttempts.length} attempts</span>
+              </div>
 
-                    <div className="flex items-center gap-5 font-mono text-xs">
-                      <div>
-                        <span className="text-zinc-500 text-[10px] block">Average</span>
-                        <strong className="text-violet-300 font-bold text-sm">{quizStats.average}%</strong>
-                      </div>
-                      <div>
-                        <span className="text-zinc-500 text-[10px] block">Quizzes Taken</span>
-                        <strong className="text-zinc-200 font-bold text-sm">{quizStats.total}</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Past Quiz Attempts List */}
-                  <div className="space-y-2 max-h-[380px] overflow-y-auto custom-scrollbar pr-1">
-                    {quizAttempts.map((att, idx) => (
-                      <div key={att.id || idx} className="p-3 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between gap-3">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <Brain className="w-3.5 h-3.5 text-violet-400" />
-                            <span className="text-xs font-bold text-zinc-200 font-mono">Score: {att.score} / {att.total_questions}</span>
-                          </div>
-                          <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
-                            Attempted on {new Date(att.created_at).toLocaleDateString()} at {new Date(att.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded border ${
-                          Number(att.percentage) >= 80 
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            : Number(att.percentage) >= 50
-                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                        }`}>
-                          {att.percentage}%
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+              {loadingAttempts ? (
+                <div className="py-12 text-center text-xs font-mono text-zinc-500">Loading quiz history…</div>
+              ) : quizAttempts.length === 0 ? (
+                <div className="text-center py-12 border border-zinc-800 rounded-xl bg-zinc-950/40">
+                  <Brain className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+                  <p className="text-xs text-zinc-500 font-mono">No quiz attempts logged yet.</p>
                 </div>
               ) : (
-                <div className="py-12 text-center text-xs text-zinc-500 italic">No Java Quiz attempts recorded yet.</div>
+                <div className="divide-y divide-zinc-800/60 border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950/40">
+                  {quizAttempts.map((attempt, idx) => {
+                    const scorePct = Math.round((attempt.score / attempt.total_questions) * 100);
+                    return (
+                      <div key={attempt.id || idx} className="p-3 sm:p-3.5 flex items-center justify-between hover:bg-zinc-900/40 transition-colors gap-3">
+                        <div>
+                          <p className="text-xs font-semibold text-zinc-200">Attempt #{quizAttempts.length - idx}</p>
+                          <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                            {formatRelativeTime(attempt.created_at)}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-3 font-mono">
+                          <span className="text-xs text-zinc-300 font-bold">{attempt.score}/{attempt.total_questions}</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            scorePct >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                            scorePct >= 50 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                            'bg-red-500/10 text-red-400 border-red-500/20'
+                          }`}>
+                            {scorePct}%
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}

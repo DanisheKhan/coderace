@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Code2, Mail, Lock, AlertCircle, ArrowRight, ArrowLeft } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { Code2, Mail, Lock, User, AtSign, AlertCircle, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pageTransition } from '../lib/animations';
 
-const InputField = ({ label, type, value, onChange, placeholder, icon: Icon, disabled }) => (
+const InputField = ({ label, type, value, onChange, placeholder, icon: Icon, disabled, helpText }) => (
   <div>
-    <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-2">{label}</label>
+    <div className="flex justify-between items-center mb-1.5">
+      <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400">{label}</label>
+      {helpText && <span className="text-[9px] font-mono text-zinc-500">{helpText}</span>}
+    </div>
     <div className="relative">
       <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
       <input
@@ -16,7 +20,7 @@ const InputField = ({ label, type, value, onChange, placeholder, icon: Icon, dis
         onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
-        className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-zinc-950/80 border border-zinc-800 focus:border-zinc-600 text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-xs transition-colors"
+        className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-zinc-950/80 border border-zinc-800 focus:border-zinc-600 text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-xs transition-colors font-sans"
       />
     </div>
   </div>
@@ -26,6 +30,8 @@ const LoginPage = () => {
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
+  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -35,13 +41,36 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!email || !password) { setError('Please fill in all fields.'); return; }
-    if (isSignUp && password !== confirmPassword) { setError('Passwords do not match.'); return; }
+    if (!email || !password) { setError('Please fill in all required fields.'); return; }
+
+    let cleanUsername = '';
+    if (isSignUp) {
+      if (!displayName.trim()) { setError('Please enter your full name.'); return; }
+
+      cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+      if (!cleanUsername) { setError('Please enter a unique username.'); return; }
+      if (cleanUsername.length < 3) { setError('Username must be at least 3 characters.'); return; }
+
+      if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
+    }
 
     setLoading(true);
     try {
       if (isSignUp) {
-        const { error: err } = await signUp(email, password);
+        // Check username uniqueness in Supabase profiles table
+        const { data: existingUser, error: checkErr } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('username', cleanUsername)
+          .maybeSingle();
+
+        if (existingUser) {
+          setError(`Username '@${cleanUsername}' is already taken. Please choose another.`);
+          setLoading(false);
+          return;
+        }
+
+        const { error: err } = await signUp(email, password, displayName.trim(), cleanUsername);
         if (err) throw err;
         navigate('/onboarding', { replace: true });
       } else {
@@ -111,6 +140,39 @@ const LoginPage = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          <AnimatePresence initial={false}>
+            {isSignUp && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, y: -6 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -6 }}
+                transition={{ duration: 0.15 }}
+                className="overflow-hidden space-y-4"
+              >
+                <InputField 
+                  label="Full Name / Racer Name" 
+                  type="text" 
+                  value={displayName} 
+                  onChange={e => setDisplayName(e.target.value)} 
+                  placeholder="e.g. Danish Khan" 
+                  icon={User} 
+                  disabled={loading} 
+                />
+
+                <InputField 
+                  label="Unique Username (@handle)" 
+                  type="text" 
+                  value={username} 
+                  onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} 
+                  placeholder="e.g. danishkhan" 
+                  icon={AtSign} 
+                  disabled={loading} 
+                  helpText="Must be unique"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <InputField 
             label="Email Address" 
             type="email" 

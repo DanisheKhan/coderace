@@ -58,8 +58,32 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const signUp = async (email, password) => {
-    return supabase.auth.signUp({ email, password });
+  const signUp = async (email, password, displayName = '', username = '') => {
+    const res = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          display_name: displayName,
+          username: username,
+        }
+      }
+    });
+
+    if (!res.error && res.data?.user) {
+      try {
+        await supabase.from('profiles').upsert({
+          id: res.data.user.id,
+          display_name: displayName || email.split('@')[0],
+          username: username || email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, ''),
+          updated_at: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error('Error upserting profile on signup:', e);
+      }
+    }
+
+    return res;
   };
 
   const signIn = async (email, password) => {
@@ -99,22 +123,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const value = {
-    user,
-    session,
-    profile,
-    loading,
-    profileLoading,
-    signUp,
-    signIn,
-    signOut,
-    refreshProfile,
-    updateProfile,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{
+      user,
+      session,
+      profile,
+      loading,
+      profileLoading,
+      signUp,
+      signIn,
+      signOut,
+      refreshProfile,
+      updateProfile,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);

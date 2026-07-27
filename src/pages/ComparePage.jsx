@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom';
 import { useProgressStore } from '../store/progressStore';
 import { useQuestions } from '../contexts/QuestionsContext';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import { calculateUserAchievements, calculateStreak } from '../lib/achievements';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Users, Award, Flame, Trophy, ExternalLink, Sparkles, BookOpen, Crown, ChevronDown, Swords } from 'lucide-react';
+import { Users, Award, Flame, Trophy, ExternalLink, Sparkles, BookOpen, Crown, ChevronDown, Swords, UserPlus, Plus, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pageTransition, staggerContainer, fadeUp } from '../lib/animations';
 
@@ -191,11 +192,51 @@ const ComparePage = () => {
   const { questions } = useQuestions();
   const { profile: currentProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('group');
+  const [userIdInput, setUserIdInput] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [addError, setAddError] = useState('');
+  const [customProfiles, setCustomProfiles] = useState([]);
+  const searchContainerRef = useRef(null);
 
-  // Only show approved profiles
+  // Approved profiles
   const approvedProfiles = useMemo(() => {
     return profiles.filter(p => p.approved || p.is_admin);
   }, [profiles]);
+
+  // Combine approved profiles with any custom fetched profiles by User ID
+  const allAvailableProfiles = useMemo(() => {
+    const combined = [...approvedProfiles];
+    customProfiles.forEach(cp => {
+      if (!combined.some(p => p.id === cp.id)) {
+        combined.push(cp);
+      }
+    });
+    return combined;
+  }, [approvedProfiles, customProfiles]);
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Suggestions filtered based on user input
+  const userSuggestions = useMemo(() => {
+    const query = userIdInput.trim().toLowerCase();
+    if (!query) return [];
+    const qClean = query.replace(/^@/, '');
+    return allAvailableProfiles.filter(p => {
+      const uId = (p.id || '').toLowerCase();
+      const uName = (p.display_name || '').toLowerCase();
+      const uHandle = (p.username || '').toLowerCase();
+      return uId.includes(query) || uName.includes(qClean) || uHandle.includes(qClean);
+    }).slice(0, 6);
+  }, [userIdInput, allAvailableProfiles]);
 
   const uniqueTopics = useMemo(() => [...new Set(questions.map(q => q.topic))], [questions]);
   const [activeCompareTopic, setActiveCompareTopic] = useState(uniqueTopics[0] || '');
@@ -208,7 +249,52 @@ const ComparePage = () => {
     }
   }, [approvedProfiles, selectedProfileIds]);
 
-  const activeProfiles = useMemo(() => approvedProfiles.filter(p => selectedProfileIds.includes(p.id)), [approvedProfiles, selectedProfileIds]);
+  const activeProfiles = useMemo(() => allAvailableProfiles.filter(p => selectedProfileIds.includes(p.id)), [allAvailableProfiles, selectedProfileIds]);
+
+  const handleAddUserById = async (e) => {
+    e?.preventDefault();
+    setAddError('');
+    setShowSuggestions(false);
+    const query = userIdInput.trim();
+    if (!query) return;
+
+    const qLower = query.toLowerCase();
+    const qClean = qLower.replace(/^@/, '');
+
+    // 1. Check in local profiles
+    let found = allAvailableProfiles.find(p => 
+      p.id.toLowerCase() === qLower ||
+      (p.username && p.username.toLowerCase() === qClean) ||
+      p.display_name.toLowerCase() === qClean
+    );
+
+    // 2. If not found locally, query Supabase directly
+    if (!found) {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .or(`id.eq.${query},username.eq.${qClean},display_name.ilike.%${qClean}%`)
+          .maybeSingle();
+
+        if (data) {
+          found = data;
+          setCustomProfiles(prev => [...prev, data]);
+        }
+      } catch (err) {
+        console.error('Error searching profile by User ID:', err);
+      }
+    }
+
+    if (found) {
+      if (!selectedProfileIds.includes(found.id)) {
+        setSelectedProfileIds(prev => [...prev, found.id]);
+      }
+      setUserIdInput('');
+    } else {
+      setAddError(`No racer found for "${query}". Please check User ID or @username.`);
+    }
+  };
 
   const topicComparisonData = useMemo(() => {
     if (!activeProfiles.length || !questions.length) return [];
@@ -255,11 +341,13 @@ const ComparePage = () => {
     return activeProfiles.map(p => {
       const solved = progress.filter(pr => pr.user_id === p.id && pr.status === 'done').length;
       return { ...p, solved, pct: Math.round((solved / totalQ) * 100) };
-    }).sort((a, b) => b.pct - a.pct);
+    })
+    .sort((a, b) => b.pct - a.pct)
+    .slice(0, 10);
   }, [activeProfiles, progress, questions]);
 
   // ── 1v1 Duel ────────────────────────────────────────────────────────────────
-  const duelCompetitors = useMemo(() => approvedProfiles.filter(p => p.id !== currentProfile?.id), [approvedProfiles, currentProfile]);
+  const duelCompetitors = useMemo(() => allAvailableProfiles.filter(p => p.id !== currentProfile?.id), [allAvailableProfiles, currentProfile]);
   const [duelCompetitorId, setDuelCompetitorId] = useState('');
 
   useEffect(() => {
@@ -268,7 +356,7 @@ const ComparePage = () => {
     }
   }, [duelCompetitors, duelCompetitorId]);
 
-  const competitorProfile = useMemo(() => approvedProfiles.find(p => p.id === duelCompetitorId), [approvedProfiles, duelCompetitorId]);
+  const competitorProfile = useMemo(() => allAvailableProfiles.find(p => p.id === duelCompetitorId), [allAvailableProfiles, duelCompetitorId]);
   const myProgress = useMemo(() => progress.filter(p => p.user_id === currentProfile?.id), [progress, currentProfile]);
   const compProgress = useMemo(() => progress.filter(p => p.user_id === duelCompetitorId), [progress, duelCompetitorId]);
   const myAchievements = useMemo(() => currentProfile ? calculateUserAchievements(currentProfile.id, progress, questions) : { unlockedCount: 0 }, [currentProfile, progress, questions]);
@@ -314,11 +402,11 @@ const ComparePage = () => {
       animate="show"
       exit="exit"
       variants={pageTransition}
-      className="space-y-6 pb-12"
+      className="space-y-6 pb-12 font-sans"
     >
 
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-zinc-800/80 font-sans">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-zinc-800/80">
         <div>
           <h1 className="text-lg font-bold tracking-tight text-white mb-1">Compare Progress</h1>
           <p className="text-zinc-500 text-xs">Side-by-side progression across topics and subtopics.</p>
@@ -352,14 +440,113 @@ const ComparePage = () => {
       {activeTab === 'group' && (
         <div className="space-y-5 animate-fadeIn">
 
-          {/* Racer Selector */}
-          <div className="rounded-2xl border border-white/[0.05] p-4" style={panelStyle}>
-            <p className="text-[10px] text-zinc-600 uppercase font-bold tracking-widest mb-3">
-              Compare Racers
-              <span className="ml-2 text-zinc-700 font-mono">({selectedProfileIds.length} selected)</span>
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {approvedProfiles.map(p => {
+          {/* Racer Selector & Add User ID Input */}
+          <div className="rounded-2xl border border-white/[0.05] p-4 sm:p-5" style={panelStyle}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <div>
+                <p className="text-[10px] text-zinc-500 uppercase font-mono font-bold tracking-widest">
+                  Compare Racers
+                  <span className="ml-2 text-zinc-400 font-mono">({selectedProfileIds.length} selected)</span>
+                </p>
+                <p className="text-zinc-500 text-xs mt-0.5">Toggle racers below or enter any User ID / @username to add.</p>
+              </div>
+
+              {/* Add Racer by User ID Form with Live Suggestions */}
+              <div className="relative" ref={searchContainerRef}>
+                <form onSubmit={handleAddUserById} className="flex items-center gap-1.5 shrink-0">
+                  <div className="relative">
+                    <UserPlus className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={userIdInput}
+                      onFocus={() => setShowSuggestions(true)}
+                      onChange={(e) => { 
+                        setUserIdInput(e.target.value); 
+                        setAddError(''); 
+                        setShowSuggestions(true);
+                      }}
+                      placeholder="User ID or @username..."
+                      className="pl-8 pr-3 py-1.5 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500/50 w-48 xs:w-56 sm:w-64 transition-colors font-mono"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1 shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add</span>
+                  </button>
+                </form>
+
+                {/* Floating Live Suggestions Dropdown */}
+                <AnimatePresence>
+                  {showSuggestions && userIdInput.trim() && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      transition={{ duration: 0.12 }}
+                      className="absolute top-full left-0 right-0 mt-1.5 rounded-xl border border-zinc-800 bg-[#0d0d11]/95 backdrop-blur-md shadow-2xl p-1.5 z-50 max-h-56 overflow-y-auto font-sans"
+                    >
+                      {userSuggestions.length === 0 ? (
+                        <div className="px-3 py-2 text-center text-[11px] text-zinc-500 font-mono">
+                          No local match. Click <span className="text-violet-400 font-semibold">Add</span> to search database.
+                        </div>
+                      ) : (
+                        userSuggestions.map(u => {
+                          const isAlreadyAdded = selectedProfileIds.includes(u.id);
+                          return (
+                            <div
+                              key={u.id}
+                              onClick={() => {
+                                if (!isAlreadyAdded) {
+                                  setSelectedProfileIds(prev => [...prev, u.id]);
+                                } else {
+                                  setSelectedProfileIds(prev => prev.filter(id => id !== u.id));
+                                }
+                                setUserIdInput('');
+                                setShowSuggestions(false);
+                              }}
+                              className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                                isAlreadyAdded
+                                  ? 'bg-violet-500/[0.08] text-violet-300'
+                                  : 'hover:bg-zinc-800/80 text-zinc-200'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Avatar user={u} size="sm" />
+                                <div className="min-w-0">
+                                  <p className="text-xs font-semibold truncate">{u.display_name}</p>
+                                  <p className="text-[9px] font-mono text-zinc-500 truncate">
+                                    {u.username ? `@${u.username}` : `ID: ${u.id.slice(0, 8)}...`}
+                                  </p>
+                                </div>
+                              </div>
+                              {isAlreadyAdded ? (
+                                <span className="text-[10px] font-mono text-violet-400 font-bold px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 shrink-0">
+                                  Selected ✓
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-mono text-emerald-400 font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 shrink-0 flex items-center gap-0.5">
+                                  <Plus className="w-2.5 h-2.5" /> Select
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {addError && (
+              <p className="text-[11px] text-red-400 font-mono mb-2 px-1">{addError}</p>
+            )}
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              {allAvailableProfiles.map(p => {
                 const isSelected = selectedProfileIds.includes(p.id);
                 return (
                   <button
@@ -371,7 +558,7 @@ const ComparePage = () => {
                     }}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold cursor-pointer transition-all select-none ${
                       isSelected
-                        ? 'bg-violet-500/[0.08] text-violet-300 border-violet-500/25'
+                        ? 'bg-violet-500/[0.08] text-violet-300 border-violet-500/25 shadow-sm'
                         : 'text-zinc-500 border-white/[0.05] hover:text-zinc-300 hover:bg-white/[0.03]'
                     }`}
                   >
@@ -386,8 +573,15 @@ const ComparePage = () => {
 
           {/* Overall Completion Rankings */}
           {userCompletionRankings.length > 0 && (
-            <div className="rounded-2xl border border-white/[0.05] p-4" style={panelStyle}>
-              <p className="text-[10px] text-zinc-600 uppercase font-bold tracking-widest mb-3">Overall Completion</p>
+            <div className="rounded-2xl border border-white/[0.05] p-4 sm:p-5" style={panelStyle}>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <p className="text-[10px] text-zinc-500 uppercase font-mono font-bold tracking-widest">
+                  Overall Completion <span className="text-zinc-600 font-normal">(Top 10 Racers)</span>
+                </p>
+                <span className="text-[10px] font-mono text-zinc-600">
+                  Top 10 Max
+                </span>
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
                 {userCompletionRankings.map((user, idx) => (
                   <div key={user.id} className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.04] bg-white/[0.02]">
@@ -396,7 +590,7 @@ const ComparePage = () => {
                       <p className="text-xs font-semibold text-zinc-300 truncate">{user.display_name}</p>
                       <div className="flex items-center gap-1.5 mt-1">
                         {idx === 0 && <Crown className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />}
-                        <p className="text-[11px] font-bold text-violet-400">{user.pct}%</p>
+                        <p className="text-[11px] font-bold text-violet-400 font-mono">{user.pct}%</p>
                       </div>
                       {/* Mini bar */}
                       <div className="w-full h-0.5 bg-zinc-900 rounded-full mt-1.5 overflow-hidden">
@@ -413,11 +607,11 @@ const ComparePage = () => {
           <div className="rounded-2xl border border-white/[0.05] p-5 flex flex-col min-h-[380px]" style={panelStyle}>
             <div className="flex items-center gap-2 mb-5">
               <Users className="w-3.5 h-3.5 text-violet-400" />
-              <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Topic Completion (%)</p>
+              <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest font-mono">Topic Completion (%)</p>
             </div>
             {activeProfiles.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center text-xs text-zinc-700">
-                Select racers above to compare.
+              <div className="flex-1 flex items-center justify-center text-xs text-zinc-600 font-mono">
+                Select or add racers above to compare.
               </div>
             ) : (
               <div className="flex-1 w-full overflow-x-auto custom-scrollbar">
@@ -443,24 +637,26 @@ const ComparePage = () => {
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-5">
               <div className="flex items-center gap-2">
                 <Award className="w-3.5 h-3.5 text-violet-400" />
-                <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Subtopic Completion (%)</p>
+                <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest font-mono">Subtopic Completion (%)</p>
               </div>
               <select
                 value={activeCompareTopic}
                 onChange={e => setActiveCompareTopic(e.target.value)}
-                className="px-3 py-2 text-xs rounded-xl glass-input text-zinc-300 focus:outline-none cursor-pointer w-full sm:w-52"
+                className="px-3 py-1.5 text-xs rounded-xl glass-input text-zinc-300 focus:outline-none cursor-pointer bg-zinc-900 border border-zinc-800"
               >
-                {uniqueTopics.map(t => <option key={t} value={t}>{t}</option>)}
+                {uniqueTopics.map(t => (
+                  <option key={t} value={t} className="bg-zinc-900 text-zinc-300">{t}</option>
+                ))}
               </select>
             </div>
             {activeProfiles.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center text-xs text-zinc-700">
-                Select racers above to compare.
+              <div className="flex-1 flex items-center justify-center text-xs text-zinc-600 font-mono">
+                Select or add racers above to compare subtopics.
               </div>
             ) : (
               <div className="flex-1 w-full overflow-x-auto custom-scrollbar">
-                <div style={{ minWidth: Math.max(700, subtopicComparisonData.length * 160) }}>
-                  <ResponsiveContainer width="100%" height={300}>
+                <div style={{ minWidth: Math.max(600, subtopicComparisonData.length * 120) }}>
+                  <ResponsiveContainer width="100%" height={320}>
                     <BarChart data={subtopicComparisonData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                       <XAxis dataKey="name" stroke="#27272a" tick={{ fill: '#52525b', fontSize: 9 }} height={35} interval={0} />
                       <YAxis domain={[0, 100]} stroke="#27272a" tick={{ fill: '#3f3f46', fontSize: 10 }} />
@@ -479,230 +675,146 @@ const ComparePage = () => {
       )}
 
       {/* ═══════════════════════════════════════════════════
-          TAB: 1V1 DUEL
+          TAB: 1v1 DUEL
       ════════════════════════════════════════════════════ */}
       {activeTab === 'duel' && (
-        <div className="space-y-5 animate-fadeIn">
+        <div className="space-y-6 animate-fadeIn">
 
-          {/* VS Hero Card */}
-          <div className="rounded-2xl border border-white/[0.05] overflow-hidden relative" style={{ background: 'rgba(11,11,14,0.9)' }}>
-            {/* Ambient glow strip */}
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
-
-            <div className="flex flex-col md:flex-row items-center gap-4 sm:gap-6 p-4 sm:p-6 relative">
-              {/* You */}
-              {currentProfile && (
-                <div className="flex items-center gap-3.5 sm:gap-4 flex-1 w-full">
-                  <div
-                    className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold text-white text-xl sm:text-2xl uppercase overflow-hidden border border-violet-500/20 shrink-0"
-                    style={{
-                      backgroundColor: currentProfile.avatar_url ? 'transparent' : (currentProfile.avatar_color || '#6366f1'),
-                      boxShadow: `0 0 32px ${currentProfile.avatar_color || '#6366f1'}33`,
-                    }}
-                  >
-                    {currentProfile.avatar_url
-                      ? <img src={currentProfile.avatar_url} alt={currentProfile.display_name} className="w-full h-full object-cover" />
-                      : currentProfile.display_name.charAt(0)
-                    }
-                  </div>
-                  <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                    <span className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-[9px] font-bold uppercase tracking-widest border border-violet-500/15">YOU</span>
-                    <h3 className="text-base sm:text-lg font-bold text-zinc-100 leading-tight truncate">{currentProfile.display_name}</h3>
-                    <p className="text-[10px] text-zinc-600 truncate">{myAchievements.unlockedCount} Badges · {myStreak}d streak</p>
-                  </div>
-                </div>
-              )}
-
-              {/* VS */}
-              <div className="flex flex-col items-center shrink-0 gap-1 my-1 md:my-0">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-violet-500/20 bg-violet-500/[0.06] flex items-center justify-center">
-                  <Swords className="w-4 h-4 text-violet-400" />
-                </div>
-                <span className="text-[9px] font-black text-violet-500 tracking-widest">VS</span>
+          {/* Opponent Selector Banner */}
+          <div className="rounded-2xl border border-white/[0.05] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={panelStyle}>
+            <div className="flex items-center gap-3">
+              <Avatar user={currentProfile || { display_name: 'You' }} size="md" />
+              <span className="text-zinc-500 font-bold text-sm">VS</span>
+              {competitorProfile && <Avatar user={competitorProfile} size="md" />}
+              <div>
+                <p className="text-xs font-bold text-white">1v1 Head-to-Head Duel</p>
+                <p className="text-[11px] text-zinc-500">Comparing your stats against {competitorProfile?.display_name || 'Rival'}</p>
               </div>
+            </div>
 
-              {/* Opponent */}
-              <div className="flex items-center gap-3.5 sm:gap-4 flex-1 w-full justify-start md:justify-end text-left md:text-right">
-                {competitorProfile ? (
-                  <>
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold text-white text-xl sm:text-2xl uppercase overflow-hidden border border-white/10 shrink-0 order-1 md:order-2"
-                      style={{
-                        backgroundColor: competitorProfile.avatar_url ? 'transparent' : (competitorProfile.avatar_color || '#10b981'),
-                        boxShadow: `0 0 32px ${competitorProfile.avatar_color || '#10b981'}33`,
-                      }}
-                    >
-                      {competitorProfile.avatar_url
-                        ? <img src={competitorProfile.avatar_url} alt={competitorProfile.display_name} className="w-full h-full object-cover" />
-                        : competitorProfile.display_name.charAt(0)
-                      }
-                    </div>
-                    <div className="space-y-1 flex flex-col items-start md:items-end min-w-0 order-2 md:order-1">
-                      <span className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest">Opponent</span>
-                      <CompetitorSelect value={duelCompetitorId} onChange={setDuelCompetitorId} options={duelCompetitors} />
-                      <p className="text-[10px] text-zinc-600 truncate">{compAchievements.unlockedCount} Badges · {compStreak}d streak</p>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-xs text-zinc-700">No other competitors yet.</div>
-                )}
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-500 uppercase font-mono font-bold">Select Rival:</span>
+              <CompetitorSelect
+                value={duelCompetitorId}
+                onChange={setDuelCompetitorId}
+                options={duelCompetitors}
+              />
             </div>
           </div>
 
-          {/* Stat Metric Cards */}
-          {competitorProfile && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <StatDuelCard
-                label="Questions Solved"
-                icon={Trophy}
-                myValue={mySolved}
-                compValue={compSolved}
-                myLabel="You"
-                compLabel={competitorProfile.display_name}
-                myColor="text-violet-400"
-                compColor="text-zinc-300"
-                verdict={{
-                  win: `You lead by ${mySolved - compSolved} solve${mySolved - compSolved !== 1 ? 's' : ''}`,
-                  lose: `Rival leads by ${compSolved - mySolved} solve${compSolved - mySolved !== 1 ? 's' : ''}`,
-                  tie: 'Perfectly tied!',
-                }}
-              />
-              <StatDuelCard
-                label="Active Streak"
-                icon={Flame}
-                myValue={myStreak}
-                compValue={compStreak}
-                myLabel="You"
-                compLabel={competitorProfile.display_name}
-                myColor="text-orange-400"
-                compColor="text-zinc-300"
-                unit="d"
-                verdict={{
-                  win: 'You have the hotter streak 🔥',
-                  lose: "Rival's streak is stronger",
-                  tie: 'Streaks are identical!',
-                }}
-              />
-              <StatDuelCard
-                label="Badges Unlocked"
-                icon={Award}
-                myValue={myAchievements.unlockedCount}
-                compValue={compAchievements.unlockedCount}
-                myLabel="You"
-                compLabel={competitorProfile.display_name}
-                myColor="text-amber-400"
-                compColor="text-zinc-300"
-                verdict={{
-                  win: 'More badges unlocked',
-                  lose: 'Rival has more achievements',
-                  tie: 'Badges are tied!',
-                }}
-              />
-            </div>
-          )}
+          {/* Key Stat Cards (3 grid) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <StatDuelCard
+              label="Total Problems Solved"
+              icon={Trophy}
+              myValue={mySolved}
+              compValue={compSolved}
+              myLabel={currentProfile?.display_name || 'You'}
+              compLabel={competitorProfile?.display_name || 'Rival'}
+              myColor="text-violet-400"
+              compColor="text-emerald-400"
+              unit={` / ${questions.length}`}
+              verdict={{
+                win: `${mySolved - compSolved} problems ahead!`,
+                lose: `${compSolved - mySolved} problems behind`,
+                tie: 'Perfectly tied!',
+              }}
+            />
 
-          {/* Topic Duel List + Catch-Up */}
-          {competitorProfile && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* Topic Duel List */}
-              <div className="rounded-2xl border border-white/[0.05] flex flex-col" style={panelStyle}>
-                <div className="flex items-center gap-2 px-5 pt-5 pb-3 border-b border-white/[0.04]">
-                  <Crown className="w-3.5 h-3.5 text-amber-400" />
-                  <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Topic Duel (%)</p>
-                </div>
-                <div className="space-y-1 max-h-[400px] overflow-y-auto px-4 py-3 custom-scrollbar">
-                  {duelTopicComparison.map(t => {
-                    const myWins = t.myPct >= t.compPct;
-                    return (
-                      <div key={t.name} className="py-2.5 border-b border-white/[0.03] last:border-0">
-                        <div className="flex justify-between items-center mb-1.5">
-                          <span className="text-xs font-semibold text-zinc-300">{t.name}</span>
-                          <span className="text-[10px] text-zinc-600 font-mono">
-                            {t.mySolved} vs {t.compSolved}
-                            <span className="text-zinc-700"> / {t.total}</span>
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-0.5">
-                            <div className="flex justify-between text-[9px] font-bold leading-none">
-                              <span className={myWins ? 'text-violet-400' : 'text-zinc-600'}>You</span>
-                              <span className={myWins ? 'text-violet-400' : 'text-zinc-600'}>{t.myPct}%</span>
-                            </div>
-                            <div className="h-1 bg-zinc-900 rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-500 ${myWins ? 'bg-violet-500' : 'bg-zinc-700'}`}
-                                style={{ width: `${t.myPct}%` }} />
-                            </div>
-                          </div>
-                          <div className="space-y-0.5">
-                            <div className="flex justify-between text-[9px] leading-none">
-                              <span className={!myWins ? 'text-emerald-400' : 'text-zinc-600'}>{competitorProfile.display_name}</span>
-                              <span className={!myWins ? 'text-emerald-400' : 'text-zinc-600'}>{t.compPct}%</span>
-                            </div>
-                            <div className="h-1 bg-zinc-900 rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-500 ${!myWins ? 'bg-emerald-500' : 'bg-zinc-700'}`}
-                                style={{ width: `${t.compPct}%` }} />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            <StatDuelCard
+              label="Active Daily Streak"
+              icon={Flame}
+              myValue={myStreak}
+              compValue={compStreak}
+              myLabel={currentProfile?.display_name || 'You'}
+              compLabel={competitorProfile?.display_name || 'Rival'}
+              myColor="text-orange-400"
+              compColor="text-amber-400"
+              unit="d"
+              verdict={{
+                win: `${myStreak - compStreak} days longer streak!`,
+                lose: `${compStreak - myStreak} days shorter streak`,
+                tie: 'Equal streak!',
+              }}
+            />
+
+            <StatDuelCard
+              label="Achievements Unlocked"
+              icon={Award}
+              myValue={myAchievements.unlockedCount}
+              compValue={compAchievements.unlockedCount}
+              myLabel={currentProfile?.display_name || 'You'}
+              compLabel={competitorProfile?.display_name || 'Rival'}
+              myColor="text-cyan-400"
+              compColor="text-indigo-400"
+              unit=" badges"
+              verdict={{
+                win: `${myAchievements.unlockedCount - compAchievements.unlockedCount} more badges!`,
+                lose: `${compAchievements.unlockedCount - myAchievements.unlockedCount} fewer badges`,
+                tie: 'Same badge count!',
+              }}
+            />
+          </div>
+
+          {/* Catch Up Problems to Solve */}
+          {catchUpProblems.length > 0 && (
+            <div className="rounded-2xl border border-white/[0.05] p-5" style={panelStyle}>
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <h3 className="text-xs font-bold text-white">Catch-Up Target Problems</h3>
+                <span className="text-[10px] text-zinc-500 font-mono">({competitorProfile?.display_name} solved these, but you haven't yet)</span>
               </div>
-
-              {/* Catch-Up Plan */}
-              <div className="rounded-2xl border border-white/[0.05] flex flex-col" style={panelStyle}>
-                <div className="flex items-center gap-2 px-5 pt-5 pb-3 border-b border-white/[0.04]">
-                  <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-                  <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Catch-Up Plan</p>
-                </div>
-
-                <div className="px-5 pt-3 pb-1">
-                  <p className="text-[11px] text-zinc-600 leading-relaxed">
-                    Problems <span className="text-zinc-400 font-medium">{competitorProfile.display_name}</span> solved but you haven't yet — close the gap!
-                  </p>
-                </div>
-
-                <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 custom-scrollbar">
-                  {catchUpProblems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/[0.06] border border-emerald-500/10 flex items-center justify-center">
-                        <BookOpen className="w-5 h-5 text-emerald-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-zinc-400">No lead detected!</p>
-                        <p className="text-[10px] text-zinc-700 mt-0.5">You've solved everything they've solved or more.</p>
-                      </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {catchUpProblems.map(q => (
+                  <a
+                    key={q.id}
+                    href={q.leetcode_link || '#'}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-3 rounded-xl border border-white/[0.04] bg-white/[0.02] hover:bg-white/[0.05] transition-all flex items-center justify-between group cursor-pointer"
+                  >
+                    <div className="min-w-0 pr-2">
+                      <p className="text-[10px] font-mono text-zinc-500 truncate">{q.topic}</p>
+                      <p className="text-xs font-semibold text-zinc-200 group-hover:text-amber-400 transition-colors truncate">{q.problem_name}</p>
                     </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {catchUpProblems.map(q => (
-                        <div key={q.id}
-                          className="flex items-center justify-between gap-3 p-3 rounded-xl border border-white/[0.04] bg-white/[0.02] hover:bg-white/[0.04] hover:border-violet-500/15 transition-all group">
-                          <div className="min-w-0 flex-1">
-                            <h4 className="text-xs font-semibold text-zinc-200 truncate group-hover:text-violet-300 transition-colors">
-                              {q.problem_name}
-                            </h4>
-                            <p className="text-[9px] text-zinc-600 mt-0.5">{q.topic} · {q.subtopic || 'General'}</p>
-                          </div>
-                          {q.link && (
-                            <a href={q.link} target="_blank" rel="noreferrer"
-                              className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold text-violet-400 bg-violet-500/[0.08] hover:bg-violet-500/[0.18] rounded-lg border border-violet-500/15 transition-all cursor-pointer shrink-0">
-                              <span>Solve</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          )}
-                        </div>
-                      ))}
-                      <p className="text-[9px] text-zinc-700 text-right italic mt-1">
-                        * Top recommendations to close the gap
-                      </p>
-                    </div>
-                  )}
-                </div>
+                    <ExternalLink className="w-3.5 h-3.5 text-zinc-600 group-hover:text-white shrink-0 transition-colors" />
+                  </a>
+                ))}
               </div>
             </div>
           )}
+
+          {/* Topic-by-Topic Breakdown Chart */}
+          <div className="rounded-2xl border border-white/[0.05] p-5 flex flex-col min-h-[380px]" style={panelStyle}>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <Swords className="w-4 h-4 text-violet-400" />
+                <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest font-mono">1v1 Topic Breakdown (%)</p>
+              </div>
+              <div className="flex items-center gap-4 text-xs font-mono">
+                <span className="text-violet-400 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-violet-500" /> {currentProfile?.display_name || 'You'}
+                </span>
+                <span className="text-emerald-400 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> {competitorProfile?.display_name || 'Rival'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex-1 w-full overflow-x-auto custom-scrollbar">
+              <div style={{ minWidth: Math.max(900, duelTopicComparison.length * 90) }}>
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={duelTopicComparison} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                    <XAxis dataKey="name" stroke="#27272a" tick={{ fill: '#52525b', fontSize: 9 }} height={35} interval={0} />
+                    <YAxis domain={[0, 100]} stroke="#27272a" tick={{ fill: '#3f3f46', fontSize: 10 }} />
+                    <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
+                    <Bar dataKey="myPct" name={currentProfile?.display_name || 'You'} fill="#8b5cf6" radius={[3, 3, 0, 0]} maxBarSize={20} />
+                    <Bar dataKey="compPct" name={competitorProfile?.display_name || 'Rival'} fill="#10b981" radius={[3, 3, 0, 0]} maxBarSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </motion.div>
