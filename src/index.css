@@ -27,10 +27,22 @@
 /* ── Apple Smooth Motion Variables ── */
 :root {
   --apple-ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --apple-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --apple-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --apple-duration: 0.25s;
 }
 
-/* ── Hardware Acceleration & Smooth Native Scrolling ── */
+/* ─────────────────────────────────────────
+   GLOBAL APPLE SMOOTH HOVER OVERRIDES
+──────────────────────────────────────────── */
+*, *:before, *:after {
+  box-sizing: inherit;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  transition-timing-function: var(--apple-ease);
+}
+
 html {
   -webkit-text-size-adjust: 100%;
   box-sizing: border-box;
@@ -41,14 +53,6 @@ html, body, main, [class*="overflow-y-auto"], [class*="overflow-auto"] {
   -webkit-overflow-scrolling: touch;
 }
 
-*, *:before, *:after {
-  box-sizing: inherit;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
 body {
   background-color: #09090b;
   color: #f4f4f5;
@@ -57,6 +61,33 @@ body {
   width: 100%;
   min-height: 100vh;
   min-height: -webkit-fill-available;
+}
+
+/* ── Universal Interactive Elements Smooth Hover ── */
+button, 
+a, 
+input, 
+select, 
+textarea, 
+.cursor-pointer,
+[role="button"] {
+  transition-property: color, background-color, border-color, stroke, fill, opacity, box-shadow, transform, backdrop-filter;
+  transition-timing-function: var(--apple-ease);
+  transition-duration: 0.22s;
+  will-change: transform, opacity;
+}
+
+button:hover,
+a:hover,
+.btn-apple:hover {
+  transition-duration: 0.22s;
+}
+
+button:active:not(:disabled), 
+a:active, 
+.btn-apple:active:not(:disabled) {
+  transform: scale(0.975);
+  transition-duration: 0.1s;
 }
 
 /* ── Apple-style Smooth Scrollbars ── */
@@ -94,18 +125,25 @@ body {
 }
 
 /* ─────────────────────────────────────────
-   APPLE GLASS PANEL & SMOOTH HOVERS
+   APPLE GLASS PANEL & CARD HOVERS
 ──────────────────────────────────────────── */
 .glass-panel {
   background: rgba(18, 18, 22, 0.55);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: background-color 0.3s var(--apple-ease), border-color 0.3s var(--apple-ease), box-shadow 0.3s var(--apple-ease), transform 0.3s var(--apple-ease);
+  transition: background-color 0.28s var(--apple-ease), 
+              border-color 0.28s var(--apple-ease), 
+              box-shadow 0.28s var(--apple-ease), 
+              transform 0.28s var(--apple-ease);
+  will-change: transform;
 }
 
 .glass-panel-hover {
-  transition: border-color 0.3s var(--apple-ease), transform 0.3s var(--apple-ease), box-shadow 0.3s var(--apple-ease);
+  transition: border-color 0.28s var(--apple-ease), 
+              transform 0.28s var(--apple-ease), 
+              box-shadow 0.28s var(--apple-ease),
+              background-color 0.28s var(--apple-ease);
   will-change: transform;
 }
 
@@ -116,7 +154,8 @@ body {
 }
 
 .glass-panel-hover:active {
-  transform: translateY(0) scale(0.995);
+  transform: translateY(0) scale(0.99);
+  transition-duration: 0.1s;
 }
 
 /* ─────────────────────────────────────────
@@ -127,7 +166,10 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: border-color 0.2s var(--apple-ease), background-color 0.2s var(--apple-ease), box-shadow 0.2s var(--apple-ease);
+  transition: border-color 0.22s var(--apple-ease), 
+              background-color 0.22s var(--apple-ease), 
+              box-shadow 0.22s var(--apple-ease),
+              color 0.22s var(--apple-ease);
 }
 
 .glass-input:focus {
@@ -135,18 +177,6 @@ body {
   border-color: rgba(255, 255, 255, 0.25);
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
   outline: none;
-}
-
-/* ─────────────────────────────────────────
-   INTERACTIVE BUTTON MICRO-ANIMATIONS
-──────────────────────────────────────────── */
-button, .btn-apple {
-  transition: transform 0.18s var(--apple-ease), background-color 0.2s var(--apple-ease), border-color 0.2s var(--apple-ease), opacity 0.2s var(--apple-ease), box-shadow 0.2s var(--apple-ease);
-  will-change: transform;
-}
-
-button:active:not(:disabled), .btn-apple:active:not(:disabled) {
-  transform: scale(0.975);
 }
 
 /* ─────────────────────────────────────────
@@ -179,7 +209,7 @@ button:active:not(:disabled), .btn-apple:active:not(:disabled) {
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.2s var(--apple-ease) both;
+  animation: fadeIn 0.22s var(--apple-ease) both;
 }
 
 @keyframes shimmer {
@@ -199,14 +229,19 @@ button:active:not(:disabled), .btn-apple:active:not(:disabled) {
 select, option {
   background-color: #111113;
   color: #d4d4d8;
+  transition: background-color 0.22s var(--apple-ease), color 0.22s var(--apple-ease);
 }
 
 /* ── Amber/rose utility helpers ── */
 .bg-rose-500\/8  { background-color: rgba(239, 68, 68, 0.08); }
 .bg-violet-500\/8 { background-color: rgba(139, 92, 246, 0.08); }
 
-/* ── Table reset ── */
+/* ── Table reset & smooth row hovers ── */
 table { border-collapse: collapse; }
+
+tr, td, th {
+  transition: background-color 0.22s var(--apple-ease), border-color 0.22s var(--apple-ease), color 0.22s var(--apple-ease);
+}
 
 /* ── Layout grid ── */
 .app-container {
@@ -236,11 +271,11 @@ table { border-collapse: collapse; }
 
 /* ── DSA Sheet Table Row Styling ── */
 .dsa-table-row td {
-  transition: background-color 0.2s var(--apple-ease);
+  transition: background-color 0.22s var(--apple-ease), border-color 0.22s var(--apple-ease);
 }
 /* Default hover for rows */
 .dsa-table-row-hover:hover td:not([rowspan]) {
-  background-color: rgba(255, 255, 255, 0.025);
+  background-color: rgba(255, 255, 255, 0.03);
 }
 /* Target only non-rowspan cells for status backgrounds */
 .dsa-row-surprise td:not([rowspan]) {
