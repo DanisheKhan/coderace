@@ -39,7 +39,7 @@ export async function fetchMonkeytypeData(apeKey) {
     // Parse PBs for 15, 30, 60, 120 modes
     const getPB = (duration) => {
       const list = pbData[duration];
-      if (!list || !list.length) return { wpm: null, acc: null };
+      if (!list || !list.length) return { wpm: null, acc: null, consistency: null };
       
       // Find the best wpm test in the array
       let best = list[0];
@@ -50,7 +50,8 @@ export async function fetchMonkeytypeData(apeKey) {
       }
       return { 
         wpm: Math.round(best.wpm * 10) / 10, 
-        acc: Math.round(best.acc * 10) / 10 
+        acc: Math.round(best.acc * 10) / 10,
+        consistency: best.consistency ? Math.round(best.consistency * 10) / 10 : null
       };
     };
 
@@ -62,12 +63,16 @@ export async function fetchMonkeytypeData(apeKey) {
     return {
       wpm_15: pb15.wpm,
       acc_15: pb15.acc,
+      consistency_15: pb15.consistency,
       wpm_30: pb30.wpm,
       acc_30: pb30.acc,
+      consistency_30: pb30.consistency,
       wpm_60: pb60.wpm,
       acc_60: pb60.acc,
+      consistency_60: pb60.consistency,
       wpm_120: pb120.wpm,
       acc_120: pb120.acc,
+      consistency_120: pb120.consistency,
       tests_started: statsData.startedTests || 0,
       tests_completed: statsData.completedTests || 0,
       time_typing: statsData.timeTyping || 0,
@@ -88,14 +93,19 @@ export async function syncTypingProfileToSupabase(userId, parsedStats) {
     user_id: userId,
     wpm_15: parsedStats.wpm_15,
     acc_15: parsedStats.acc_15,
+    consistency_15: parsedStats.consistency_15,
     wpm_30: parsedStats.wpm_30,
     acc_30: parsedStats.acc_30,
+    consistency_30: parsedStats.consistency_30,
     wpm_60: parsedStats.wpm_60,
     acc_60: parsedStats.acc_60,
+    consistency_60: parsedStats.consistency_60,
     wpm_120: parsedStats.wpm_120,
     acc_120: parsedStats.acc_120,
+    consistency_120: parsedStats.consistency_120,
     tests_started: parsedStats.tests_started,
     tests_completed: parsedStats.tests_completed,
+    time_typing: parsedStats.time_typing,
     last_synced: new Date().toISOString(),
   };
 
