@@ -14,7 +14,8 @@ import {
   Keyboard,
   ChevronLeft,
   ChevronRight,
-  Brain
+  Brain,
+  Users
 } from 'lucide-react';
 import EditProfileModal from '../EditProfileModal';
 import { useProgressStore } from '../../store/progressStore';
@@ -32,6 +33,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     { name: 'Dashboard',   path: '/dashboard',   icon: LayoutDashboard },
     { name: 'My Sheet',    path: '/sheet',        icon: TableProperties },
     { name: 'Leaderboard', path: '/leaderboard',  icon: Trophy },
+    { name: 'Communities', path: '/communities',  icon: Users },
     { name: 'Compare',     path: '/compare',      icon: BarChart3 },
     { name: 'Achievements', path: '/achievements', icon: Award },
     { name: 'Typing',      path: '/typing',       icon: Keyboard },

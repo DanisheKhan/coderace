@@ -18,6 +18,7 @@ import PendingApprovalPage from './pages/PendingApprovalPage';
 import AdminPage from './pages/AdminPage';
 import TypingPage from './pages/TypingPage';
 import JavaQuizPage from './pages/JavaQuizPage';
+import CommunitiesPage from './pages/CommunitiesPage';
 
 // Layout
 import Layout from './components/layout/Layout';
@@ -206,6 +207,7 @@ function AppRoutes() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="sheet" element={<MySheetPage />} />
         <Route path="leaderboard" element={<LeaderboardPage />} />
+        <Route path="communities" element={<CommunitiesPage />} />
         <Route path="compare" element={<ComparePage />} />
         <Route path="achievements" element={<AchievementsPage />} />
         <Route path="typing" element={<TypingPage />} />

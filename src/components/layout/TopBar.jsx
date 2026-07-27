@@ -25,6 +25,7 @@ const PAGE_TITLES = {
   '/dashboard':   'Dashboard',
   '/sheet':       'My Sheet',
   '/leaderboard': 'Leaderboard',
+  '/communities': 'Communities',
   '/compare':     'Compare',
   '/achievements':'Achievements',
   '/typing':      'Typing',
