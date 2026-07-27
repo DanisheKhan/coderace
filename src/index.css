@@ -290,3 +290,14 @@ tr, td, th {
 .dsa-row-attempted td:not([rowspan]) {
   background-color: rgba(245, 158, 11, 0.025);
 }
+
+/* ── Hide Scrollbar Utility Class ── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}

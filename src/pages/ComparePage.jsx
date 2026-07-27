@@ -6,7 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { calculateUserAchievements, calculateStreak } from '../lib/achievements';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Users, Award, Flame, Trophy, ExternalLink, Sparkles, BookOpen, Crown, ChevronDown, Swords, UserPlus, Plus, Check } from 'lucide-react';
+import { Users, Award, Flame, Trophy, ExternalLink, Sparkles, BookOpen, Crown, ChevronDown, Swords, UserPlus, Plus, Check, Eye } from 'lucide-react';
+import UserProfileModal from '../components/UserProfileModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pageTransition, staggerContainer, fadeUp } from '../lib/animations';
 
@@ -196,6 +197,7 @@ const ComparePage = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [addError, setAddError] = useState('');
   const [customProfiles, setCustomProfiles] = useState([]);
+  const [selectedModalUser, setSelectedModalUser] = useState(null);
   const searchContainerRef = useRef(null);
 
   // Approved profiles
@@ -549,23 +551,39 @@ const ComparePage = () => {
               {allAvailableProfiles.map(p => {
                 const isSelected = selectedProfileIds.includes(p.id);
                 return (
-                  <button
+                  <div
                     key={p.id}
-                    onClick={() => {
-                      setSelectedProfileIds(prev =>
-                        prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id]
-                      );
-                    }}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold cursor-pointer transition-all select-none ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all select-none ${
                       isSelected
                         ? 'bg-violet-500/[0.08] text-violet-300 border-violet-500/25 shadow-sm'
                         : 'text-zinc-500 border-white/[0.05] hover:text-zinc-300 hover:bg-white/[0.03]'
                     }`}
                   >
-                    <Avatar user={p} size="sm" />
-                    <span>{p.display_name}</span>
-                    {isSelected && <span className="text-[10px] text-violet-400 ml-0.5">✓</span>}
-                  </button>
+                    <div 
+                      className="flex items-center gap-2 cursor-pointer flex-1 min-w-0"
+                      onClick={() => {
+                        setSelectedProfileIds(prev =>
+                          prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id]
+                        );
+                      }}
+                    >
+                      <Avatar user={p} size="sm" />
+                      <span className="truncate">{p.display_name}</span>
+                      {isSelected && <span className="text-[10px] text-violet-400">✓</span>}
+                    </div>
+
+                    {/* View Profile Icon Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedModalUser(p);
+                      }}
+                      className="p-1 rounded-md bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                      title="View Racer Profile"
+                    >
+                      <Eye className="w-3 h-3" />
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -584,10 +602,17 @@ const ComparePage = () => {
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
                 {userCompletionRankings.map((user, idx) => (
-                  <div key={user.id} className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.04] bg-white/[0.02]">
+                  <div
+                    key={user.id} 
+                    onClick={() => setSelectedModalUser(user)}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.04] bg-white/[0.02] hover:bg-white/[0.06] transition-all cursor-pointer group relative"
+                  >
                     <Avatar user={user} size="md" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-zinc-300 truncate">{user.display_name}</p>
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-xs font-semibold text-zinc-300 group-hover:text-amber-400 transition-colors truncate">{user.display_name}</p>
+                        <Eye className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-300 transition-colors shrink-0" title="View Profile" />
+                      </div>
                       <div className="flex items-center gap-1.5 mt-1">
                         {idx === 0 && <Crown className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />}
                         <p className="text-[11px] font-bold text-violet-400 font-mono">{user.pct}%</p>
@@ -816,6 +841,16 @@ const ComparePage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* User Profile Modal when clicking view profile icon */}
+      {selectedModalUser && (
+        <UserProfileModal
+          user={selectedModalUser}
+          progress={progress}
+          questions={questions}
+          onClose={() => setSelectedModalUser(null)}
+        />
       )}
     </motion.div>
   );

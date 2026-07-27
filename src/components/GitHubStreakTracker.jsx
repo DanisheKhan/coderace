@@ -126,7 +126,6 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
     let prevMonth = -1;
 
     weeksData.forEach((week, weekIdx) => {
-      // Check first day of week
       const firstDay = week.days[0];
       const month = firstDay.date.getMonth();
 
@@ -179,20 +178,19 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
         </div>
       </div>
 
-      {/* ── Heatmap Container ── */}
-      <div className="overflow-x-auto custom-scrollbar pb-2 pt-1">
-        <div className="min-w-[700px] space-y-1">
+      {/* ── Heatmap Container with Clean Padding ── */}
+      <div className="overflow-x-auto no-scrollbar py-2">
+        <div className="min-w-[760px] space-y-1.5 px-2">
           
           {/* Month Labels Row (positioned accurately) */}
           <div className="relative h-4 text-[9px] font-mono text-zinc-500 select-none">
             {monthLabels.map((m, idx) => {
-              // Prevent label overlaps if columns are too close
               if (idx > 0 && m.colIndex - monthLabels[idx - 1].colIndex < 3) return null;
               return (
                 <span
                   key={`${m.name}-${m.colIndex}`}
                   className="absolute top-0 text-zinc-400 font-semibold"
-                  style={{ left: `calc(2rem + ${m.colIndex * 13}px)` }}
+                  style={{ left: `calc(2.25rem + ${m.colIndex * 13}px)` }}
                 >
                   {m.name}
                 </span>
@@ -201,20 +199,19 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
           </div>
 
           {/* Heatmap Grid Row */}
-          <div className="flex items-start gap-2">
-            {/* Day Labels Column */}
-            <div className="flex flex-col justify-between text-[9px] font-mono text-zinc-600 h-[88px] pt-[1px] shrink-0 w-6 select-none">
+          <div className="flex items-start gap-2.5 pl-1 pr-8">
+            {/* Day Labels Column with proper width & padding */}
+            <div className="flex flex-col justify-between text-[9px] font-mono text-zinc-500 h-[88px] pt-[1px] shrink-0 w-7 select-none">
               <span>Mon</span>
               <span>Wed</span>
               <span>Fri</span>
             </div>
 
             {/* 52 Weeks Columns */}
-            <div className="flex gap-[3px] flex-1">
+            <div className="flex gap-[3px] flex-1 py-1">
               {weeksData.map((week) => (
                 <div key={week.weekIndex} className="flex flex-col gap-[3px] shrink-0">
                   {week.days.map((day) => {
-                    // Future days are completely removed/hidden
                     if (day.isFuture) {
                       return (
                         <div
@@ -231,7 +228,7 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
                         onMouseLeave={() => setHoveredDay(null)}
                         className={`w-[10px] h-[10px] rounded-[2px] border transition-all cursor-pointer relative ${getColorClass(day.count)} ${
                           day.isToday
-                            ? 'ring-2 ring-emerald-400 ring-offset-1 ring-offset-[#09090b] shadow-[0_0_8px_rgba(52,211,153,0.9)] z-10'
+                            ? 'ring-2 ring-emerald-400 ring-offset-1 ring-offset-[#09090b] shadow-[0_0_8px_rgba(52,211,153,0.9)] z-10 scale-105'
                             : ''
                         }`}
                       />
@@ -243,7 +240,7 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
           </div>
 
           {/* Bottom Footer: Active Tooltip & Color Legend */}
-          <div className="flex items-center justify-between pt-3 text-[10px] font-mono text-zinc-500 flex-wrap gap-2">
+          <div className="flex items-center justify-between pt-3 text-[10px] font-mono text-zinc-500 flex-wrap gap-2 px-1">
             <div className="min-h-[16px] text-zinc-300">
               {hoveredDay ? (
                 <span>
@@ -261,7 +258,7 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
               <div className="w-[10px] h-[10px] rounded-[2px] bg-[#0e4429]" />
               <div className="w-[10px] h-[10px] rounded-[2px] bg-[#006d32]" />
               <div className="w-[10px] h-[10px] rounded-[2px] bg-[#26a641]" />
-              <div className="w-[10px] h-[10px] rounded-[2px] bg-[#39d353]" />
+              <div className="w-[10px] h-[10px] rounded-[2px] bg-[#39d353] shadow-sm shadow-[#39d353]/60" />
               <span>More</span>
             </div>
           </div>
