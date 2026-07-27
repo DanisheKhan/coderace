@@ -198,7 +198,7 @@ export default function TypingPage() {
         <div className="lg:col-span-7 space-y-4">
           <div className="glass-panel rounded-xl overflow-hidden border border-zinc-800/80">
             {/* Card Header */}
-            <div className="px-4 py-3 border-b border-zinc-800/80 flex items-center justify-between gap-4 flex-wrap">
+            <div className="px-5 py-3.5 border-b border-zinc-800/80 flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-amber-400" />
                 <h2 className="text-xs font-bold text-zinc-200 uppercase font-mono tracking-wider">Speed Rankings</h2>
@@ -231,17 +231,17 @@ export default function TypingPage() {
               </div>
             ) : (
               <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left border-collapse" style={{ minWidth: 540 }}>
+                <table className="w-full text-left border-collapse" style={{ minWidth: 620 }}>
                   <thead>
                     <tr className="border-b border-zinc-800/80 text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
-                      <th className="py-2.5 pl-4 w-10">#</th>
-                      <th className="py-2.5">Racer</th>
-                      <th className="py-2.5 text-center">Peak WPM</th>
-                      <th className="py-2.5 text-center">15s</th>
-                      <th className="py-2.5 text-center">30s</th>
-                      <th className="py-2.5 text-center">60s</th>
-                      <th className="py-2.5 text-center">120s</th>
-                      <th className="py-2.5 text-right pr-4">Tests</th>
+                      <th className="py-3 pl-5 w-12 text-center">#</th>
+                      <th className="py-3 px-3">Racer</th>
+                      <th className="py-3 px-3 text-center">Peak WPM</th>
+                      <th className="py-3 px-3 text-center">15s</th>
+                      <th className="py-3 px-3 text-center">30s</th>
+                      <th className="py-3 px-3 text-center">60s</th>
+                      <th className="py-3 px-3 text-center">120s</th>
+                      <th className="py-3 pr-5 text-right">Tests</th>
                     </tr>
                   </thead>
                   <motion.tbody variants={staggerContainer}>
@@ -249,9 +249,14 @@ export default function TypingPage() {
                       const isSelf = item.id === profile?.id;
                       const rank = idx + 1;
 
-                      const wpmCell = (wpm, acc) => wpm
-                        ? <span className="font-mono text-xs text-zinc-300">{wpm} <span className="text-[9px] text-zinc-600">({acc}%)</span></span>
-                        : <span className="text-zinc-700 text-xs font-mono">—</span>;
+                      const wpmCell = (wpm, acc) => wpm ? (
+                        <div className="flex flex-col items-center justify-center font-mono">
+                          <span className="text-xs font-semibold text-zinc-200">{wpm}</span>
+                          {acc != null && <span className="text-[9px] text-zinc-500 font-normal">{acc}%</span>}
+                        </div>
+                      ) : (
+                        <span className="text-zinc-700 text-xs font-mono block text-center">—</span>
+                      );
 
                       return (
                         <motion.tr
@@ -262,23 +267,23 @@ export default function TypingPage() {
                           className={`cursor-pointer transition-colors border-b border-zinc-800/40 ${isSelf ? 'bg-amber-500/[0.03]' : ''}`}
                         >
                           {/* Rank badge */}
-                          <td className="py-3 pl-4">
+                          <td className="py-3.5 pl-5 text-center">
                             {rank === 1 ? (
-                              <span className="w-6 h-6 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs font-bold flex items-center justify-center">1</span>
+                              <span className="w-6 h-6 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs font-bold flex items-center justify-center mx-auto">1</span>
                             ) : rank === 2 ? (
-                              <span className="w-6 h-6 rounded-md bg-zinc-700/20 border border-zinc-700/30 text-zinc-300 font-mono text-xs font-bold flex items-center justify-center">2</span>
+                              <span className="w-6 h-6 rounded-md bg-zinc-700/20 border border-zinc-700/30 text-zinc-300 font-mono text-xs font-bold flex items-center justify-center mx-auto">2</span>
                             ) : rank === 3 ? (
-                              <span className="w-6 h-6 rounded-md bg-orange-950/30 border border-orange-800/30 text-orange-400 font-mono text-xs font-bold flex items-center justify-center">3</span>
+                              <span className="w-6 h-6 rounded-md bg-orange-950/30 border border-orange-800/30 text-orange-400 font-mono text-xs font-bold flex items-center justify-center mx-auto">3</span>
                             ) : (
-                              <span className="text-xs font-mono font-medium text-zinc-500 pl-1">#{rank}</span>
+                              <span className="text-xs font-mono font-medium text-zinc-500">#{rank}</span>
                             )}
                           </td>
 
                           {/* Racer Avatar & Info */}
-                          <td className="py-3">
+                          <td className="py-3.5 px-3">
                             <div className="flex items-center gap-2.5 min-w-0">
                               <div
-                                className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white uppercase text-[10px] shrink-0 overflow-hidden border border-zinc-700"
+                                className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-[10px] shrink-0 overflow-hidden border border-zinc-700"
                                 style={{ backgroundColor: item.avatar_url ? 'transparent' : (item.avatar_color || '#6366f1') }}
                               >
                                 {item.avatar_url ? (
@@ -302,20 +307,20 @@ export default function TypingPage() {
                           </td>
 
                           {/* Peak WPM */}
-                          <td className="py-3 text-center">
-                            <span className="text-xs font-bold font-mono text-amber-400">
+                          <td className="py-3.5 px-3 text-center">
+                            <span className="text-xs font-bold font-mono text-amber-400 block">
                               {item.highestWPM > 0 ? item.highestWPM : '—'}
                             </span>
                           </td>
 
                           {/* Category PBs */}
-                          <td className="py-3 text-center">{wpmCell(item.stats.wpm_15, item.stats.acc_15)}</td>
-                          <td className="py-3 text-center">{wpmCell(item.stats.wpm_30, item.stats.acc_30)}</td>
-                          <td className="py-3 text-center">{wpmCell(item.stats.wpm_60, item.stats.acc_60)}</td>
-                          <td className="py-3 text-center">{wpmCell(item.stats.wpm_120, item.stats.acc_120)}</td>
+                          <td className="py-3.5 px-3 text-center">{wpmCell(item.stats.wpm_15, item.stats.acc_15)}</td>
+                          <td className="py-3.5 px-3 text-center">{wpmCell(item.stats.wpm_30, item.stats.acc_30)}</td>
+                          <td className="py-3.5 px-3 text-center">{wpmCell(item.stats.wpm_60, item.stats.acc_60)}</td>
+                          <td className="py-3.5 px-3 text-center">{wpmCell(item.stats.wpm_120, item.stats.acc_120)}</td>
 
                           {/* Tests */}
-                          <td className="py-3 text-right pr-4 font-mono text-xs text-zinc-500">
+                          <td className="py-3.5 pr-5 text-right font-mono text-xs text-zinc-400">
                             {item.stats.tests_completed?.toLocaleString() || 0}
                           </td>
                         </motion.tr>

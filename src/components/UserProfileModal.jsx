@@ -236,10 +236,36 @@ export default function UserProfileModal({ user, progress, questions, onClose })
 
   const pct = questions.length > 0 ? Math.round((stats.solved / questions.length) * 100) : 0;
 
+  // ── Monkeytype Speed Helpers ──
+  const topWPM = Math.max(
+    typingProfile?.wpm_15 || 0,
+    typingProfile?.wpm_30 || 0,
+    typingProfile?.wpm_60 || 0,
+    typingProfile?.wpm_120 || 0
+  );
+
+  const completionRate = typingProfile?.tests_started > 0
+    ? Math.round((typingProfile.tests_completed / typingProfile.tests_started) * 100)
+    : 0;
+
+  const formatTime = (seconds) => {
+    if (!seconds) return '0m';
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+  };
+
+  const speedModes = [
+    { label: '15s', wpm: typingProfile?.wpm_15, acc: typingProfile?.acc_15, consistency: typingProfile?.consistency_15 },
+    { label: '30s', wpm: typingProfile?.wpm_30, acc: typingProfile?.acc_30, consistency: typingProfile?.consistency_30 },
+    { label: '60s', wpm: typingProfile?.wpm_60, acc: typingProfile?.acc_60, consistency: typingProfile?.consistency_60 },
+    { label: '120s', wpm: typingProfile?.wpm_120, acc: typingProfile?.acc_120, consistency: typingProfile?.consistency_120 },
+  ];
+
   const TABS = [
     { id: 'overview', label: 'Overview',                                         icon: BarChart2 },
     { id: 'solved',   label: `Solved (${allSolvedList.length})`,                 icon: CheckCircle2 },
-    { id: 'speed',    label: `Speed${typingProfile?.wpm_15 ? ` · ${Math.max(typingProfile.wpm_15||0, typingProfile.wpm_30||0, typingProfile.wpm_60||0, typingProfile.wpm_120||0)}` : ''}`, icon: Keyboard },
+    { id: 'speed',    label: `Speed${topWPM > 0 ? ` · ${topWPM}` : ''}`,          icon: Keyboard },
     { id: 'quiz',     label: `Quiz${quizAttempts.length > 0 ? ` (${quizAttempts.length})` : ''}`,  icon: Brain },
   ];
 
@@ -480,7 +506,7 @@ export default function UserProfileModal({ user, progress, questions, onClose })
 
           {/* ── SOLVED TAB ── */}
           {activeModalTab === 'solved' && (
-            <div className="space-y-4 animate-fadeIn">
+            <div className="space-y-4 font-sans animate-fadeIn">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
@@ -526,42 +552,155 @@ export default function UserProfileModal({ user, progress, questions, onClose })
 
           {/* ── SPEED TAB ── */}
           {activeModalTab === 'speed' && (
-            <div className="space-y-4 animate-fadeIn">
+            <div className="space-y-4 font-sans animate-fadeIn">
               {typingProfile ? (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+                  {/* Top WPM Summary Banner */}
+                  <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between flex-wrap gap-3">
                     <div>
-                      <span className="text-[9px] uppercase font-mono text-amber-500/70 font-bold block mb-1">Peak Speed</span>
-                      <span className="text-3xl font-extrabold text-amber-400 font-mono tracking-tight">
-                        {Math.max(typingProfile.wpm_15 || 0, typingProfile.wpm_30 || 0, typingProfile.wpm_60 || 0, typingProfile.wpm_120 || 0)}
-                      </span>
-                      <span className="text-xs font-bold text-amber-600 ml-1">WPM</span>
+                      <span className="text-[9px] uppercase font-mono text-zinc-500 font-bold block mb-1">Peak Speed · All Modes</span>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-3xl font-extrabold text-amber-400 font-mono tracking-tight">{topWPM > 0 ? topWPM : '--'}</span>
+                        <span className="text-[10px] font-bold text-amber-500 uppercase">WPM</span>
+                      </div>
                     </div>
+
+                    <div className="text-right">
+                      <span className="text-[9px] uppercase font-mono text-zinc-500 font-bold block mb-1">Tests Completed</span>
+                      <span className="text-xl font-bold text-zinc-200 font-mono">
+                        {typingProfile.tests_completed?.toLocaleString() || 0}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 4 Mode Benchmark Cards Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {speedModes.map((item) => {
+                      const isBest = item.wpm && item.wpm === topWPM && topWPM > 0;
+                      return (
+                        <div
+                          key={item.label}
+                          className={`p-3.5 rounded-xl border transition-all ${
+                            isBest 
+                              ? 'bg-amber-500/[0.08] border-amber-500/30 shadow-sm shadow-amber-500/10' 
+                              : 'bg-zinc-900/40 border-zinc-800/60'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[9px] font-mono text-zinc-500 uppercase font-bold">{item.label} Mode</span>
+                            {isBest && (
+                              <span className="text-[8px] font-bold font-mono text-amber-400 bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20">
+                                BEST
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xl font-extrabold font-mono text-zinc-100">
+                            {item.wpm != null ? `${item.wpm}` : '—'}
+                            <span className="text-[9px] text-zinc-500 font-normal ml-1">wpm</span>
+                          </div>
+
+                          <div className="mt-2 pt-2 border-t border-zinc-800/60 space-y-1 text-[9px] font-mono text-zinc-400">
+                            <div className="flex justify-between">
+                              <span className="text-zinc-500">Accuracy</span>
+                              <span className="font-bold text-emerald-400">{item.acc != null ? `${item.acc}%` : '—'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-zinc-500">Consistency</span>
+                              <span className="font-bold text-amber-400/80">{item.consistency != null ? `${item.consistency}%` : '—'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Typing Metrics Footer Strip */}
+                  <div className="p-3.5 rounded-xl bg-zinc-900/40 border border-zinc-800/60 flex items-center justify-between text-xs font-mono text-zinc-400 flex-wrap gap-3">
+                    <div className="flex items-center gap-5 flex-wrap">
+                      <div>
+                        <span className="text-zinc-500 text-[10px] block">Completion</span>
+                        <strong className="text-emerald-400 font-bold text-sm">{completionRate}%</strong>
+                      </div>
+                      <div>
+                        <span className="text-zinc-500 text-[10px] block">Time Typing</span>
+                        <strong className="text-violet-300 font-bold text-sm">{formatTime(typingProfile.time_typing)}</strong>
+                      </div>
+                      <div>
+                        <span className="text-zinc-500 text-[10px] block">Tests Started</span>
+                        <strong className="text-zinc-200 font-bold text-sm">{typingProfile.tests_started?.toLocaleString() || 0}</strong>
+                      </div>
+                    </div>
+
+                    {user.monkeytype_username && (
+                      <a
+                        href={`https://monkeytype.com/profile/${user.monkeytype_username}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-amber-400 hover:underline flex items-center gap-1 font-mono shrink-0"
+                      >
+                        @{user.monkeytype_username} <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
                   </div>
                 </div>
               ) : (
-                <div className="py-12 text-center text-xs text-zinc-500 italic">No speed data available for this racer.</div>
+                <div className="py-12 text-center text-xs text-zinc-500 italic">No Monkeytype speed profile linked or cached for this racer.</div>
               )}
             </div>
           )}
 
           {/* ── QUIZ TAB ── */}
           {activeModalTab === 'quiz' && (
-            <div className="space-y-4 animate-fadeIn">
+            <div className="space-y-4 font-sans animate-fadeIn">
               {quizAttempts.length > 0 ? (
-                <div className="space-y-2 max-h-[480px] overflow-y-auto custom-scrollbar">
-                  {quizAttempts.map(att => (
-                    <div key={att.id} className="p-3 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between">
-                      <div>
-                        <span className="text-xs font-bold text-zinc-200 font-mono">Score: {att.score} / {att.total_questions}</span>
-                        <span className="text-[10px] text-zinc-500 font-mono block">{new Date(att.created_at).toLocaleDateString()}</span>
-                      </div>
-                      <span className="text-xs font-bold font-mono text-emerald-400">{att.percentage}%</span>
+                <div className="space-y-4">
+                  {/* Quiz Summary Bar */}
+                  <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                      <span className="text-[9px] uppercase font-mono text-zinc-500 font-bold block mb-1">Highest Score</span>
+                      <span className="text-3xl font-extrabold text-emerald-400 font-mono tracking-tight">{quizStats.best ? `${quizStats.best.percentage}%` : '0%'}</span>
                     </div>
-                  ))}
+
+                    <div className="flex items-center gap-5 font-mono text-xs">
+                      <div>
+                        <span className="text-zinc-500 text-[10px] block">Average</span>
+                        <strong className="text-violet-300 font-bold text-sm">{quizStats.average}%</strong>
+                      </div>
+                      <div>
+                        <span className="text-zinc-500 text-[10px] block">Quizzes Taken</span>
+                        <strong className="text-zinc-200 font-bold text-sm">{quizStats.total}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Past Quiz Attempts List */}
+                  <div className="space-y-2 max-h-[380px] overflow-y-auto custom-scrollbar pr-1">
+                    {quizAttempts.map((att, idx) => (
+                      <div key={att.id || idx} className="p-3 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Brain className="w-3.5 h-3.5 text-violet-400" />
+                            <span className="text-xs font-bold text-zinc-200 font-mono">Score: {att.score} / {att.total_questions}</span>
+                          </div>
+                          <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
+                            Attempted on {new Date(att.created_at).toLocaleDateString()} at {new Date(att.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded border ${
+                          Number(att.percentage) >= 80 
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : Number(att.percentage) >= 50
+                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        }`}>
+                          {att.percentage}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
-                <div className="py-12 text-center text-xs text-zinc-500 italic">No quiz attempts recorded yet.</div>
+                <div className="py-12 text-center text-xs text-zinc-500 italic">No Java Quiz attempts recorded yet.</div>
               )}
             </div>
           )}

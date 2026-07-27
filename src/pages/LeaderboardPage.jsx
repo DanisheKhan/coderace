@@ -38,9 +38,8 @@ const calculateUserStreak = (userId, progress) => {
 };
 
 // ── Podium Card (Top 3) ────────────────────────────────────────────────────────
-const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
+const PodiumCard = ({ user, rank, questions, currentProfileId, onClick, timeframe = 'weekly' }) => {
   const totalQ = questions.length || 502;
-  const pct = Math.round((user.solved / totalQ) * 100);
   const isCurrent = user.id === currentProfileId;
 
   const configs = {
@@ -128,9 +127,18 @@ const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
           <p className={`text-[9px] sm:text-[10px] font-semibold ${c.labelColor} truncate`}>{c.label}</p>
         </div>
 
-        <div className="text-center">
-          <span className="text-xs sm:text-sm font-extrabold font-mono text-zinc-100">{user.solved}</span>
-          <span className="text-[9px] sm:text-[10px] text-zinc-600 font-mono"> /{totalQ}</span>
+        <div className="text-center font-mono">
+          {timeframe === 'weekly' ? (
+            <>
+              <span className="text-xs sm:text-sm font-extrabold text-emerald-400">+{user.solvedThisWeek}</span>
+              <span className="text-[9px] sm:text-[10px] text-zinc-500 block leading-none">this week</span>
+            </>
+          ) : (
+            <>
+              <span className="text-xs sm:text-sm font-extrabold text-amber-400">{user.solved}</span>
+              <span className="text-[9px] sm:text-[10px] text-zinc-600"> /{totalQ}</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -151,41 +159,11 @@ const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
   );
 };
 
-// ── Rank Styles for 4+ ─────────────────────────────────────────────────────────
-const RANK_STYLES = {
-  1: {
-    cardBg: 'bg-gradient-to-r from-amber-500/8 via-yellow-500/3 to-transparent border-amber-500/25',
-    badgeBg: 'bg-gradient-to-br from-amber-400 to-yellow-500 text-zinc-950 font-extrabold shadow-sm',
-    barColor: 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500',
-    icon: Crown,
-    iconClass: 'text-zinc-950 fill-zinc-950',
-    titleBadge: 'bg-amber-500/15 text-amber-300 border border-amber-400/25',
-    titleText: '#1 Champion',
-  },
-  2: {
-    cardBg: 'bg-gradient-to-r from-zinc-300/8 via-zinc-400/3 to-transparent border-zinc-300/25',
-    badgeBg: 'bg-gradient-to-br from-zinc-200 to-zinc-400 text-zinc-950 font-extrabold shadow-sm',
-    barColor: 'bg-gradient-to-r from-zinc-200 via-zinc-300 to-zinc-400',
-    icon: Medal,
-    iconClass: 'text-zinc-950 fill-zinc-950',
-    titleBadge: 'bg-zinc-300/15 text-zinc-300 border border-zinc-300/25',
-    titleText: '#2 Runner Up',
-  },
-  3: {
-    cardBg: 'bg-gradient-to-r from-amber-700/10 via-amber-800/3 to-transparent border-amber-700/25',
-    badgeBg: 'bg-gradient-to-br from-amber-600 to-amber-800 text-white font-extrabold shadow-sm',
-    barColor: 'bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800',
-    icon: Medal,
-    iconClass: 'text-white fill-white',
-    titleBadge: 'bg-amber-700/15 text-amber-400 border border-amber-600/25',
-    titleText: '#3 Bronze',
-  },
-};
-
 const LeaderboardPage = () => {
   const { profiles, progress } = useProgressStore();
   const { questions } = useQuestions();
   const { profile: currentProfile } = useAuth();
+  const [timeframe, setTimeframe] = useState('weekly'); // 'weekly' | 'alltime'
   const [selectedUser, setSelectedUser] = useState(null);
   const [quizBests, setQuizBests] = useState({});
   const [recentQuizAttempts, setRecentQuizAttempts] = useState([]);
@@ -211,7 +189,7 @@ const LeaderboardPage = () => {
 
   const leaderboard = useMemo(() => {
     const sevenAgo = Date.now() - 7 * 86400000;
-    return approvedProfiles.map(p => {
+    const mapped = approvedProfiles.map(p => {
       const up = progress.filter(pr => pr.user_id === p.id);
       const solved = up.filter(pr => pr.status === 'done').length;
       const solvedThisWeek = up.filter(pr => pr.status === 'done' && new Date(pr.updated_at).getTime() >= sevenAgo).length;
@@ -219,8 +197,14 @@ const LeaderboardPage = () => {
       const { unlockedCount } = calculateUserAchievements(p.id, progress, questions);
       const quiz = quizBests[p.id] || null;
       return { ...p, solved, solvedThisWeek, streak, unlockedCount, quiz };
-    }).sort((a, b) => b.solved !== a.solved ? b.solved - a.solved : b.streak - a.streak);
-  }, [approvedProfiles, progress, questions, quizBests]);
+    });
+
+    if (timeframe === 'weekly') {
+      return mapped.sort((a, b) => b.solvedThisWeek !== a.solvedThisWeek ? b.solvedThisWeek - a.solvedThisWeek : b.solved - a.solved);
+    }
+
+    return mapped.sort((a, b) => b.solved !== a.solved ? b.solved - a.solved : b.streak - a.streak);
+  }, [approvedProfiles, progress, questions, quizBests, timeframe]);
 
   const recentActivities = useMemo(() => {
     const seen = new Set();
@@ -234,7 +218,7 @@ const LeaderboardPage = () => {
       if (!seen.has(key)) {
         seen.add(key);
         const u = approvedProfiles.find(pr => pr.id === p.user_id);
-        if (!u) continue; // Skip activities of unapproved users
+        if (!u) continue;
         const q = questions.find(qn => qn.id === p.question_id);
         dsaList.push({
           id: p.id,
@@ -251,7 +235,6 @@ const LeaderboardPage = () => {
       }
     }
 
-    // Combine with quiz attempts
     const combined = [...dsaList, ...recentQuizAttempts];
     combined.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
@@ -268,34 +251,63 @@ const LeaderboardPage = () => {
       animate="show"
       exit="exit"
       variants={pageTransition}
-      className="space-y-6 max-w-7xl mx-auto pb-8"
+      className="space-y-6 max-w-7xl mx-auto pb-8 font-sans"
     >
-      
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 border-b border-white/[0.05]">
+      {/* ── Header Bar ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800/80">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-xl font-bold tracking-tight text-zinc-100">Leaderboard</h1>
-            <span className="text-[10px] px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/15 font-mono font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse inline-block" />
-              Live Rankings
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-lg font-bold tracking-tight text-white">Leaderboard</h1>
+            <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-bold uppercase tracking-wider flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              {timeframe === 'weekly' ? 'Weekly Standings' : 'All-Time Standings'}
             </span>
           </div>
-          <p className="text-zinc-600 text-xs">Real-time DSA problem-solving leaderboard across all registered racers.</p>
+          <p className="text-zinc-500 text-xs mt-0.5">Real-time DSA problem-solving leaderboard across all registered racers.</p>
         </div>
-        <div className="flex items-center gap-2.5">
-          <div className="px-3.5 py-2 rounded-xl border border-white/[0.06] flex items-center gap-2" style={{ background: 'rgba(14,14,17,0.8)' }}>
-            <Trophy className="w-3.5 h-3.5 text-amber-400" />
-            <div>
-              <p className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest">Racers</p>
-              <p className="text-sm font-bold text-zinc-100 leading-none">{leaderboard.length}</p>
-            </div>
+
+        {/* Timeframe Selector & Stats Badges */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Toggle Switch */}
+          <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
+            <button
+              onClick={() => setTimeframe('weekly')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                timeframe === 'weekly'
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Weekly</span>
+            </button>
+            <button
+              onClick={() => setTimeframe('alltime')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                timeframe === 'alltime'
+                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span>All-Time</span>
+            </button>
           </div>
-          <div className="px-3.5 py-2 rounded-xl border border-white/[0.06] flex items-center gap-2" style={{ background: 'rgba(14,14,17,0.8)' }}>
-            <Flame className="w-3.5 h-3.5 text-orange-400" />
-            <div>
-              <p className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest">Top Streak</p>
-              <p className="text-sm font-bold text-zinc-100 leading-none">{Math.max(...leaderboard.map(u => u.streak || 0), 0)}d</p>
+
+          <div className="flex items-center gap-2">
+            <div className="px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/60 flex items-center gap-2">
+              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <div>
+                <p className="text-[9px] text-zinc-500 uppercase font-mono font-bold">Racers</p>
+                <p className="text-xs font-bold text-zinc-100 leading-none">{leaderboard.length}</p>
+              </div>
+            </div>
+            <div className="px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/60 flex items-center gap-2">
+              <Flame className="w-3.5 h-3.5 text-orange-400" />
+              <div>
+                <p className="text-[9px] text-zinc-500 uppercase font-mono font-bold">Top Streak</p>
+                <p className="text-xs font-bold text-zinc-100 leading-none">{Math.max(...leaderboard.map(u => u.streak || 0), 0)}d</p>
+              </div>
             </div>
           </div>
         </div>
@@ -308,9 +320,14 @@ const LeaderboardPage = () => {
 
           {/* Podium (Top 3) */}
           {top3.length >= 2 && (
-            <div className="rounded-2xl border border-white/[0.05] overflow-hidden" style={{ background: 'rgba(11,11,14,0.7)' }}>
-              <div className="px-5 pt-4 pb-1 border-b border-white/[0.04]">
-                <p className="text-[10px] text-zinc-600 uppercase font-bold tracking-widest">Top Performers</p>
+            <div className="glass-panel rounded-xl border border-zinc-800/80 overflow-hidden">
+              <div className="px-4 py-3 border-b border-zinc-800/80 flex items-center justify-between">
+                <p className="text-xs font-bold text-zinc-300 font-mono uppercase tracking-wider">
+                  {timeframe === 'weekly' ? 'Top Performers This Week' : 'All-Time Champions'}
+                </p>
+                <span className="text-[10px] font-mono text-emerald-400">
+                  {timeframe === 'weekly' ? 'Updated live (last 7 days)' : 'All-time total'}
+                </span>
               </div>
               <motion.div 
                 variants={staggerContainer}
@@ -326,6 +343,7 @@ const LeaderboardPage = () => {
                     questions={questions}
                     currentProfileId={currentProfile?.id}
                     onClick={() => setSelectedUser(user)}
+                    timeframe={timeframe}
                   />
                 ))}
               </motion.div>
@@ -334,15 +352,16 @@ const LeaderboardPage = () => {
 
           {/* Leaderboard List (4+) */}
           {restList.length > 0 && (
-            <div className="rounded-2xl border border-white/[0.05] overflow-hidden" style={{ background: 'rgba(11,11,14,0.7)' }}>
-              <div className="px-5 py-3 border-b border-white/[0.04]">
-                <p className="text-[10px] text-zinc-600 uppercase font-bold tracking-widest">Rankings</p>
+            <div className="glass-panel rounded-xl border border-zinc-800/80 overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-zinc-800/80 flex items-center justify-between">
+                <p className="text-[10px] text-zinc-500 uppercase font-mono font-bold tracking-wider">Rankings</p>
+                <p className="text-[10px] text-zinc-500 font-mono">{timeframe === 'weekly' ? 'Sorted by Weekly Solved' : 'Sorted by Total Solved'}</p>
               </div>
               <motion.div 
                 variants={staggerContainer}
                 initial="hidden"
                 animate="show"
-                className="divide-y divide-white/[0.04]"
+                className="divide-y divide-zinc-800/50"
               >
                 {restList.map((user, idx) => {
                   const rank = idx + 4;
@@ -355,20 +374,20 @@ const LeaderboardPage = () => {
                       variants={fadeUp}
                       whileHover={{ scale: 1.002, x: 2, transition: { duration: 0.15 } }}
                       onClick={() => setSelectedUser(user)}
-                      className={`flex items-center gap-2.5 sm:gap-4 px-3 sm:px-5 py-3.5 transition-all cursor-pointer group ${
+                      className={`flex items-center gap-2.5 sm:gap-4 px-3 sm:px-5 py-3 transition-all cursor-pointer group ${
                         isCurrent
-                          ? 'bg-violet-500/[0.06] hover:bg-violet-500/[0.09]'
-                          : 'hover:bg-white/[0.02]'
+                          ? 'bg-amber-500/[0.04] hover:bg-amber-500/[0.07]'
+                          : 'hover:bg-zinc-800/40'
                       }`}
                     >
                       {/* Rank */}
                       <div className="w-8 text-center shrink-0">
-                        <span className="text-xs font-bold font-mono text-zinc-600">#{rank}</span>
+                        <span className="text-xs font-bold font-mono text-zinc-500">#{rank}</span>
                       </div>
 
                       {/* Avatar */}
                       <div
-                        className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-sm uppercase shrink-0 overflow-hidden border border-white/10 group-hover:scale-105 transition-transform"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-xs uppercase shrink-0 overflow-hidden border border-zinc-700 group-hover:scale-105 transition-transform"
                         style={{ backgroundColor: user.avatar_url ? 'transparent' : (user.avatar_color || '#6366f1') }}
                       >
                         {user.avatar_url ? (
@@ -381,36 +400,45 @@ const LeaderboardPage = () => {
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-semibold text-zinc-200 truncate group-hover:text-zinc-100 transition-colors">
+                          <span className="text-xs font-semibold text-zinc-200 truncate group-hover:text-white transition-colors">
                             {user.display_name}
                           </span>
                           {isCurrent && (
-                            <span className="px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 text-[9px] font-extrabold uppercase tracking-wider border border-violet-500/20 shrink-0">
+                            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold font-mono uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
                               YOU
                             </span>
                           )}
                         </div>
                         {/* Mini progress bar */}
-                        <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
+                        <div className="w-full bg-zinc-900 h-1 rounded-full overflow-hidden border border-zinc-800">
                           <div
-                            className="h-full rounded-full bg-gradient-to-r from-violet-600 to-indigo-500 transition-all duration-700"
+                            className={`h-full rounded-full transition-all duration-700 ${timeframe === 'weekly' ? 'bg-emerald-500' : 'bg-amber-500'}`}
                             style={{ width: `${Math.max(user.solved > 0 ? 2 : 0, pct)}%` }}
                           />
                         </div>
                       </div>
 
                       {/* Stats */}
-                      <div className="flex items-center gap-4 shrink-0">
+                      <div className="flex items-center gap-4 shrink-0 font-mono">
                         <div className="text-right">
-                          <span className="text-sm font-bold font-mono text-zinc-200">{user.solved}</span>
-                          <span className="text-[10px] text-zinc-700 font-mono"> /{totalQ}</span>
+                          {timeframe === 'weekly' ? (
+                            <>
+                              <span className="text-xs font-bold text-emerald-400">+{user.solvedThisWeek}</span>
+                              <span className="text-[9px] text-zinc-500 block leading-tight">this week</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-xs font-bold text-zinc-200">{user.solved}</span>
+                              <span className="text-[9px] text-zinc-600"> /{totalQ}</span>
+                            </>
+                          )}
                         </div>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedUser(user);
                           }}
-                          className="p-1.5 rounded-lg bg-zinc-800/50 hover:bg-violet-600/25 border border-white/[0.04] hover:border-violet-500/30 text-zinc-400 hover:text-violet-400 transition-all flex items-center justify-center cursor-pointer shrink-0 touch-target"
+                          className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-all flex items-center justify-center cursor-pointer shrink-0"
                           title="View Profile"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -425,27 +453,27 @@ const LeaderboardPage = () => {
 
           {/* Empty state */}
           {leaderboard.length === 0 && (
-            <div className="text-center py-16 rounded-2xl border border-white/[0.05]" style={{ background: 'rgba(14,14,17,0.8)' }}>
-              <Trophy className="w-10 h-10 text-zinc-800 mx-auto mb-3" />
-              <p className="text-zinc-600 text-sm">No members registered yet.</p>
+            <div className="text-center py-16 rounded-xl border border-zinc-800 bg-zinc-900/40">
+              <Trophy className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
+              <p className="text-zinc-500 text-xs font-semibold">No racers registered yet.</p>
             </div>
           )}
         </div>
 
         {/* ── Activity Feed ── */}
-        <div className="rounded-2xl border border-white/[0.05] h-fit" style={{ background: 'rgba(11,11,14,0.7)' }}>
-          <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-3 border-b border-white/[0.04]">
+        <div className="glass-panel rounded-xl border border-zinc-800/80 h-fit overflow-hidden">
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-zinc-800/80">
             <div className="flex items-center gap-2">
-              <Activity className="w-3.5 h-3.5 text-violet-400" />
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Recent Activity</h3>
+              <Activity className="w-3.5 h-3.5 text-amber-400" />
+              <h3 className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400">Recent Activity</h3>
             </div>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Live stream" />
           </div>
 
           {recentActivities.length === 0 ? (
-            <p className="text-xs text-zinc-700 py-8 text-center px-4">No recent activity.</p>
+            <p className="text-xs text-zinc-600 py-8 text-center px-4 font-mono">No recent activity.</p>
           ) : (
-            <div className="divide-y divide-white/[0.03]">
+            <div className="divide-y divide-zinc-800/40">
               {recentActivities.map((act) => (
                 <div
                   key={act.id}
@@ -456,10 +484,10 @@ const LeaderboardPage = () => {
                       setSelectedUser(leaderboardUser || { ...u, solved: 0, solvedThisWeek: 0, streak: 0 });
                     }
                   }}
-                  className="flex items-start gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors cursor-pointer group"
+                  className="flex items-start gap-3 px-4 py-3 hover:bg-zinc-800/40 transition-colors cursor-pointer group"
                 >
                   <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white text-[11px] uppercase shrink-0 overflow-hidden border border-white/10 mt-0.5"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white text-[11px] uppercase shrink-0 overflow-hidden border border-zinc-700 mt-0.5"
                     style={{ backgroundColor: act.avatarUrl ? 'transparent' : act.avatarColor }}
                   >
                     {act.avatarUrl ? (
@@ -470,11 +498,11 @@ const LeaderboardPage = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1">
-                      <p className="text-xs font-semibold text-zinc-300 group-hover:text-violet-300 transition-colors truncate">
+                      <p className="text-xs font-semibold text-zinc-300 group-hover:text-amber-400 transition-colors truncate">
                         {act.userName}
                       </p>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[9px] text-zinc-700 shrink-0 font-mono">
+                        <span className="text-[9px] text-zinc-500 shrink-0 font-mono">
                           {formatRelativeTime(act.updatedAt)}
                         </span>
                         <button
@@ -486,7 +514,7 @@ const LeaderboardPage = () => {
                               setSelectedUser(leaderboardUser || { ...u, solved: 0, solvedThisWeek: 0, streak: 0 });
                             }
                           }}
-                          className="p-1 rounded-md bg-white/[0.02] hover:bg-violet-600/20 border border-white/[0.04] hover:border-violet-500/20 text-zinc-500 hover:text-violet-400 transition-colors shrink-0 flex items-center justify-center cursor-pointer"
+                          className="p-1 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-500 hover:text-white transition-colors shrink-0 flex items-center justify-center cursor-pointer"
                           title="View Profile"
                         >
                           <Eye className="w-3 h-3" />
@@ -495,11 +523,11 @@ const LeaderboardPage = () => {
                     </div>
                     {act.type === 'quiz' ? (
                       <>
-                        <p className="text-[10px] text-zinc-600 mt-0.5 truncate">
+                        <p className="text-[10px] text-zinc-500 mt-0.5 truncate">
                           Scored <span className="text-emerald-400 font-bold font-mono">{act.score}/{act.total}</span> ({act.percentage}%) on Java Quiz
                         </p>
                         <div className="flex items-center gap-2 mt-1.5">
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-600/10 text-violet-400 border border-violet-500/15 font-semibold flex items-center gap-1">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold flex items-center gap-1 font-mono">
                             <Brain className="w-2.5 h-2.5" />
                             Java Quiz
                           </span>
@@ -507,14 +535,14 @@ const LeaderboardPage = () => {
                       </>
                     ) : (
                       <>
-                        <p className="text-[10px] text-zinc-600 mt-0.5 truncate">
-                          Solved <span className="text-zinc-400 font-medium">{act.problemName}</span>
+                        <p className="text-[10px] text-zinc-500 mt-0.5 truncate">
+                          Solved <span className="text-zinc-300 font-medium">{act.problemName}</span>
                         </p>
                         <div className="flex items-center gap-2 mt-1.5">
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-zinc-600 border border-white/[0.04] font-medium">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800 font-mono">
                             {act.topic}
                           </span>
-                          <DiffDot d={act.difficulty} />
+                          <DiffDot difficulty={act.difficulty} />
                         </div>
                       </>
                     )}
