@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useProgressStore } from '../store/progressStore';
 import { useQuestions } from '../contexts/QuestionsContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,22 +38,64 @@ const Avatar = ({ user, size = 'md' }) => {
   );
 };
 
-// ── Competitor Dropdown ────────────────────────────────────────────────────────
-const CompetitorSelect = ({ value, onChange, options }) => {
-  const [open, setOpen] = useState(false);
-  const dropdownRef = React.useRef(null);
-  const cur = options.find(o => o.id === value);
+// ── Portal Dropdown ──────────────────────────────────────────────────────────
+const PortalDropdown = ({ anchor, open, children, onClose, align = 'auto' }) => {
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const portalRef = useRef(null);
 
   useEffect(() => {
+    if (!open || !anchor) return;
+    const updatePosition = () => {
+      const rect = anchor.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      let left = rect.left;
+      const menuWidth = portalRef.current ? portalRef.current.offsetWidth : 200;
+
+      if (align === 'right' || left + menuWidth > viewportWidth - 12) {
+        left = Math.max(12, rect.right - menuWidth);
+      }
+      left = Math.max(12, Math.min(left, viewportWidth - menuWidth - 12));
+
+      setPos({ top: rect.bottom + 4, left, width: rect.width });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    return () => window.removeEventListener('resize', updatePosition);
+  }, [open, anchor, align]);
+
+  useEffect(() => {
+    if (!open) return;
     const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setOpen(false);
+      if (anchor && anchor.contains(e.target)) return;
+      if (portalRef.current && portalRef.current.contains(e.target)) return;
+      onClose();
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  }, [open, onClose, anchor]);
+
+  if (!open) return null;
+  return createPortal(
+    <div
+      ref={portalRef}
+      style={{ position: 'fixed', top: pos.top, left: pos.left, minWidth: pos.width, zIndex: 9999 }}
+      className="animate-fadeIn"
+    >
+      {children}
+    </div>,
+    document.body
+  );
+};
+
+// ── Competitor Dropdown ────────────────────────────────────────────────────────
+const CompetitorSelect = ({ value, onChange, options }) => {
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef(null);
+  const cur = options.find(o => o.id === value);
 
   return (
-    <div ref={dropdownRef} className="relative inline-block text-left">
+    <div ref={anchorRef} className="relative inline-block text-left">
       <button
         onClick={() => setOpen(v => !v)}
         className="inline-flex items-center justify-between gap-2 px-3 py-1.5 text-xs font-semibold rounded-xl glass-input text-zinc-300 cursor-pointer transition-all select-none w-44"
@@ -60,8 +103,8 @@ const CompetitorSelect = ({ value, onChange, options }) => {
         <span className="truncate flex-1 text-left">{cur?.display_name || 'Select Rival'}</span>
         <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && (
-        <div className="absolute right-0 mt-1.5 w-48 border border-white/[0.06] rounded-xl shadow-2xl shadow-black/90 py-1 z-50 overflow-y-auto max-h-60 custom-scrollbar animate-fadeIn"
+      <PortalDropdown anchor={anchorRef.current} open={open} onClose={() => setOpen(false)} align="right">
+        <div className="border border-white/[0.06] rounded-xl shadow-2xl shadow-black/90 py-1 overflow-y-auto max-h-60 custom-scrollbar animate-fadeIn w-full"
           style={{ background: '#0d0d0f' }}>
           {options.map(opt => (
             <button
@@ -79,7 +122,7 @@ const CompetitorSelect = ({ value, onChange, options }) => {
             </button>
           ))}
         </div>
-      )}
+      </PortalDropdown>
     </div>
   );
 };
