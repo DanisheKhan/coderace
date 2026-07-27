@@ -14,6 +14,7 @@ import AchievementsPage from './pages/AchievementsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
 import AdminPage from './pages/AdminPage';
+import TypingPage from './pages/TypingPage';
 
 // Layout
 import Layout from './components/layout/Layout';
@@ -187,6 +188,7 @@ function AppRoutes() {
         <Route path="leaderboard" element={<LeaderboardPage />} />
         <Route path="compare" element={<ComparePage />} />
         <Route path="achievements" element={<AchievementsPage />} />
+        <Route path="typing" element={<TypingPage />} />
         <Route path="admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
       </Route>
 

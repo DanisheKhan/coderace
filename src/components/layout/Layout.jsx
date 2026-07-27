@@ -14,7 +14,8 @@ import {
   Code2,
   Award,
   ShieldAlert,
-  UserPlus
+  UserPlus,
+  Keyboard
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -69,6 +70,7 @@ const Layout = () => {
     { name: 'Leaderboard', path: '/leaderboard',  icon: Trophy },
     { name: 'Compare',     path: '/compare',      icon: BarChart3 },
     { name: 'Achievements', path: '/achievements', icon: Award },
+    { name: 'Typing',      path: '/typing',       icon: Keyboard },
   ];
 
   if (profile?.is_admin) {

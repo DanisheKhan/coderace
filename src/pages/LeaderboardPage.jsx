@@ -5,10 +5,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { 
   Trophy, Flame, Calendar, Activity, Crown, Award, X, Zap, 
   Sparkles, BookOpen, Workflow, BookmarkCheck, Layers, Network, 
-  ExternalLink, CheckCircle2, Copy, Lightbulb, Eye, Search, RotateCcw, Circle, Filter, Medal, Star
+  ExternalLink, CheckCircle2, Copy, Lightbulb, Eye, Search, RotateCcw, Circle, Filter, Medal, Star, Keyboard
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { calculateUserAchievements } from '../lib/achievements';
+import { getTypingProfile } from '../lib/monkeytypeService';
 
 const IconMap = {
   Award, Zap, Flame, Trophy, Calendar, Activity,
@@ -74,6 +75,13 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
   const [modalSearch, setModalSearch] = useState('');
   const [methodFilter, setMethodFilter] = useState('all');
   const [expandedModalTopics, setExpandedModalTopics] = useState({});
+  const [typingProfile, setTypingProfile] = useState(null);
+
+  useEffect(() => {
+    if (user?.id) {
+      getTypingProfile(user.id).then(setTypingProfile);
+    }
+  }, [user?.id]);
 
   const { achievementsList, unlockedCount } = useMemo(() => {
     return calculateUserAchievements(user.id, progress, questions);
@@ -210,6 +218,17 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>Solved ({stats.solved})</span>
+              </button>
+              <button
+                onClick={() => setActiveModalTab('speed')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none flex items-center gap-1.5 whitespace-nowrap ${
+                  activeModalTab === 'speed'
+                    ? 'bg-amber-500 text-zinc-950 font-bold shadow-sm shadow-amber-500/30'
+                    : 'text-zinc-500 hover:text-zinc-300'
+                }`}
+              >
+                <Keyboard className="w-3.5 h-3.5" />
+                <span>Speed {typingProfile?.wpm_60 ? `(${typingProfile.wpm_60} WPM)` : ''}</span>
               </button>
             </div>
             <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 cursor-pointer p-2 rounded-lg transition-colors hover:bg-white/5 touch-target flex items-center justify-center shrink-0">
@@ -474,6 +493,89 @@ const UserProfileModal = ({ user, progress, questions, onClose }) => {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Speed / Monkeytype Tab */}
+          {activeModalTab === 'speed' && (
+            <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
+              {!user.monkeytype_public ? (
+                <div className="py-12 px-4 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800">
+                  <Keyboard className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
+                  <h4 className="text-sm font-bold text-zinc-300">Monkeytype Profile Private</h4>
+                  <p className="text-xs text-zinc-500 max-w-xs mx-auto mt-1">
+                    {user.display_name} has not enabled public display of their Monkeytype speed stats.
+                  </p>
+                </div>
+              ) : !typingProfile ? (
+                <div className="py-12 px-4 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800">
+                  <Keyboard className="w-8 h-8 text-amber-400/60 mx-auto mb-2 animate-bounce" />
+                  <h4 className="text-sm font-bold text-zinc-300">No Stats Synced</h4>
+                  <p className="text-xs text-zinc-500 max-w-xs mx-auto mt-1">
+                    {user.display_name} has enabled public stats, but hasn't synced their Monkeytype profile yet.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                        <Keyboard className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-zinc-100">{user.display_name}'s Speed Profile</h4>
+                        {user.monkeytype_username && (
+                          <a
+                            href={`https://monkeytype.com/profile/${user.monkeytype_username}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-amber-400 hover:underline flex items-center gap-1 mt-0.5"
+                          >
+                            @{user.monkeytype_username} <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    {typingProfile.last_synced && (
+                      <span className="text-[10px] text-zinc-500 font-mono">
+                        Synced {formatRelativeTime(typingProfile.last_synced)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { mode: '15s', wpm: typingProfile.wpm_15, acc: typingProfile.acc_15 },
+                      { mode: '30s', wpm: typingProfile.wpm_30, acc: typingProfile.acc_30 },
+                      { mode: '60s', wpm: typingProfile.wpm_60, acc: typingProfile.acc_60 },
+                      { mode: '120s', wpm: typingProfile.wpm_120, acc: typingProfile.acc_120 },
+                    ].map(item => (
+                      <div key={item.mode} className="p-3.5 rounded-xl bg-zinc-900/60 border border-white/[0.05]">
+                        <span className="text-[9px] uppercase font-bold text-zinc-500 tracking-wider block">{item.mode} Test</span>
+                        <div className="mt-1 flex items-baseline gap-1">
+                          <span className="text-xl font-black text-zinc-100 font-mono">{item.wpm ?? '--'}</span>
+                          <span className="text-xxs text-zinc-500">WPM</span>
+                        </div>
+                        <div className="mt-1 text-[10px] text-zinc-400 flex justify-between">
+                          <span>Acc:</span>
+                          <span className="font-semibold text-amber-400 font-mono">{item.acc ? `${item.acc}%` : '--'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-zinc-900/40 border border-white/[0.04] flex items-center justify-between text-xs text-zinc-400">
+                    <div>
+                      <span>Tests Completed: </span>
+                      <strong className="text-zinc-200 font-mono">{typingProfile.tests_completed?.toLocaleString() || 0}</strong>
+                    </div>
+                    <div>
+                      <span>Tests Started: </span>
+                      <strong className="text-zinc-200 font-mono">{typingProfile.tests_started?.toLocaleString() || 0}</strong>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

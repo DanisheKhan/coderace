@@ -12,6 +12,8 @@ import {
   TrendingUp, Percent, ExternalLink, Target, Activity, Zap, Clock, Layers, Award, Sparkles, BookOpen, Workflow, BookmarkCheck, Network
 } from 'lucide-react';
 import { calculateUserAchievements } from '../lib/achievements';
+import MonkeytypePanel from '../components/MonkeytypePanel';
+import LinkMonkeytypeModal from '../components/LinkMonkeytypeModal';
 
 const IconMap = {
   Award, Zap, Flame, Trophy, Calendar, Activity,
@@ -182,6 +184,7 @@ const DashboardPage = () => {
   const { profile } = useAuth();
   const { questions } = useQuestions();
   const { progress } = useProgressStore();
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
 
   const userProgress = useMemo(() => progress.filter(p => p.user_id === profile?.id), [progress, profile]);
 
@@ -576,6 +579,17 @@ const DashboardPage = () => {
           )}
         </div>
       </div>
+
+      {/* Monkeytype Speed Profile Section */}
+      <div className="mt-6">
+        <MonkeytypePanel onOpenEditProfile={() => setIsLinkModalOpen(true)} />
+      </div>
+
+      {/* Link Monkeytype Modal */}
+      <LinkMonkeytypeModal
+        isOpen={isLinkModalOpen}
+        onClose={() => setIsLinkModalOpen(false)}
+      />
     </div>
   );
 };

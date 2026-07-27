@@ -10,7 +10,8 @@ import {
   Code2,
   Award,
   Settings,
-  ShieldAlert
+  ShieldAlert,
+  Keyboard
 } from 'lucide-react';
 import EditProfileModal from '../EditProfileModal';
 import { useProgressStore } from '../../store/progressStore';
@@ -28,6 +29,7 @@ const Sidebar = () => {
     { name: 'Leaderboard', path: '/leaderboard',  icon: Trophy },
     { name: 'Compare',     path: '/compare',      icon: BarChart3 },
     { name: 'Achievements', path: '/achievements', icon: Award },
+    { name: 'Typing',      path: '/typing',       icon: Keyboard },
   ];
 
   if (profile?.is_admin) {
