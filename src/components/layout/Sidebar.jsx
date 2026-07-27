@@ -53,35 +53,25 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
         transition={{ type: 'spring', stiffness: 350, damping: 30 }}
         className="bg-[#09090b] border-r border-zinc-800/80 flex flex-col h-screen sticky top-0 md:flex z-40 max-md:hidden relative font-sans"
       >
-        {/* Collapse / Expand Toggle Button */}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-[18px] w-6 h-6 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-zinc-100 shadow-md transition-all z-50 hover:scale-105 cursor-pointer"
-          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
-        </button>
-
-        {/* Brand */}
-        <div className={`h-[60px] flex items-center ${isCollapsed ? 'justify-center px-2' : 'px-5'} border-b border-zinc-800/80`}>
+        {/* Brand Header */}
+        <div className={`h-14 flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'} border-b border-zinc-800/80 shrink-0`}>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-100 shrink-0">
               <Code2 className="w-4 h-4 text-violet-400" />
             </div>
-            <AnimatePresence initial={false}>
-              {!isCollapsed && (
-                <motion.span 
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.15 }}
-                  className="font-bold text-base tracking-tight text-white whitespace-nowrap"
-                >
-                  Code<span className="text-violet-400">Race</span>
-                </motion.span>
-              )}
-            </AnimatePresence>
+            {!isCollapsed && (
+              <span className="font-bold text-base tracking-tight text-white whitespace-nowrap">
+                Code<span className="text-violet-400">Race</span>
+              </span>
+            )}
           </div>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer shrink-0"
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+          </button>
         </div>
 
         {/* Navigation */}

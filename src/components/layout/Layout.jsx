@@ -120,48 +120,48 @@ const Layout = () => {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="w-64 max-w-[82vw] h-full bg-[#111113] border-r border-[#1f1f23] flex flex-col shadow-2xl"
+              className="w-64 max-w-[82vw] h-full bg-[#09090b] border-r border-zinc-800 flex flex-col shadow-2xl font-sans"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Drawer Header */}
-              <div className="flex items-center justify-between px-4 h-[56px] sm:h-[60px] border-b border-[#1f1f23] shrink-0">
+              <div className="flex items-center justify-between px-4 h-14 border-b border-zinc-800 shrink-0">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center shadow-sm shadow-violet-500/20">
-                    <Code2 className="w-4 h-4 text-white" />
+                  <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-100">
+                    <Code2 className="w-4 h-4 text-violet-400" />
                   </div>
-                  <span className="font-bold text-base tracking-tight bg-gradient-to-r from-violet-400 to-violet-300 bg-clip-text text-transparent">
-                    CodeRace
+                  <span className="font-bold text-base tracking-tight text-white">
+                    Code<span className="text-violet-400">Race</span>
                   </span>
                 </div>
                 <button
                   onClick={toggleMobileMenu}
-                  className="p-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/70 transition-colors touch-target flex items-center justify-center animate-none"
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors flex items-center justify-center"
                   aria-label="Close Menu"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Nav links */}
               <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
-                <p className="section-label px-3 mb-2.5">Menu</p>
+                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider px-3 mb-2 block">Menu</p>
                 {navItems.map((item) => (
                   <NavLink
                     key={item.name}
                     to={item.path}
                     onClick={toggleMobileMenu}
                     className={({ isActive }) => `
-                      flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all cursor-pointer select-none active:scale-[0.98]
+                      flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer select-none
                       ${isActive
-                        ? 'bg-violet-500/15 text-violet-400 font-semibold'
-                        : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-100'
+                        ? 'bg-zinc-900 text-white font-semibold border border-zinc-800'
+                        : 'text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-100'
                       }
                     `}
                   >
                     <item.icon className="w-4 h-4 shrink-0" />
                     <span className="flex-1">{item.name}</span>
                     {item.badge && (
-                      <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full bg-violet-600 text-zinc-100 leading-none">
+                      <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-violet-600 text-white leading-none">
                         {item.badge}
                       </span>
                     )}

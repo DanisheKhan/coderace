@@ -264,10 +264,10 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
   const accentColor = user.avatar_color || '#7c3aed';
 
   const TABS = [
-    { id: 'overview', label: 'Overview',  icon: Activity,     activeClass: 'bg-violet-600 text-white shadow-lg shadow-violet-600/25' },
-    { id: 'solved',   label: `Solved (${stats.solved})`, icon: CheckCircle2, activeClass: 'bg-violet-600 text-white shadow-lg shadow-violet-600/25' },
-    { id: 'speed',    label: `Speed${typingProfile?.wpm_60 ? ` · ${typingProfile.wpm_60}` : ''}`, icon: Keyboard, activeClass: 'bg-amber-500 text-zinc-950 font-extrabold shadow-lg shadow-amber-500/30' },
-    { id: 'quiz',     label: `Quiz${quizAttempts.length > 0 ? ` (${quizAttempts.length})` : ''}`,  icon: Brain, activeClass: 'bg-violet-600 text-white shadow-lg shadow-violet-600/25' },
+    { id: 'overview', label: 'Overview',  icon: Activity },
+    { id: 'solved',   label: `Solved (${stats.solved})`, icon: CheckCircle2 },
+    { id: 'speed',    label: `Speed${typingProfile?.wpm_60 ? ` · ${typingProfile.wpm_60}` : ''}`, icon: Keyboard },
+    { id: 'quiz',     label: `Quiz${quizAttempts.length > 0 ? ` (${quizAttempts.length})` : ''}`,  icon: Brain },
   ];
 
   return (
@@ -276,36 +276,23 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
       animate="show"
       exit="exit"
       variants={backdropVariants}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-2xl cursor-pointer"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-md cursor-pointer font-sans"
       onClick={onClose}
     >
       <motion.div
         variants={modalVariants}
-        className="w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] max-h-[840px] mx-auto relative cursor-default"
+        className="w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] max-h-[840px] mx-auto relative cursor-default bg-[#09090b] rounded-xl border border-zinc-800 shadow-2xl"
         onClick={e => e.stopPropagation()}
-        style={{
-          backgroundColor: '#0d0d0f',
-          borderRadius: '20px',
-          border: '1px solid rgba(255,255,255,0.06)',
-          boxShadow: '0 0 0 1px rgba(255,255,255,0.03), 0 40px 100px -20px rgba(0,0,0,0.95)',
-        }}
       >
-        {/* Top accent line */}
-        <div className="absolute top-0 left-0 right-0 h-px" style={{ backgroundColor: `${accentColor}80` }} />
-
         {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-        <div
-          className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 sm:px-6 pt-4 pb-3.5 shrink-0 gap-3"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-        >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 sm:px-6 pt-4 pb-3.5 shrink-0 gap-3 border-b border-zinc-800/80">
           {/* Avatar + Name */}
-          <div className="flex items-center gap-3.5 min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
               <div
-                className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center font-black text-white text-lg uppercase overflow-hidden"
+                className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white text-sm uppercase overflow-hidden border border-zinc-700"
                 style={{
                   backgroundColor: user.avatar_url ? 'transparent' : accentColor,
-                  boxShadow: `0 0 0 2px rgba(255,255,255,0.06), 0 0 24px ${accentColor}50`,
                 }}
               >
                 {user.avatar_url
@@ -313,142 +300,85 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
                   : user.display_name?.charAt(0) || '?'
                 }
               </div>
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0a0a0d] animate-pulse" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-[#09090b]" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-black text-zinc-50 text-sm sm:text-[15px] leading-tight tracking-tight truncate">
+                <h3 className="font-bold text-white text-sm sm:text-base leading-tight tracking-tight truncate">
                   {user.display_name}
                 </h3>
-                <span
-                  className="text-[9px] font-bold px-2 py-0.5 rounded-full font-mono tracking-wider"
-                  style={{
-                    background: `${accentColor}18`,
-                    color: accentColor,
-                    border: `1px solid ${accentColor}35`,
-                  }}
-                >
-                  RACER
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800">
+                  {user.is_admin ? 'ADMIN' : 'RACER'}
                 </span>
               </div>
-              <p className="text-[10px] text-zinc-600 mt-0.5 truncate">Stats, achievements & solved questions</p>
+              <p className="text-[10px] text-zinc-500 mt-0.5 truncate">Stats, achievements & solved questions</p>
             </div>
           </div>
 
-          {/* Right: Tabs + Actions */}
-          <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto flex-wrap">
-            {/* Tab pills */}
-            <div
-              className="flex p-1 gap-0.5 rounded-xl overflow-x-auto custom-scrollbar"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
-            >
+          {/* Navigation Tabs */}
+          <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end flex-wrap">
+            <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800">
               {TABS.map(tab => {
                 const Icon = tab.icon;
-                const isActive = activeModalTab === tab.id;
+                const active = activeModalTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveModalTab(tab.id)}
-                    className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer select-none flex items-center gap-1.5 whitespace-nowrap ${
-                      isActive ? tab.activeClass : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/5'
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer select-none ${
+                      active
+                        ? 'bg-white text-zinc-900 font-semibold'
+                        : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
-                    <Icon className="w-3.5 h-3.5 shrink-0" />
+                    <Icon className="w-3.5 h-3.5" />
                     <span>{tab.label}</span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Sync button */}
-            {isCurrentUser && currentProfile?.monkeytype_ape_key && (
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={handleSync}
                 disabled={syncing}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 shrink-0 disabled:opacity-50 group"
-                style={{
-                  background: syncing ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.06)',
-                  borderColor: 'rgba(245,158,11,0.25)',
-                  color: '#f59e0b',
-                }}
-                title="Sync latest stats from Monkeytype"
+                className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 text-xs"
+                title="Sync profile"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-                <span className="hidden sm:inline">{syncing ? 'Syncing…' : 'Sync'}</span>
+                <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Sync</span>
               </button>
-            )}
-
-            <button
-              onClick={onClose}
-              className="text-zinc-500 hover:text-zinc-200 cursor-pointer p-2 rounded-xl transition-all hover:bg-white/[0.06] flex items-center justify-center shrink-0"
-              style={{ border: '1px solid transparent' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
-            >
-              <X className="w-4.5 h-4.5" />
-            </button>
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* ── STATS BANNER ────────────────────────────────────────────────────── */}
-        <div className="px-5 sm:px-6 pt-4 pb-0 shrink-0">
+        <div className="px-5 sm:px-6 pt-4 pb-0 shrink-0 font-sans">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {[
-              {
-                label: 'Solved', value: stats.solved, sub: `${pct}% done`,
-                icon: Trophy, gradient: 'from-violet-600/10 to-violet-500/0',
-                border: 'rgba(124,58,237,0.18)', glow: 'rgba(124,58,237,0.12)',
-                iconBg: 'rgba(124,58,237,0.15)', iconColor: '#a78bfa', subColor: '#a78bfa',
-                extra: <CircularProgress value={pct} size={42} strokeWidth={4} color="#7c3aed" />,
-              },
-              {
-                label: 'Streak', value: `${user.streak ?? 0}d`, sub: 'Active streak',
-                icon: Flame, gradient: 'from-orange-600/10 to-orange-500/0',
-                border: 'rgba(249,115,22,0.18)', glow: 'rgba(249,115,22,0.12)',
-                iconBg: 'rgba(249,115,22,0.15)', iconColor: '#fb923c', subColor: '#fb923c',
-                extra: null,
-              },
-              {
-                label: 'This Week', value: `+${user.solvedThisWeek ?? 0}`, sub: 'Last 7 days',
-                icon: Calendar, gradient: 'from-emerald-600/10 to-emerald-500/0',
-                border: 'rgba(16,185,129,0.18)', glow: 'rgba(16,185,129,0.12)',
-                iconBg: 'rgba(16,185,129,0.15)', iconColor: '#34d399', subColor: '#34d399',
-                extra: null,
-              },
-              {
-                label: 'Badges', value: unlockedCount, sub: `/ ${achievementsList.length} total`,
-                icon: Award, gradient: 'from-amber-600/10 to-amber-500/0',
-                border: 'rgba(245,158,11,0.18)', glow: 'rgba(245,158,11,0.12)',
-                iconBg: 'rgba(245,158,11,0.15)', iconColor: '#fbbf24', subColor: '#fbbf24',
-                extra: null,
-              },
-            ].map(({ label, value, sub, icon: Icon, gradient, border, glow, iconBg, iconColor, subColor, extra }) => (
+              { label: 'Solved', value: stats.solved, sub: `${pct}% done`, icon: Trophy },
+              { label: 'Streak', value: `${user.streak ?? 0}d`, sub: 'Active streak', icon: Flame },
+              { label: 'This Week', value: `+${user.solvedThisWeek ?? 0}`, sub: 'Last 7 days', icon: Calendar },
+              { label: 'Badges', value: unlockedCount, sub: `/ ${achievementsList.length} total`, icon: Award },
+            ].map(({ label, value, sub, icon: Icon }) => (
               <div
                 key={label}
-                className={`p-3 rounded-xl relative overflow-hidden flex items-center justify-between group transition-all duration-300 hover:scale-[1.02]`}
-                style={{
-                  backgroundColor: 'rgba(14, 14, 18, 0.6)',
-                  border: `1px solid ${border}`,
-                }}
+                className="p-3 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between"
               >
-                <div className="z-10">
-                  <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1">{label}</span>
-                  <span className="text-lg font-black text-zinc-50 leading-none block">{value}</span>
-                  <span className="text-[10px] font-semibold block mt-1" style={{ color: subColor }}>{sub}</span>
+                <div>
+                  <span className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider block mb-1">{label}</span>
+                  <span className="text-lg font-bold text-white leading-none block">{value}</span>
+                  <span className="text-[10px] text-zinc-400 block mt-1">{sub}</span>
                 </div>
-                <div className="flex flex-col items-center gap-1.5 shrink-0 z-10">
-                  {extra ? (
-                    <div className="relative flex items-center justify-center">
-                      {extra}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Icon className="w-4 h-4" style={{ color: iconColor }} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: iconBg }}>
-                      <Icon className="w-4.5 h-4.5" style={{ color: iconColor }} />
-                    </div>
-                  )}
+                <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center shrink-0">
+                  <Icon className="w-4 h-4" />
                 </div>
               </div>
             ))}
@@ -456,53 +386,45 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
         </div>
 
         {/* ── MAIN CONTENT ─────────────────────────────────────────────────────── */}
-        <div className="p-5 sm:p-6 overflow-y-auto flex-1 custom-scrollbar">
+        <div className="px-5 sm:px-6 pt-4 pb-5 flex-1 min-h-0 overflow-hidden flex flex-col">
 
           {/* ── OVERVIEW TAB ─────────────────── */}
           {activeModalTab === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start animate-fadeIn">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch h-full min-h-0 flex-1 font-sans">
 
               {/* Topic Completion */}
-              <div
-                className="rounded-2xl flex flex-col"
-                style={{
-                  height: 400,
-                  background: 'rgba(14,14,18,0.8)',
-                  border: '1px solid rgba(255,255,255,0.05)',
-                  backdropFilter: 'blur(16px)',
-                }}
-              >
-                <div className="flex items-center gap-2 px-4 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <div className="w-6 h-6 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                    <BookOpen className="w-3.5 h-3.5 text-violet-400" />
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 flex flex-col h-full min-h-0 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800/80 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                      <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
+                    </div>
+                    <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Topic Completion</h4>
                   </div>
-                  <h4 className="text-[11px] font-black uppercase tracking-widest text-zinc-500">Topic Completion</h4>
+                  <span className="text-[10px] font-mono text-zinc-500">
+                    {topicData.filter(t => t.solved > 0).length}/{topicData.length} started
+                  </span>
                 </div>
-                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 custom-scrollbar">
                   {topicData.map(t => (
                     <div key={t.name} className="space-y-1">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-zinc-300 font-semibold truncate max-w-[160px]">{t.name}</span>
-                        <span className="text-[10px] font-mono text-zinc-500 shrink-0">
-                          <strong className="text-zinc-200">{t.solved}</strong>/{t.total}
-                          <span className="text-zinc-700 ml-1">({t.completed}%)</span>
+                        <span className="text-zinc-200 font-medium truncate max-w-[180px]">{t.name}</span>
+                        <span className="text-[10px] font-mono text-zinc-400 shrink-0">
+                          <strong className="text-white">{t.solved}</strong>/{t.total}
+                          <span className="text-zinc-500 ml-1">({t.completed}%)</span>
                         </span>
                       </div>
-                      <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                      <div className="h-1.5 w-full rounded-full bg-zinc-900 border border-zinc-800 overflow-hidden">
                         <div
-                          className="h-full rounded-full transition-all duration-700"
+                          className="h-full rounded-full transition-all duration-500"
                           style={{
-                            width: `${Math.max(t.solved > 0 ? 3 : 0, t.completed)}%`,
+                            width: `${Math.max(t.solved > 0 ? 4 : 0, t.completed)}%`,
                             backgroundColor: t.completed === 100
                               ? '#10b981'
                               : t.solved > 0
-                              ? '#7c3aed'
-                              : 'rgba(255,255,255,0.07)',
-                            boxShadow: t.completed === 100
-                              ? '0 0 8px rgba(16,185,129,0.4)'
-                              : t.solved > 0
-                              ? '0 0 8px rgba(124,58,237,0.3)'
-                              : 'none',
+                              ? '#8b5cf6'
+                              : '#27272a',
                           }}
                         />
                       </div>
@@ -512,41 +434,36 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
               </div>
 
               {/* Right column: Badges + Recent */}
-              <div className="space-y-4 flex flex-col" style={{ height: 400 }}>
+              <div className="flex flex-col gap-4 h-full min-h-0 overflow-hidden">
 
                 {/* Badges */}
-                <div
-                  className="rounded-2xl shrink-0"
-                  style={{
-                    background: 'rgba(14,14,18,0.8)',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    backdropFilter: 'blur(16px)',
-                  }}
-                >
-                  <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 shrink-0 max-h-[210px] flex flex-col">
+                  <div className="flex items-center justify-between pb-2.5 border-b border-zinc-800/80 shrink-0">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                        <Award className="w-3.5 h-3.5 text-amber-400" />
+                      <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                        <Award className="w-3.5 h-3.5 text-zinc-400" />
                       </div>
-                      <h4 className="text-[11px] font-black uppercase tracking-widest text-zinc-500">Badges</h4>
+                      <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Badges</h4>
                     </div>
-                    <span className="text-[10px] font-mono text-zinc-600 bg-white/5 px-2 py-0.5 rounded-full">{unlockedCount}/{achievementsList.length}</span>
+                    <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-md">
+                      {unlockedCount}/{achievementsList.length}
+                    </span>
                   </div>
-                  <div className="p-3">
+                  <div className="pt-2.5 flex-1 overflow-y-auto custom-scrollbar">
                     {unlockedCount === 0 ? (
-                      <p className="text-xs text-zinc-700 py-4 text-center">No badges unlocked yet.</p>
+                      <p className="text-xs text-zinc-500 py-3 text-center">No badges unlocked yet.</p>
                     ) : (
-                      <div className="grid grid-cols-2 gap-2 max-h-28 overflow-y-auto pr-1 custom-scrollbar">
+                      <div className="grid grid-cols-2 gap-2">
                         {achievementsList.filter(ach => ach.unlocked).map(ach => {
                           const Icon = IconMap[ach.icon] || Award;
                           return (
-                            <div key={ach.id} className={`flex items-center gap-2 p-2 rounded-xl border bg-gradient-to-br ${ach.color} text-zinc-100 shadow-sm`}>
-                              <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                                <Icon className="w-3.5 h-3.5 text-white" />
+                            <div key={ach.id} className="flex items-center gap-2 p-2 rounded-lg border border-zinc-800 bg-zinc-900/80 text-zinc-200">
+                              <div className="w-6 h-6 rounded-md bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-300">
+                                <Icon className="w-3.5 h-3.5" />
                               </div>
                               <div className="min-w-0">
-                                <p className="text-[10px] font-bold truncate leading-tight">{ach.title}</p>
-                                <p className="text-[8px] text-zinc-400 truncate uppercase tracking-wide">{ach.category}</p>
+                                <p className="text-[11px] font-semibold truncate leading-tight text-white">{ach.title}</p>
+                                <p className="text-[9px] font-mono text-zinc-500 truncate uppercase tracking-wider">{ach.category}</p>
                               </div>
                             </div>
                           );
@@ -557,54 +474,44 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
                 </div>
 
                 {/* Recently Solved */}
-                <div
-                  className="rounded-2xl flex-1 flex flex-col min-h-0"
-                  style={{
-                    background: 'rgba(14,14,18,0.8)',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    backdropFilter: 'blur(16px)',
-                  }}
-                >
-                  <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 flex-1 min-h-0 flex flex-col overflow-hidden">
+                  <div className="flex items-center justify-between pb-2.5 border-b border-zinc-800/80 shrink-0">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                        <Activity className="w-3.5 h-3.5 text-violet-400" />
+                      <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                        <Activity className="w-3.5 h-3.5 text-zinc-400" />
                       </div>
-                      <h4 className="text-[11px] font-black uppercase tracking-widest text-zinc-500">Recently Solved</h4>
+                      <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Recently Solved</h4>
                     </div>
                     {recentlySolved.length > 0 && (
                       <button
                         onClick={() => setActiveModalTab('solved')}
-                        className="text-[10px] text-violet-400 hover:text-violet-300 font-semibold cursor-pointer transition-colors flex items-center gap-0.5"
+                        className="text-[10px] text-zinc-400 hover:text-white font-medium cursor-pointer transition-colors flex items-center gap-0.5"
                       >
                         All <ChevronRight className="w-3 h-3" />
                       </button>
                     )}
                   </div>
                   {recentlySolved.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center gap-2 py-6">
-                      <CheckCircle2 className="w-8 h-8 text-zinc-800" />
-                      <p className="text-xs text-zinc-700">No solved questions yet.</p>
+                    <div className="flex-1 flex flex-col items-center justify-center gap-2 py-4">
+                      <CheckCircle2 className="w-6 h-6 text-zinc-700" />
+                      <p className="text-xs text-zinc-500">No solved questions yet.</p>
                     </div>
                   ) : (
-                    <div className="space-y-1 flex-1 overflow-y-auto px-3 py-2.5 custom-scrollbar">
+                    <div className="space-y-2 pt-2.5 flex-1 overflow-y-auto custom-scrollbar">
                       {recentlySolved.map(q => (
-                        <div key={q.id} className="px-3 py-2.5 rounded-xl flex flex-col gap-1.5 group cursor-default transition-all duration-200 hover:bg-violet-500/[0.04]" style={{ border: '1px solid rgba(255,255,255,0.03)' }}
-                          onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(124,58,237,0.2)'}
-                          onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.03)'}
-                        >
+                        <div key={q.id} className="p-2.5 rounded-lg border border-zinc-800/70 bg-zinc-900/60 hover:bg-zinc-800/40 transition-colors flex flex-col gap-1.5">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-semibold text-zinc-200 truncate group-hover:text-violet-300 transition-colors">{q.problem_name}</p>
-                              <p className="text-[10px] text-zinc-600 truncate mt-0.5">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
+                              <p className="text-xs font-semibold text-zinc-200 truncate">{q.problem_name}</p>
+                              <p className="text-[10px] text-zinc-500 truncate mt-0.5">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
                             </div>
-                            <span className="text-[9px] text-zinc-600 font-mono shrink-0">{formatRelativeTime(q.solvedAt)}</span>
+                            <span className="text-[9px] text-zinc-500 font-mono shrink-0">{formatRelativeTime(q.solvedAt)}</span>
                           </div>
-                          <div className="flex items-center justify-between gap-2 pt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-zinc-800/50">
                             <SolveTags prog={q.prog} />
                             {q.link && (
                               <a href={q.link} target="_blank" rel="noreferrer"
-                                className="p-1 rounded-md text-zinc-600 hover:text-zinc-200 hover:bg-white/5 transition-colors ml-auto shrink-0"
+                                className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors ml-auto shrink-0"
                               >
                                 <ExternalLink className="w-3 h-3" />
                               </a>
@@ -621,7 +528,7 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
 
           {/* ── SPEED TAB ──────────────────────── */}
           {activeModalTab === 'speed' && (
-            <div className="space-y-4 animate-fadeIn max-w-2xl mx-auto">
+            <div className="space-y-4 animate-fadeIn w-full flex-1 overflow-y-auto custom-scrollbar h-full min-h-0 pr-1 pb-4">
               {syncError && (
                 <div className="p-3 rounded-xl text-xs" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
                   {syncError}
@@ -790,7 +697,7 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
 
           {/* ── SOLVED TAB ──────────────────────── */}
           {activeModalTab === 'solved' && (
-            <div className="space-y-4 animate-fadeIn">
+            <div className="space-y-4 animate-fadeIn flex-1 overflow-y-auto custom-scrollbar h-full min-h-0 pr-1 pb-4">
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <div className="relative flex-1 w-full">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
@@ -899,7 +806,7 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
 
           {/* ── QUIZ TAB ──────────────────────────────────── */}
           {activeModalTab === 'quiz' && (
-            <div className="animate-fadeIn">
+            <div className="animate-fadeIn flex-1 overflow-y-auto custom-scrollbar h-full min-h-0 pr-1 pb-4">
               {loadingAttempts ? (
                 <div className="py-24 flex flex-col items-center justify-center text-center gap-3">
                   <div className="relative">
