@@ -13,6 +13,7 @@ import {
 import { calculateUserAchievements } from '../lib/achievements';
 import MonkeytypePanel from '../components/MonkeytypePanel';
 import LinkMonkeytypeModal from '../components/LinkMonkeytypeModal';
+import GitHubStreakTracker from '../components/GitHubStreakTracker';
 import { motion } from 'framer-motion';
 import { pageTransition, staggerContainer, fadeUp, scaleIn } from '../lib/animations';
 
@@ -35,11 +36,11 @@ const panelCls = 'rounded-xl border border-zinc-800 bg-zinc-900/40';
 const panelBg  = { background: 'rgba(13, 13, 17, 0.4)' };
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
-const StatCard = ({ label, value, unit, sub, subColor = 'text-zinc-500', icon: Icon }) => (
+const StatCard = ({ label, value, unit, sub, subColor = 'text-zinc-500', icon: Icon, accentBorder, accentBg, accentIcon }) => (
   <motion.div 
     variants={fadeUp}
     whileHover={{ y: -2, transition: { duration: 0.15 } }}
-    className={`${panelCls} p-4 flex items-center justify-between gap-3`}
+    className={`${panelCls} p-4 flex items-center justify-between gap-3 ${accentBorder || ''}`}
   >
     <div className="space-y-1 min-w-0">
       <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider truncate">{label}</p>
@@ -49,7 +50,7 @@ const StatCard = ({ label, value, unit, sub, subColor = 'text-zinc-500', icon: I
       </div>
       <p className={`text-[10px] font-medium flex items-center gap-1 truncate ${subColor}`}>{sub}</p>
     </div>
-    <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0 text-zinc-300">
+    <div className={`w-9 h-9 rounded-lg border flex items-center justify-center shrink-0 ${accentBg || 'bg-zinc-900 border-zinc-800'} ${accentIcon || 'text-zinc-300'}`}>
       <Icon className="w-4 h-4" />
     </div>
   </motion.div>
@@ -58,146 +59,127 @@ const StatCard = ({ label, value, unit, sub, subColor = 'text-zinc-500', icon: I
 // ── Panel Section Header ──────────────────────────────────────────────────────
 const PanelHeader = ({ label, icon: Icon, extra }) => (
   <div className="flex items-center justify-between mb-3">
-    <div className="flex items-center gap-2 min-w-0">
-      {Icon && <Icon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
-      <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider truncate">{label}</p>
+    <div className="flex items-center gap-2">
+      <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+        <Icon className="w-3.5 h-3.5 text-zinc-400" />
+      </div>
+      <h3 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">{label}</h3>
     </div>
     {extra}
   </div>
 );
 
-// ── Diff Dots ─────────────────────────────────────────────────────────────────
-const DiffDot = ({ d }) => {
-  const color = d <= 2 ? '#10b981' : d === 3 ? '#f59e0b' : '#ef4444';
-  return (
-    <div className="flex gap-0.5 items-center">
-      {[1,2,3,4,5].map(i => (
-        <span key={i} className="w-1 h-1 rounded-full" style={{ backgroundColor: i <= d ? color : '#27272a' }} />
-      ))}
-    </div>
-  );
-};
-
-// ── Topic Completion Panel ────────────────────────────────────────────────────
+// ── Topic Completion Panel ─────────────────────────────────────────────────────
 const TopicCompletionPanel = ({ topicData }) => {
   const [filter, setFilter] = useState('all');
-  const activeCount = useMemo(() => topicData.filter(t => t.solved > 0).length, [topicData]);
-  const doneCount   = useMemo(() => topicData.filter(t => t.completed === 100).length, [topicData]);
 
   const filteredTopics = useMemo(() => {
-    let list = [...topicData];
-    if (filter === 'active') list = list.filter(t => t.solved > 0 && t.completed < 100);
-    else if (filter === 'done') list = list.filter(t => t.completed === 100);
-    return list.sort((a, b) => b.completed - a.completed || b.solved - a.solved || a.name.localeCompare(b.name));
+    if (filter === 'active') return topicData.filter(t => t.solved > 0 && t.completed < 100);
+    if (filter === 'done')   return topicData.filter(t => t.completed === 100);
+    return topicData;
   }, [topicData, filter]);
 
+  const activeCount = useMemo(() => topicData.filter(t => t.solved > 0 && t.completed < 100).length, [topicData]);
+  const doneCount   = useMemo(() => topicData.filter(t => t.completed === 100).length, [topicData]);
+  const startedCount= useMemo(() => topicData.filter(t => t.solved > 0).length, [topicData]);
+
   return (
-    <div className={`${panelCls} flex flex-col lg:col-span-2 h-[482px]`}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-zinc-800/80 shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 shrink-0">
-            <Target className="w-4 h-4" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-xs font-bold text-white truncate">Topic Completion</h3>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-900 text-zinc-400 border border-zinc-800">
-                {activeCount}/{topicData.length} started
-              </span>
+    <div className={`${panelCls} flex flex-col h-full min-h-[482px] lg:col-span-2`} style={panelBg}>
+      <div className="px-4 py-3.5 border-b border-zinc-800/80 flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+              <Target className="w-3.5 h-3.5 text-zinc-400" />
             </div>
-            <p className="text-[10px] text-zinc-500 mt-0.5 truncate">Problem solving progress per topic</p>
+            <h3 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Topic Completion</h3>
+            <span className="text-[10px] font-mono text-zinc-500">
+              {startedCount}/{topicData.length} started
+            </span>
           </div>
+          <p className="text-[10px] text-zinc-500 mt-0.5 ml-8">Problem solving progress per topic</p>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 shrink-0 overflow-x-auto custom-scrollbar max-w-full">
+        <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 text-xs">
           {[
-            { key: 'all',    label: `All (${topicData.length})` },
-            { key: 'active', label: `Active (${activeCount - doneCount})` },
-            { key: 'done',   label: `Done (${doneCount})` },
-          ].map(({ key, label }) => (
+            { id: 'all',    label: `All (${topicData.length})` },
+            { id: 'active', label: `Active (${activeCount})` },
+            { id: 'done',   label: `Done (${doneCount})` },
+          ].map(tab => (
             <button
-              key={key}
-              onClick={() => setFilter(key)}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors cursor-pointer whitespace-nowrap ${
-                filter === key
-                  ? 'bg-white text-zinc-900 font-semibold'
+              key={tab.id}
+              onClick={() => setFilter(tab.id)}
+              className={`px-2.5 py-1 text-[10px] font-semibold rounded-md transition-colors cursor-pointer ${
+                filter === tab.id
+                  ? 'bg-white text-zinc-900'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              {label}
+              {tab.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Topic List */}
-      <div className="flex-1 overflow-y-auto px-4 py-2 custom-scrollbar min-h-0">
+      <div className="p-4 flex-1 overflow-y-auto custom-scrollbar space-y-3 max-h-[416px]">
         {filteredTopics.length === 0 ? (
-          <div className="h-40 flex items-center justify-center">
-            <p className="text-xs text-zinc-600">No topics match selected filter.</p>
+          <div className="py-12 text-center text-xs text-zinc-500">
+            No topics match the selected filter.
           </div>
         ) : (
-          filteredTopics.map((topic) => {
-            const isCompleted = topic.completed === 100;
-            const hasProgress = topic.solved > 0;
-            return (
-              <div key={topic.name} className="group py-2.5 border-b border-zinc-800/40 last:border-0">
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="font-medium text-zinc-300 group-hover:text-white transition-colors truncate max-w-[55%]">
-                    {topic.name}
-                  </span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-mono text-[10px] text-zinc-500">
-                      <strong className="text-zinc-300">{topic.solved}</strong> / {topic.total}
-                    </span>
-                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md ${
-                      isCompleted
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : hasProgress
-                        ? 'bg-zinc-800 text-zinc-200 border border-zinc-700'
-                        : 'bg-zinc-900/50 text-zinc-600 border border-zinc-800/60'
-                    }`}>
-                      {topic.completed}%
-                    </span>
-                  </div>
-                </div>
-                <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      isCompleted
-                        ? 'bg-emerald-500'
-                        : hasProgress
-                        ? 'bg-violet-500'
-                        : 'bg-zinc-800'
-                    }`}
-                    style={{ width: `${Math.max(hasProgress ? 2 : 0, topic.completed)}%` }}
-                  />
-                </div>
+          filteredTopics.map(t => (
+            <div key={t.name} className="space-y-1">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-zinc-200 font-medium truncate max-w-[240px] sm:max-w-[320px]">{t.name}</span>
+                <span className="text-[10px] font-mono text-zinc-400 shrink-0">
+                  <strong className="text-white">{t.solved}</strong>/{t.total}
+                  <span className="text-zinc-500 ml-1">({t.completed}%)</span>
+                </span>
               </div>
-            );
-          })
+              <div className="h-2 w-full rounded-full bg-zinc-900 border border-zinc-800 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.max(t.solved > 0 ? 3 : 0, t.completed)}%`,
+                    backgroundColor: t.completed === 100
+                      ? '#10b981'
+                      : t.solved > 0
+                      ? '#8b5cf6'
+                      : '#27272a',
+                  }}
+                />
+              </div>
+            </div>
+          ))
         )}
       </div>
     </div>
   );
 };
 
-// ── Main Dashboard ─────────────────────────────────────────────────────────────
 const DashboardPage = () => {
   const { profile } = useAuth();
   const { questions } = useQuestions();
   const { progress } = useProgressStore();
-  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [dailyGoal, setDailyGoal] = useState(() => Number(localStorage.getItem('coderace-daily-goal')) || 5);
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [tempGoal, setTempGoal] = useState(dailyGoal);
 
-  const userProgress = useMemo(() => progress.filter(p => p.user_id === profile?.id), [progress, profile]);
+  const userProgress = useMemo(() => {
+    if (!profile) return [];
+    return progress.filter(p => p.user_id === profile.id);
+  }, [profile, progress]);
 
-  const { achievementsList, unlockedCount } = useMemo(() => {
-    if (!profile) return { achievementsList: [], unlockedCount: 0 };
-    return calculateUserAchievements(profile.id, progress, questions);
+  const achievementsList = useMemo(() => {
+    if (!profile) return [];
+    const { achievementsList: list } = calculateUserAchievements(profile.id, progress, questions);
+    return list;
   }, [profile, progress, questions]);
+
+  const unlockedCount = useMemo(() => {
+    return achievementsList.filter(ach => ach.unlocked).length;
+  }, [achievementsList]);
 
   const nextBadge = useMemo(() => {
     const locked = achievementsList.filter(ach => !ach.unlocked);
@@ -252,81 +234,91 @@ const DashboardPage = () => {
     });
     userProgress.forEach(p => {
       if (p.status === 'done') {
-        const q = questions.find(q => q.id === p.question_id);
+        const q = questions.find(qi => qi.id === p.question_id);
         if (q && topics[q.topic]) topics[q.topic].solved++;
       }
     });
     return Object.keys(topics).map(name => {
       const d = topics[name];
-      const pct = d.total > 0 ? Math.round((d.solved / d.total) * 100) : 0;
-      return { name, completed: pct, solved: d.solved, total: d.total };
+      const completed = d.total > 0 ? Math.round((d.solved / d.total) * 100) : 0;
+      return { name, completed, solved: d.solved, total: d.total };
     });
   }, [questions, userProgress]);
 
   const difficultyData = useMemo(() => {
-    let easy = 0, medium = 0, hard = 0;
+    const map = { Easy: 0, Medium: 0, Hard: 0 };
     userProgress.forEach(p => {
       if (p.status === 'done') {
-        const q = questions.find(q => q.id === p.question_id);
-        if (q) {
-          if (q.difficulty <= 2) easy++;
-          else if (q.difficulty === 3) medium++;
-          else hard++;
-        }
+        const q = questions.find(qi => qi.id === p.question_id);
+        if (q && map[q.difficulty] !== undefined) map[q.difficulty]++;
       }
     });
     return [
-      { name: 'Easy (1-2)', value: easy, color: '#10b981' },
-      { name: 'Medium (3)', value: medium, color: '#f59e0b' },
-      { name: 'Hard (4-5)', value: hard, color: '#ef4444' },
-    ].filter(d => d.value > 0);
+      { name: 'Easy',   value: map.Easy,   color: '#10b981' },
+      { name: 'Medium', value: map.Medium, color: '#f59e0b' },
+      { name: 'Hard',   value: map.Hard,   color: '#ef4444' },
+    ];
   }, [questions, userProgress]);
 
-  const weeklyData = useMemo(() => {
-    const today = new Date();
-    const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-    const dateMap = {};
-    userProgress.forEach(p => {
-      if (p.status === 'done') {
-        const d = new Date(p.updated_at);
-        const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-        dateMap[key] = (dateMap[key] || 0) + 1;
-      }
-    });
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const ms = todayMs - i * 86400000;
-      const date = new Date(ms);
-      days.push({ day: date.toLocaleDateString('en-US', { weekday: 'short' }), solved: dateMap[ms] || 0 });
-    }
-    return days;
-  }, [userProgress]);
-
-  const recentlySolved = useMemo(() => {
+  const recentSolved = useMemo(() => {
     return userProgress
       .filter(p => p.status === 'done')
       .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
       .slice(0, 5)
-      .map(p => { const q = questions.find(q => q.id === p.question_id); return q ? { ...q, solved_at: p.updated_at, prog: p } : null; })
+      .map(p => {
+        const q = questions.find(qi => qi.id === p.question_id);
+        return q ? { ...q, solvedAt: p.updated_at, prog: p } : null;
+      })
       .filter(Boolean);
   }, [userProgress, questions]);
 
-  const topTopics  = useMemo(() => [...topicData].filter(t => t.solved > 0).sort((a, b) => b.completed - a.completed).slice(0, 3), [topicData]);
-  const weakTopics = useMemo(() => [...topicData].filter(t => t.completed < 100 && t.total > 0).sort((a, b) => a.completed - b.completed).slice(0, 3), [topicData]);
+  const weeklyActivity = useMemo(() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const result = days.map(day => ({ day, solved: 0 }));
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
 
-  const dailyGoal = 5;
-  const goalPct   = Math.min(100, Math.round((stats.solvedToday / dailyGoal) * 100));
+    userProgress.forEach(p => {
+      if (p.status === 'done') {
+        const d = new Date(p.updated_at);
+        if (d >= startOfWeek) {
+          result[d.getDay()].solved++;
+        }
+      }
+    });
+    return result;
+  }, [userProgress]);
+
+  const { strongestTopic, weakestTopic } = useMemo(() => {
+    const started = topicData.filter(t => t.solved > 0);
+    if (!started.length) return { strongestTopic: null, weakestTopic: null };
+    const sorted = [...started].sort((a, b) => b.completed - a.completed);
+    return {
+      strongestTopic: sorted[0],
+      weakestTopic: sorted[sorted.length - 1],
+    };
+  }, [topicData]);
+
+  const goalPct = Math.min(100, Math.round((stats.solvedToday / dailyGoal) * 100));
   const totalGoalCircumference = 2 * Math.PI * 48;
 
+  const saveGoal = (val) => {
+    const num = Math.max(1, Math.min(50, Number(val) || 5));
+    setDailyGoal(num);
+    localStorage.setItem('coderace-daily-goal', num);
+    setEditingGoal(false);
+  };
+
   return (
-    <motion.div 
+    <motion.div
       initial="hidden"
       animate="show"
       exit="exit"
       variants={pageTransition}
-      className="space-y-4 max-w-7xl mx-auto pb-8"
+      className="space-y-6 pb-12 font-sans transform-gpu"
     >
-
       {/* ── Header ── */}
       <div className="pb-4 border-b border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -407,6 +399,15 @@ const DashboardPage = () => {
         />
       </motion.div>
 
+      {/* ── GitHub Style Contribution Heatmap ── */}
+      <motion.div variants={fadeUp}>
+        <GitHubStreakTracker
+          progress={progress}
+          userId={profile?.id}
+          title="DSA Contribution Heatmap"
+        />
+      </motion.div>
+
       {/* ── Row 2: Topic Completion + Right Column ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <TopicCompletionPanel topicData={topicData} />
@@ -438,31 +439,43 @@ const DashboardPage = () => {
 
           {/* Difficulty Breakdown */}
           <div className={`${panelCls} p-4 flex flex-col flex-1`} style={panelBg}>
-            <PanelHeader label="Solved by Difficulty" icon={Activity} />
-            {difficultyData.length === 0 ? (
-              <div className="flex items-center justify-center h-20 text-[10px] text-zinc-700">
-                Mark problems done to see breakdown.
+            <PanelHeader label="Solved By Difficulty" icon={Activity} />
+            {stats.solved === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-zinc-600 text-xs italic">
+                No problems solved yet
               </div>
             ) : (
-              <div className="flex items-center gap-4">
-                <div className="w-20 h-20 shrink-0">
+              <div className="flex-1 flex items-center gap-3">
+                <div className="w-24 h-24 shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={difficultyData} cx="50%" cy="50%" innerRadius={22} outerRadius={34} paddingAngle={3} dataKey="value">
-                        {difficultyData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                      <Pie
+                        data={difficultyData.filter(d => d.value > 0)}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={28}
+                        outerRadius={40}
+                        paddingAngle={3}
+                        stroke="none"
+                      >
+                        {difficultyData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
                       </Pie>
-                      <Tooltip contentStyle={tooltipStyle} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="space-y-1.5 flex-1 min-w-0">
-                  {difficultyData.map((e, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: e.color }} />
-                        <span className="text-[10px] text-zinc-500 truncate">{e.name}</span>
+
+                <div className="flex-1 space-y-1.5 text-xs">
+                  {difficultyData.map(d => (
+                    <div key={d.name} className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
+                        <span className="text-zinc-400 font-medium">{d.name}</span>
                       </div>
-                      <span className="font-mono text-xs text-zinc-300 font-semibold">{e.value}</span>
+                      <span className="font-bold text-white font-mono">{d.value}</span>
                     </div>
                   ))}
                 </div>
@@ -470,153 +483,106 @@ const DashboardPage = () => {
             )}
           </div>
 
-          {/* Next Badge */}
-          {nextBadge && (
-            <div className={`${panelCls} p-4 flex flex-col flex-1`} style={panelBg}>
-              <PanelHeader label="Next Badge" icon={Award} />
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center border border-violet-500/15 bg-violet-500/[0.07] text-violet-400 shrink-0">
-                  {(() => { const Icon = IconMap[nextBadge.icon] || Award; return <Icon className="w-4 h-4" />; })()}
+          {/* Next Badge Progress Card */}
+          <div className={`${panelCls} p-4 flex flex-col flex-1`} style={panelBg}>
+            <PanelHeader label="Next Badge" icon={Award} />
+            {nextBadge ? (
+              <div className="flex-1 flex flex-col justify-between space-y-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center shrink-0">
+                    {React.createElement(IconMap[nextBadge.icon] || Award, { className: 'w-4.5 h-4.5' })}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-zinc-100 truncate">{nextBadge.title}</h4>
+                    <p className="text-[10px] text-zinc-500 truncate">{nextBadge.description}</p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-xs font-bold text-zinc-200 truncate">{nextBadge.title}</h4>
-                  <p className="text-[10px] text-zinc-600 mt-0.5 truncate">{nextBadge.description}</p>
+
+                <div className="space-y-1 pt-1">
+                  <div className="flex justify-between text-[10px] font-mono text-zinc-400">
+                    <span>Progress</span>
+                    <span>{nextBadge.currentProgress} / {nextBadge.maxProgress}</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-zinc-900 border border-zinc-800 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-violet-500 transition-all duration-500"
+                      style={{ width: `${Math.min(100, (nextBadge.currentProgress / nextBadge.maxProgress) * 100)}%` }}
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-[10px] text-zinc-600">
-                  <span>Progress</span>
-                  <span className="font-mono text-zinc-400">{nextBadge.currentProgress} / {nextBadge.maxProgress}</span>
-                </div>
-                <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
-                  <div className="bg-violet-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${(nextBadge.currentProgress / nextBadge.maxProgress) * 100}%` }} />
-                </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-xs text-zinc-500 italic">
+                All milestone badges unlocked!
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
         </div>
       </div>
 
-      {/* ── Row 3: Three Bottom Panels ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* ── Row 3: Weekly Activity, Topic Insights, Recently Solved ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-        {/* Weekly Activity Area Chart */}
-        <div className={`${panelCls} p-4 flex flex-col h-[230px]`} style={panelBg}>
-          <PanelHeader label="This Week's Activity" icon={TrendingUp} />
-          <div className="flex-1 w-full min-h-0">
+        {/* Weekly Bar Chart */}
+        <div className={`${panelCls} p-4 flex flex-col h-64`} style={panelBg}>
+          <PanelHeader label="This Week's Activity" icon={Activity} />
+          <div className="flex-1 min-h-0 pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={weeklyData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="solvedGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="day" stroke="#1f1f23" tick={{ fill: '#3f3f46', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis stroke="#1f1f23" tick={{ fill: '#3f3f46', fontSize: 10 }} allowDecimals={false} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: 'rgba(139,92,246,0.1)', strokeWidth: 1 }} formatter={(v) => [`${v} solved`, 'Problems']} />
-                <Area type="monotone" dataKey="solved" stroke="#8b5cf6" strokeWidth={2} fill="url(#solvedGradient)"
-                  dot={{ fill: '#8b5cf6', r: 3, strokeWidth: 0 }}
-                  activeDot={{ r: 5, fill: '#a78bfa', strokeWidth: 0 }} />
-              </AreaChart>
+              <BarChart data={weeklyActivity}>
+                <XAxis dataKey="day" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                <Bar dataKey="solved" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Topic Insights */}
-        <div className={`${panelCls} p-4 flex flex-col h-[230px]`} style={panelBg}>
-          <PanelHeader label="Topic Insights" icon={Layers} />
-          <div className="grid grid-cols-2 gap-5 flex-1 overflow-hidden">
-            {/* Strongest */}
-            <div>
-              <p className="text-[9px] font-bold text-emerald-500/70 uppercase tracking-widest mb-2.5">💪 Strongest</p>
-              {topTopics.length === 0 ? (
-                <p className="text-[10px] text-zinc-700">Keep solving to see insights.</p>
-              ) : (
-                <div className="space-y-2.5">
-                  {topTopics.map((t, i) => (
-                    <div key={i}>
-                      <div className="flex justify-between items-end mb-0.5">
-                        <span className="text-[10px] text-zinc-400 truncate mr-1 leading-none">{t.name}</span>
-                        <span className="text-[10px] text-emerald-400 shrink-0 font-semibold font-mono">{t.completed}%</span>
-                      </div>
-                      <div className="h-0.5 bg-zinc-900 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${t.completed}%`, backgroundColor: '#10b981' }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+        {/* Strongest / Needs Work Insights */}
+        <div className={`${panelCls} p-4 flex flex-col justify-between h-64`} style={panelBg}>
+          <PanelHeader label="Topic Insights" icon={Sparkles} />
+          
+          <div className="space-y-3 flex-1 flex flex-col justify-center">
+            <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 space-y-1">
+              <span className="text-[9px] font-mono text-emerald-400 uppercase tracking-wider font-bold">💪 Strongest Topic</span>
+              <p className="text-xs font-bold text-zinc-100 truncate">
+                {strongestTopic ? `${strongestTopic.name} (${strongestTopic.completed}%)` : 'No topic data yet'}
+              </p>
             </div>
-            {/* Needs Work */}
-            <div>
-              <p className="text-[9px] font-bold text-rose-500/70 uppercase tracking-widest mb-2.5">⚠ Needs Work</p>
-              {weakTopics.length === 0 ? (
-                <p className="text-[10px] text-zinc-700">All topics complete! 🎉</p>
-              ) : (
-                <div className="space-y-2.5">
-                  {weakTopics.map((t, i) => (
-                    <div key={i}>
-                      <div className="flex justify-between items-end mb-0.5">
-                        <span className="text-[10px] text-zinc-400 truncate mr-1 leading-none">{t.name}</span>
-                        <span className="text-[10px] text-rose-400 shrink-0 font-semibold font-mono">{t.completed}%</span>
-                      </div>
-                      <div className="h-0.5 bg-zinc-900 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${t.completed}%`, backgroundColor: '#ef4444' }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+
+            <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 space-y-1">
+              <span className="text-[9px] font-mono text-rose-400 uppercase tracking-wider font-bold">⚠️ Needs Focus</span>
+              <p className="text-xs font-bold text-zinc-100 truncate">
+                {weakestTopic ? `${weakestTopic.name} (${weakestTopic.completed}%)` : 'No topic data yet'}
+              </p>
             </div>
           </div>
         </div>
 
         {/* Recently Solved */}
-        <div className={`${panelCls} p-4 flex flex-col h-[230px]`} style={panelBg}>
+        <div className={`${panelCls} p-4 flex flex-col h-64`} style={panelBg}>
           <PanelHeader label="Recently Solved" icon={Clock} />
-          {recentlySolved.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-xs text-zinc-700">Solve problems to see history.</p>
-            </div>
-          ) : (
-            <div className="space-y-1 flex-1 overflow-y-auto custom-scrollbar">
-              {recentlySolved.map((q) => (
-                <div key={q.id} className="flex items-center justify-between gap-2 group py-2 border-b border-white/[0.04] last:border-0">
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+            {recentSolved.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-zinc-600 italic">
+                No recent activity.
+              </div>
+            ) : (
+              recentSolved.map(q => (
+                <div key={q.id} className="p-2 rounded-lg bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between gap-2 text-xs">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-zinc-300 truncate group-hover:text-violet-300 transition-colors leading-snug">{q.problem_name}</p>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-[10px] text-zinc-600 truncate">{q.topic}</span>
-                      <DiffDot d={q.difficulty} />
-                      <SolveTags prog={q.prog} />
-                    </div>
+                    <p className="font-semibold text-zinc-200 truncate">{q.problem_name}</p>
+                    <p className="text-[9px] text-zinc-500 truncate">{q.topic}</p>
                   </div>
-                  {q.link && (
-                    <a href={q.link} target="_blank" rel="noreferrer"
-                      className="p-1 rounded-md hover:bg-white/[0.05] text-zinc-700 hover:text-zinc-300 transition-colors shrink-0">
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
+                  <span className="text-[9px] font-mono text-emerald-400 font-bold shrink-0">Done</span>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
+
       </div>
 
-      {/* Monkeytype Speed Profile Section */}
-      <div className="mt-6">
-        <MonkeytypePanel onOpenEditProfile={() => setIsLinkModalOpen(true)} />
-      </div>
-
-      {/* Link Monkeytype Modal */}
-      <LinkMonkeytypeModal
-        isOpen={isLinkModalOpen}
-        onClose={() => setIsLinkModalOpen(false)}
-      />
-
-      {/* User profile modal */}
       {isProfileOpen && profile && (
         <UserProfileModal
           user={profile}

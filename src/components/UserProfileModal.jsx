@@ -10,6 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadialBarCha
 import { calculateUserAchievements } from '../lib/achievements';
 import { getTypingProfile, fetchMonkeytypeData, syncTypingProfileToSupabase } from '../lib/monkeytypeService';
 import { fetchUserAttempts } from '../lib/quizService';
+import GitHubStreakTracker from './GitHubStreakTracker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { backdropVariants, modalVariants } from '../lib/animations';
 
@@ -60,90 +61,78 @@ export const SolveTags = ({ prog }) => {
   return (
     <div className="flex items-center gap-1 flex-wrap">
       {method && (
-        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[10px] font-semibold leading-none ${method.bg} ${method.color}`}>
-          <method.icon className="w-2.5 h-2.5 shrink-0" />
+        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold border ${method.bg} ${method.color}`}>
+          <method.icon className="w-2.5 h-2.5" />
           <span>{method.label}</span>
         </span>
       )}
       {approachBadge && (
-        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[10px] font-semibold leading-none ${approachBadge.bg} ${approachBadge.color}`}>
-          <span>{approachBadge.label}</span>
+        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold border ${approachBadge.bg} ${approachBadge.color}`}>
+          {approachBadge.label}
         </span>
       )}
       {revisit_count > 0 && (
-        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md border border-rose-500/25 bg-rose-500/10 text-rose-400 text-[10px] font-mono font-bold leading-none">
-          ↺ {revisit_count}×
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/10 border border-rose-500/20 text-rose-400">
+          <span>🔄</span>
+          <span>{revisit_count}x</span>
         </span>
       )}
     </div>
   );
 };
 
-export const DiffDot = ({ d }) => {
-  const color = d <= 2 ? '#10b981' : d === 3 ? '#f59e0b' : '#ef4444';
-  return (
-    <div className="flex gap-0.5 items-center">
-      {[1,2,3,4,5].map(i => (
-        <span key={i} className="w-1 h-1 rounded-full" style={{ backgroundColor: i <= d ? color : '#1f1f23' }} />
-      ))}
-    </div>
-  );
+export const DiffDot = ({ difficulty }) => {
+  const colors = {
+    Easy: 'bg-emerald-400',
+    Medium: 'bg-amber-400',
+    Hard: 'bg-red-400',
+  };
+  return <span className={`inline-block w-1.5 h-1.5 rounded-full ${colors[difficulty] || 'bg-zinc-500'}`} />;
 };
 
 export const formatRelativeTime = (dateString) => {
-  const diffMs = Date.now() - new Date(dateString).getTime();
-  const m = Math.floor(diffMs / 60000);
-  const h = Math.floor(m / 60);
-  const d = Math.floor(h / 24);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  if (h < 24) return `${h}h ago`;
-  if (d === 1) return 'yesterday';
-  return `${d}d ago`;
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diffSec < 60) return 'just now';
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  if (diffSec < 604800) return `${Math.floor(diffSec / 86400)}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-// ── Circular Progress Component ─────────────────────────────────────────────────
-const CircularProgress = ({ value, size = 56, strokeWidth = 5, color = '#7c3aed' }) => {
-  const r = (size - strokeWidth) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (value / 100) * circ;
-  return (
-    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={strokeWidth} />
-      <circle
-        cx={size/2} cy={size/2} r={r} fill="none"
-        stroke={color} strokeWidth={strokeWidth}
-        strokeDasharray={circ} strokeDashoffset={offset}
-        strokeLinecap="round"
-        style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1)' }}
-      />
-    </svg>
-  );
-};
-
-export const UserProfileModal = ({ user, progress, questions, onClose }) => {
-  const { profile: currentProfile } = useAuth();
-  const isCurrentUser = currentProfile && currentProfile.id === user.id;
+export default function UserProfileModal({ user, progress, questions, onClose }) {
+  const [activeModalTab, setActiveModalTab] = useState('overview'); // 'overview' | 'solved' | 'speed' | 'quiz'
+  const [solvedSearch, setSolvedSearch] = useState('');
+  const [solvedDiffFilter, setSolvedDiffFilter] = useState('all');
+  const [typingProfile, setTypingProfile] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState('');
 
-  const userProgress = useMemo(() => progress.filter(p => p.user_id === user.id), [progress, user.id]);
-  const [activeModalTab, setActiveModalTab] = useState('overview');
-  const [modalSearch, setModalSearch] = useState('');
-  const [methodFilter, setMethodFilter] = useState('all');
-  const [expandedModalTopics, setExpandedModalTopics] = useState({});
-  const [typingProfile, setTypingProfile] = useState(null);
+  const { currentUser } = useAuth();
+  const isOwnProfile = currentUser?.id === user?.id;
+
+  const userProgress = useMemo(() => {
+    return progress.filter(p => p.user_id === user?.id);
+  }, [progress, user?.id]);
+
+  const accentColor = user?.avatar_color || '#6366f1';
 
   const handleSync = async () => {
-    if (!isCurrentUser || !currentProfile?.monkeytype_ape_key) return;
+    if (!user?.id) return;
     setSyncing(true);
     setSyncError('');
     try {
-      const liveStats = await fetchMonkeytypeData(currentProfile.monkeytype_ape_key);
-      const updatedProfile = await syncTypingProfileToSupabase(user.id, liveStats);
-      setTypingProfile(updatedProfile);
+      if (user.monkeytype_ape_key) {
+        const liveStats = await fetchMonkeytypeData(user.monkeytype_ape_key);
+        const updated = await syncTypingProfileToSupabase(user.id, liveStats);
+        setTypingProfile(updated);
+      } else {
+        const updated = await getTypingProfile(user.id);
+        if (updated) setTypingProfile(updated);
+      }
     } catch (err) {
-      setSyncError(err.message || 'Failed to sync with Monkeytype.');
+      setSyncError(err.message || 'Sync failed.');
     } finally {
       setSyncing(false);
     }
@@ -204,8 +193,8 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
     });
     return Object.keys(topics).map(name => {
       const d = topics[name];
-      const pct = d.total > 0 ? Math.round((d.solved / d.total) * 100) : 0;
-      return { name, completed: pct, solved: d.solved, total: d.total };
+      const completed = d.total > 0 ? Math.round((d.solved / d.total) * 100) : 0;
+      return { name, completed, solved: d.solved, total: d.total };
     });
   }, [questions, userProgress]);
 
@@ -221,52 +210,36 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
       .filter(Boolean);
   }, [userProgress, questions]);
 
-  const allSolvedQuestions = useMemo(() => {
-    const solvedProgress = userProgress.filter(p => p.status === 'done');
-    return solvedProgress
+  const allSolvedList = useMemo(() => {
+    return userProgress
+      .filter(p => p.status === 'done')
       .map(p => {
         const q = questions.find(qi => qi.id === p.question_id);
         return q ? { ...q, solvedAt: p.updated_at, prog: p } : null;
       })
       .filter(Boolean)
-      .filter(q => {
-        if (modalSearch.trim()) {
-          const s = modalSearch.toLowerCase();
-          const matches = q.problem_name.toLowerCase().includes(s) ||
-                          q.topic.toLowerCase().includes(s) ||
-                          (q.subtopic || '').toLowerCase().includes(s);
-          if (!matches) return false;
-        }
-        if (methodFilter === 'all') return true;
-        if (methodFilter === 'gpt') return q.prog?.solve_method === 'gpt';
-        if (methodFilter === 'copy') return q.prog?.solve_method === 'copy';
-        if (methodFilter === 'hint') return q.prog?.solve_method === 'hint';
-        if (methodFilter === 'solution') return q.prog?.solve_method === 'solution';
-        if (methodFilter === 'optimal') return q.prog?.optimized || q.prog?.approach;
-        if (methodFilter === 'revisit') return q.prog?.revisit_count > 0 || q.prog?.revisit;
-        return true;
-      })
       .sort((a, b) => new Date(b.solvedAt) - new Date(a.solvedAt));
-  }, [userProgress, questions, modalSearch, methodFilter]);
+  }, [userProgress, questions]);
 
-  const allSolvedGrouped = useMemo(() => {
-    const groups = {};
-    allSolvedQuestions.forEach(q => {
-      if (!groups[q.topic]) groups[q.topic] = [];
-      groups[q.topic].push(q);
+  const filteredSolvedList = useMemo(() => {
+    return allSolvedList.filter(item => {
+      const matchesSearch = !solvedSearch.trim() ||
+        item.problem_name.toLowerCase().includes(solvedSearch.toLowerCase()) ||
+        item.topic.toLowerCase().includes(solvedSearch.toLowerCase()) ||
+        (item.subtopic || '').toLowerCase().includes(solvedSearch.toLowerCase());
+
+      const matchesDiff = solvedDiffFilter === 'all' || item.difficulty === solvedDiffFilter;
+
+      return matchesSearch && matchesDiff;
     });
-    return groups;
-  }, [allSolvedQuestions]);
+  }, [allSolvedList, solvedSearch, solvedDiffFilter]);
 
-  const totalQ = questions.length || 502;
-  const pct = Math.round((stats.solved / totalQ) * 100);
-
-  const accentColor = user.avatar_color || '#7c3aed';
+  const pct = questions.length > 0 ? Math.round((stats.solved / questions.length) * 100) : 0;
 
   const TABS = [
-    { id: 'overview', label: 'Overview',  icon: Activity },
-    { id: 'solved',   label: `Solved (${stats.solved})`, icon: CheckCircle2 },
-    { id: 'speed',    label: `Speed${typingProfile?.wpm_60 ? ` · ${typingProfile.wpm_60}` : ''}`, icon: Keyboard },
+    { id: 'overview', label: 'Overview',                                         icon: BarChart2 },
+    { id: 'solved',   label: `Solved (${allSolvedList.length})`,                 icon: CheckCircle2 },
+    { id: 'speed',    label: `Speed${typingProfile?.wpm_15 ? ` · ${Math.max(typingProfile.wpm_15||0, typingProfile.wpm_30||0, typingProfile.wpm_60||0, typingProfile.wpm_120||0)}` : ''}`, icon: Keyboard },
     { id: 'quiz',     label: `Quiz${quizAttempts.length > 0 ? ` (${quizAttempts.length})` : ''}`,  icon: Brain },
   ];
 
@@ -386,118 +359,107 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
         </div>
 
         {/* ── MAIN CONTENT ─────────────────────────────────────────────────────── */}
-        <div className="px-5 sm:px-6 pt-4 pb-5 flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="px-5 sm:px-6 pt-4 pb-5 flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col space-y-4">
 
           {/* ── OVERVIEW TAB ─────────────────── */}
           {activeModalTab === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch h-full min-h-0 flex-1 font-sans">
+            <div className="space-y-4 w-full font-sans">
+              {/* GitHub Contribution Heatmap */}
+              <GitHubStreakTracker
+                progress={progress}
+                userId={user.id}
+                title={`${user.display_name}'s Activity`}
+              />
 
-              {/* Topic Completion */}
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 flex flex-col h-full min-h-0 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800/80 shrink-0">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                      <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
-                    </div>
-                    <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Topic Completion</h4>
-                  </div>
-                  <span className="text-[10px] font-mono text-zinc-500">
-                    {topicData.filter(t => t.solved > 0).length}/{topicData.length} started
-                  </span>
-                </div>
-                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 custom-scrollbar">
-                  {topicData.map(t => (
-                    <div key={t.name} className="space-y-1">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-zinc-200 font-medium truncate max-w-[180px]">{t.name}</span>
-                        <span className="text-[10px] font-mono text-zinc-400 shrink-0">
-                          <strong className="text-white">{t.solved}</strong>/{t.total}
-                          <span className="text-zinc-500 ml-1">({t.completed}%)</span>
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-zinc-900 border border-zinc-800 overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${Math.max(t.solved > 0 ? 4 : 0, t.completed)}%`,
-                            backgroundColor: t.completed === 100
-                              ? '#10b981'
-                              : t.solved > 0
-                              ? '#8b5cf6'
-                              : '#27272a',
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right column: Badges + Recent */}
-              <div className="flex flex-col gap-4 h-full min-h-0 overflow-hidden">
-
-                {/* Badges */}
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 shrink-0 max-h-[210px] flex flex-col">
-                  <div className="flex items-center justify-between pb-2.5 border-b border-zinc-800/80 shrink-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
+                {/* Topic Completion */}
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 flex flex-col min-h-[300px] overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800/80 shrink-0">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                        <Award className="w-3.5 h-3.5 text-zinc-400" />
+                        <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
                       </div>
-                      <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Badges</h4>
+                      <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Topic Completion</h4>
                     </div>
-                    <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-md">
-                      {unlockedCount}/{achievementsList.length}
+                    <span className="text-[10px] font-mono text-zinc-500">
+                      {topicData.filter(t => t.solved > 0).length}/{topicData.length} started
                     </span>
                   </div>
-                  <div className="pt-2.5 flex-1 overflow-y-auto custom-scrollbar">
-                    {unlockedCount === 0 ? (
-                      <p className="text-xs text-zinc-500 py-3 text-center">No badges unlocked yet.</p>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-2">
-                        {achievementsList.filter(ach => ach.unlocked).map(ach => {
-                          const Icon = IconMap[ach.icon] || Award;
-                          return (
-                            <div key={ach.id} className="flex items-center gap-2 p-2 rounded-lg border border-zinc-800 bg-zinc-900/80 text-zinc-200">
-                              <div className="w-6 h-6 rounded-md bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-300">
-                                <Icon className="w-3.5 h-3.5" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-[11px] font-semibold truncate leading-tight text-white">{ach.title}</p>
-                                <p className="text-[9px] font-mono text-zinc-500 truncate uppercase tracking-wider">{ach.category}</p>
-                              </div>
-                            </div>
-                          );
-                        })}
+                  <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 custom-scrollbar max-h-[260px]">
+                    {topicData.map(t => (
+                      <div key={t.name} className="space-y-1">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-zinc-200 font-medium truncate max-w-[180px]">{t.name}</span>
+                          <span className="text-[10px] font-mono text-zinc-400 shrink-0">
+                            <strong className="text-white">{t.solved}</strong>/{t.total}
+                            <span className="text-zinc-500 ml-1">({t.completed}%)</span>
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-zinc-900 border border-zinc-800 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${Math.max(t.solved > 0 ? 4 : 0, t.completed)}%`,
+                              backgroundColor: t.completed === 100
+                                ? '#10b981'
+                                : t.solved > 0
+                                ? '#8b5cf6'
+                                : '#27272a',
+                            }}
+                          />
+                        </div>
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
 
-                {/* Recently Solved */}
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 flex-1 min-h-0 flex flex-col overflow-hidden">
-                  <div className="flex items-center justify-between pb-2.5 border-b border-zinc-800/80 shrink-0">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                        <Activity className="w-3.5 h-3.5 text-zinc-400" />
+                {/* Right column: Badges + Recent */}
+                <div className="flex flex-col gap-4">
+                  {/* Badges */}
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 flex flex-col min-h-[140px]">
+                    <div className="flex items-center justify-between pb-2.5 border-b border-zinc-800/80 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                          <Award className="w-3.5 h-3.5 text-zinc-400" />
+                        </div>
+                        <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Achievements</h4>
                       </div>
-                      <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Recently Solved</h4>
+                      <span className="text-[10px] font-mono text-zinc-500">{unlockedCount}/{achievementsList.length}</span>
                     </div>
-                    {recentlySolved.length > 0 && (
-                      <button
-                        onClick={() => setActiveModalTab('solved')}
-                        className="text-[10px] text-zinc-400 hover:text-white font-medium cursor-pointer transition-colors flex items-center gap-0.5"
-                      >
-                        All <ChevronRight className="w-3 h-3" />
-                      </button>
-                    )}
+
+                    <div className="flex items-center gap-2 overflow-x-auto pt-3 pb-1 custom-scrollbar">
+                      {achievementsList.map(ach => {
+                        const Icon = IconMap[ach.icon] || Award;
+                        return (
+                          <div
+                            key={ach.id}
+                            title={`${ach.title}: ${ach.description}`}
+                            className={`flex flex-col items-center justify-center p-2 rounded-lg border shrink-0 w-16 text-center select-none ${
+                              ach.unlocked
+                                ? 'bg-violet-500/10 border-violet-500/20 text-violet-300'
+                                : 'bg-zinc-900/40 border-zinc-800/50 text-zinc-600 opacity-40'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4 mb-1" />
+                            <span className="text-[8px] font-semibold truncate w-full">{ach.title}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  {recentlySolved.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center gap-2 py-4">
-                      <CheckCircle2 className="w-6 h-6 text-zinc-700" />
-                      <p className="text-xs text-zinc-500">No solved questions yet.</p>
+
+                  {/* Recently Solved */}
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 flex-1 flex flex-col min-h-[140px]">
+                    <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                          <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                        </div>
+                        <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Recent Activity</h4>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="space-y-2 pt-2.5 flex-1 overflow-y-auto custom-scrollbar">
+
+                    <div className="space-y-2 pt-2.5 flex-1 overflow-y-auto custom-scrollbar max-h-[150px]">
                       {recentlySolved.map(q => (
                         <div key={q.id} className="p-2.5 rounded-lg border border-zinc-800/70 bg-zinc-900/60 hover:bg-zinc-800/40 transition-colors flex flex-col gap-1.5">
                           <div className="flex items-start justify-between gap-2">
@@ -507,581 +469,107 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
                             </div>
                             <span className="text-[9px] text-zinc-500 font-mono shrink-0">{formatRelativeTime(q.solvedAt)}</span>
                           </div>
-                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-zinc-800/50">
-                            <SolveTags prog={q.prog} />
-                            {q.link && (
-                              <a href={q.link} target="_blank" rel="noreferrer"
-                                className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors ml-auto shrink-0"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                              </a>
-                            )}
-                          </div>
                         </div>
                       ))}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── SPEED TAB ──────────────────────── */}
-          {activeModalTab === 'speed' && (
-            <div className="space-y-4 animate-fadeIn w-full flex-1 overflow-y-auto custom-scrollbar h-full min-h-0 pr-1 pb-4">
-              {syncError && (
-                <div className="p-3 rounded-xl text-xs" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
-                  {syncError}
-                </div>
-              )}
-              {!typingProfile ? (
-                <div className="py-14 flex flex-col items-center justify-center text-center rounded-2xl p-6" style={{ border: '1px dashed rgba(255,255,255,0.08)' }}>
-                  <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-4">
-                    <Keyboard className="w-7 h-7 text-amber-500/50" />
-                  </div>
-                  <h4 className="text-sm font-bold text-zinc-200">No Typing Profile Available</h4>
-                  <p className="text-xs text-zinc-500 max-w-xs mt-1.5 leading-relaxed">
-                    This user has not linked or synced their Monkeytype typing speed profile yet.
-                  </p>
-                </div>
-              ) : (() => {
-                const s = typingProfile;
-                const topWPM = Math.max(s.wpm_15 || 0, s.wpm_30 || 0, s.wpm_60 || 0, s.wpm_120 || 0);
-                const completionRate = s.tests_started > 0 ? Math.round((s.tests_completed / s.tests_started) * 100) : 0;
-                const formatTime = (sec) => {
-                  if (!sec) return '0m';
-                  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-                  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-                };
-                const chartData = [
-                  { name: '15s', WPM: s.wpm_15 || 0 },
-                  { name: '30s', WPM: s.wpm_30 || 0 },
-                  { name: '60s', WPM: s.wpm_60 || 0 },
-                  { name: '120s', WPM: s.wpm_120 || 0 },
-                ].filter(d => d.WPM > 0);
-                const modes = [
-                  { label: '15s', wpm: s.wpm_15, acc: s.acc_15, consistency: s.consistency_15 },
-                  { label: '30s', wpm: s.wpm_30, acc: s.acc_30, consistency: s.consistency_30 },
-                  { label: '60s', wpm: s.wpm_60, acc: s.acc_60, consistency: s.consistency_60 },
-                  { label: '120s', wpm: s.wpm_120, acc: s.acc_120, consistency: s.consistency_120 },
-                ];
-
-                return (
-                  <div className="space-y-4">
-                    {/* Peak hero */}
-                    <div className="rounded-2xl p-4 flex items-center justify-between relative overflow-hidden"
-                      style={{
-                        backgroundColor: 'rgba(245, 158, 11, 0.05)',
-                        border: '1px solid rgba(245,158,11,0.18)',
-                      }}
-                    >
-                      <div className="absolute right-4 opacity-[0.05]"><TrendingUp className="w-20 h-20 text-amber-400" /></div>
-                      <div>
-                        <span className="text-[8px] uppercase font-black text-amber-500/70 tracking-widest block mb-1">Peak WPM · All Modes</span>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-4xl font-black text-amber-400 font-mono tracking-tight">{topWPM > 0 ? topWPM : '--'}</span>
-                          <span className="text-xs font-bold text-amber-600 uppercase">WPM</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[8px] uppercase font-black text-zinc-600 tracking-widest block mb-1">Tests Done</span>
-                        <span className="text-2xl font-black text-zinc-200 font-mono">{s.tests_completed?.toLocaleString() || 0}</span>
-                      </div>
-                    </div>
-
-                    {/* Stats + Chart */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="rounded-xl p-3 space-y-2.5" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest flex items-center gap-1.5">
-                          <Activity className="w-3 h-3 text-amber-400" /> Monkeytype Activity
-                        </span>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          {[
-                            { label: 'Started', value: s.tests_started?.toLocaleString() || 0, color: '#e4e4e7' },
-                            { label: 'Completed', value: s.tests_completed?.toLocaleString() || 0, color: '#e4e4e7' },
-                            { label: 'Completion', value: `${completionRate}%`, color: '#34d399' },
-                            { label: 'Time Spent', value: formatTime(s.time_typing), color: '#a78bfa' },
-                          ].map(item => (
-                            <div key={item.label} className="p-1.5 rounded-lg text-center" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.03)' }}>
-                              <span className="text-[8px] text-zinc-600 uppercase tracking-wider block mb-0.5">{item.label}</span>
-                              <span className="text-xs font-black font-mono" style={{ color: item.color }}>{item.value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="rounded-xl p-3 flex flex-col min-h-[130px]" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest flex items-center gap-1.5 mb-1.5">
-                          <Zap className="w-3 h-3 text-amber-400" /> Speed Curve (WPM)
-                        </span>
-                        <div className="flex-1 min-h-[85px]">
-                          {chartData.length === 0 ? (
-                            <div className="h-full flex items-center justify-center text-zinc-700 text-xs">No data yet</div>
-                          ) : (
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={chartData} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-                                <XAxis dataKey="name" stroke="#3f3f46" fontSize={8} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#3f3f46" fontSize={8} tickLine={false} axisLine={false} />
-                                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
-                                <Bar dataKey="WPM" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={22} />
-                              </BarChart>
-                            </ResponsiveContainer>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Mode breakdown */}
-                    <div>
-                      <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest flex items-center gap-1.5 mb-2">
-                        <Award className="w-3 h-3 text-amber-400" /> Category Benchmark Breakdown
-                      </span>
-                      <div className="grid grid-cols-1 xs:grid-cols-2 gap-2.5">
-                        {modes.map(item => {
-                          const isBest = item.wpm && item.wpm === topWPM && topWPM > 0;
-                          const barPct = topWPM > 0 && item.wpm ? Math.min(100, Math.round((item.wpm / 150) * 100)) : 0;
-                          const accColor = item.acc >= 98 ? '#34d399' : item.acc >= 95 ? '#fbbf24' : '#71717a';
-                          return (
-                            <div
-                              key={item.label}
-                              className="rounded-xl p-2.5 relative overflow-hidden transition-all duration-200 hover:scale-[1.02]"
-                              style={{
-                                backgroundColor: isBest ? 'rgba(245, 158, 11, 0.05)' : 'rgba(255, 255, 255, 0.02)',
-                                border: isBest ? '1px solid rgba(245,158,11,0.28)' : '1px solid rgba(255,255,255,0.05)',
-                              }}
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest">{item.label}</span>
-                                {isBest && (
-                                  <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.25)' }}>
-                                    <Star className="w-2 h-2 text-amber-400 fill-amber-400" />
-                                    <span className="text-[7px] font-black text-amber-400 uppercase">Best</span>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-xl font-black font-mono" style={{ color: isBest ? '#fbbf24' : '#e4e4e7' }}>{item.wpm ?? '--'}</span>
-                                <span className="text-[8px] text-zinc-600 font-semibold uppercase">wpm</span>
-                              </div>
-                              <div className="mt-1.5 space-y-0.5 pt-1.5" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                                <div className="flex justify-between text-[9px]">
-                                  <span className="text-zinc-600">Accuracy</span>
-                                  <span className="font-bold font-mono" style={{ color: accColor }}>{item.acc != null ? `${item.acc}%` : '--'}</span>
-                                </div>
-                                <div className="flex justify-between text-[9px]">
-                                  <span className="text-zinc-600">Consistency</span>
-                                  <span className="font-bold font-mono text-amber-400/80">{item.consistency != null ? `${item.consistency}%` : '--'}</span>
-                                </div>
-                              </div>
-                              <div className="w-full rounded-full mt-2 overflow-hidden" style={{ height: '2px', background: 'rgba(255,255,255,0.05)' }}>
-                                <div className="h-full rounded-full transition-all duration-700" style={{
-                                  width: `${barPct}%`,
-                                  backgroundColor: isBest ? '#f59e0b' : '#7c3aed',
-                                }} />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {s.last_synced && (
-                      <div className="text-center text-[9px] font-mono text-zinc-700 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                        Last synced from Monkeytype · {new Date(s.last_synced).toLocaleString()}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* ── SOLVED TAB ──────────────────────── */}
+          {/* ── SOLVED TAB ── */}
           {activeModalTab === 'solved' && (
-            <div className="space-y-4 animate-fadeIn flex-1 overflow-y-auto custom-scrollbar h-full min-h-0 pr-1 pb-4">
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="relative flex-1 w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
+            <div className="space-y-4 animate-fadeIn">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
                   <input
                     type="text"
-                    value={modalSearch}
-                    onChange={e => setModalSearch(e.target.value)}
-                    placeholder="Search by name, topic or subtopic…"
-                    className="w-full pl-9 pr-9 py-2 text-xs rounded-xl text-zinc-200 placeholder:text-zinc-650 focus:outline-none transition-all glass-input"
+                    placeholder="Search solved problems…"
+                    value={solvedSearch}
+                    onChange={e => setSolvedSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-700"
                   />
-                  {modalSearch && (
-                    <button onClick={() => setModalSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-300 text-xs">×</button>
-                  )}
                 </div>
-                <div className="flex items-center gap-1 p-1 rounded-xl shrink-0 overflow-x-auto max-w-full custom-scrollbar" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  {[
-                    { key: 'all', label: 'All' },
-                    { key: 'gpt', label: 'AI', icon: Sparkles, color: 'text-violet-400' },
-                    { key: 'copy', label: 'Copy', icon: Copy, color: 'text-rose-400' },
-                    { key: 'hint', label: 'Hint', icon: Lightbulb, color: 'text-amber-400' },
-                    { key: 'solution', label: 'Seen', icon: Eye, color: 'text-sky-400' },
-                    { key: 'optimal', label: 'Optimal', color: 'text-emerald-400' },
-                    { key: 'revisit', label: 'Revisit', color: 'text-rose-400' },
-                  ].map(({ key, label, icon: Icon, color }) => (
+                <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-lg border border-zinc-800 text-xs font-mono">
+                  {['all', 'Easy', 'Medium', 'Hard'].map(d => (
                     <button
-                      key={key}
-                      onClick={() => setMethodFilter(key)}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                        methodFilter === key
-                          ? 'bg-violet-600 text-white shadow-sm shadow-violet-600/30'
-                          : `${color || 'text-zinc-500'} hover:text-zinc-200 hover:bg-white/5`
+                      key={d}
+                      onClick={() => setSolvedDiffFilter(d)}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${
+                        solvedDiffFilter === d ? 'bg-white text-zinc-900' : 'text-zinc-400 hover:text-zinc-200'
                       }`}
                     >
-                      {Icon && <Icon className="w-3 h-3" />}
-                      {label}
+                      {d}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {Object.keys(allSolvedGrouped).length === 0 ? (
-                <div className="text-center py-16 rounded-2xl" style={{ border: '1px solid rgba(255,255,255,0.04)' }}>
-                  <p className="text-xs text-zinc-600">No solved questions match your filter criteria.</p>
-                  {(modalSearch || methodFilter !== 'all') && (
-                    <button onClick={() => { setModalSearch(''); setMethodFilter('all'); }} className="mt-3 text-xs text-violet-400 hover:underline font-semibold cursor-pointer">
-                      Clear filters
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1.5 custom-scrollbar">
-                  {Object.entries(allSolvedGrouped).map(([topic, topicQs]) => {
-                    const isExpanded = expandedModalTopics[topic] !== false;
-                    return (
-                      <div key={topic} className="rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <button
-                          onClick={() => setExpandedModalTopics(prev => ({ ...prev, [topic]: !isExpanded }))}
-                          className="w-full flex items-center justify-between px-4 py-2.5 transition-colors cursor-pointer select-none"
-                          style={{ background: isExpanded ? 'rgba(18,18,24,0.95)' : 'rgba(14,14,18,0.8)' }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-zinc-300">{topic}</span>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(124,58,237,0.12)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.2)' }}>
-                              {topicQs.length} solved
-                            </span>
-                          </div>
-                          <span className="text-zinc-600 text-[10px]">{isExpanded ? '▲' : '▼'}</span>
-                        </button>
-                        {isExpanded && (
-                          <div className="divide-y" style={{ background: 'rgba(11,11,14,0.6)', borderColor: 'rgba(255,255,255,0.03)' }}>
-                            {topicQs.map(q => (
-                              <div key={q.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-white/[0.02] transition-colors">
-                                <div className="min-w-0 flex-1 space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-mono text-zinc-700">#{q.sr_no}</span>
-                                    <span className="text-xs font-semibold text-zinc-200 truncate">{q.problem_name}</span>
-                                    <DiffDot d={q.difficulty} />
-                                  </div>
-                                  <div className="flex items-center gap-2 text-[10px] text-zinc-600">
-                                    <span>{q.subtopic || 'General'}</span>
-                                    <span>·</span>
-                                    <span className="font-mono">{formatRelativeTime(q.solvedAt)}</span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0 justify-between sm:justify-end">
-                                  <SolveTags prog={q.prog} />
-                                  {q.link && (
-                                    <a href={q.link} target="_blank" rel="noreferrer"
-                                      className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-200 hover:bg-white/[0.06] transition-colors shrink-0"
-                                    >
-                                      <ExternalLink className="w-3.5 h-3.5" />
-                                    </a>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+              <div className="space-y-2 max-h-[480px] overflow-y-auto custom-scrollbar pr-1">
+                {filteredSolvedList.map(q => (
+                  <div key={q.id} className="p-3 rounded-xl border border-zinc-800/80 bg-zinc-900/40 flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <DiffDot difficulty={q.difficulty} />
+                        <h4 className="text-xs font-semibold text-zinc-200 truncate">{q.problem_name}</h4>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                      <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
+                    </div>
+                    <span className="text-[9px] font-mono text-zinc-500 shrink-0">{formatRelativeTime(q.solvedAt)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* ── QUIZ TAB ──────────────────────────────────── */}
-          {activeModalTab === 'quiz' && (
-            <div className="animate-fadeIn flex-1 overflow-y-auto custom-scrollbar h-full min-h-0 pr-1 pb-4">
-              {loadingAttempts ? (
-                <div className="py-24 flex flex-col items-center justify-center text-center gap-3">
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center">
-                      <Brain className="w-6 h-6 text-violet-400 animate-pulse" />
-                    </div>
-                    <div className="absolute inset-0 rounded-2xl animate-ping" style={{ background: 'rgba(124,58,237,0.1)' }} />
-                  </div>
-                  <p className="text-xs text-zinc-500 font-medium">Loading quiz attempts…</p>
-                </div>
-              ) : quizAttempts.length === 0 ? (
-                <div className="py-20 flex flex-col items-center justify-center text-center gap-4 rounded-2xl" style={{ border: '1px dashed rgba(124,58,237,0.15)', background: 'rgba(124,58,237,0.02)' }}>
-                  <div className="relative">
-                    <div className="w-16 h-16 rounded-2xl bg-violet-500/10 flex items-center justify-center">
-                      <Brain className="w-8 h-8 text-violet-500/40" />
-                    </div>
-                    <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                      <span className="text-[9px] text-zinc-600">0</span>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-zinc-200">No Quiz Attempts Yet</h4>
-                    <p className="text-xs text-zinc-500 max-w-xs mt-1.5 leading-relaxed">
-                      Head over to the <span className="text-violet-400 font-semibold">Java Quiz</span> section to test your knowledge and start tracking your progress!
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-5">
-
-                  {/* ── Stats Grid ── */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {/* Personal Best — large hero */}
-                    <div
-                      className="sm:col-span-2 rounded-2xl p-5 relative overflow-hidden flex items-center justify-between"
-                      style={{
-                        backgroundColor: 'rgba(124, 58, 237, 0.05)',
-                        border: '1px solid rgba(124,58,237,0.22)',
-                      }}
-                    >
-                      {/* decorative bg icon */}
-                      <div className="absolute -right-4 -bottom-4 opacity-[0.05] pointer-events-none select-none">
-                        <Brain className="w-32 h-32 text-violet-400" />
-                      </div>
-
-                      <div className="z-10">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="w-6 h-6 rounded-lg bg-violet-500/20 flex items-center justify-center">
-                            <Trophy className="w-3.5 h-3.5 text-violet-300" />
-                          </div>
-                          <span className="text-[9px] uppercase font-black text-violet-400/70 tracking-widest">Personal Best</span>
-                        </div>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-5xl font-black font-mono tracking-tight" style={{ color: '#a78bfa', textShadow: '0 0 30px rgba(167,139,250,0.4)' }}>
-                            {quizStats.best ? quizStats.best.score : '--'}
-                          </span>
-                          <span className="text-zinc-500 text-lg font-bold">/{quizStats.best?.total ?? '--'}</span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span
-                            className="text-xs font-bold px-2.5 py-0.5 rounded-full"
-                            style={{
-                              background: 'rgba(167,139,250,0.15)',
-                              border: '1px solid rgba(167,139,250,0.3)',
-                              color: '#a78bfa',
-                            }}
-                          >
-                            {quizStats.best ? Math.round(Number(quizStats.best.percentage)) : 0}% Accuracy
-                          </span>
-                          {quizStats.best && (
-                            <span className="text-[10px] text-zinc-600 font-mono">
-                              {formatRelativeTime(quizStats.best.completed_at)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Circular progress */}
-                      <div className="relative shrink-0 z-10 flex items-center justify-center mr-2">
-                        <CircularProgress
-                          value={quizStats.best ? Math.round(Number(quizStats.best.percentage)) : 0}
-                          size={80}
-                          strokeWidth={6}
-                          color="#7c3aed"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center flex-col">
-                          <span className="text-base font-black text-violet-300 font-mono leading-none">
-                            {quizStats.best ? Math.round(Number(quizStats.best.percentage)) : 0}
-                          </span>
-                          <span className="text-[8px] text-zinc-600 font-bold">%</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Secondary stats */}
-                    <div className="flex flex-col gap-3">
-                      <div
-                        className="flex-1 rounded-2xl p-4 flex flex-col justify-between"
-                        style={{
-                          background: 'rgba(16,185,129,0.06)',
-                          border: '1px solid rgba(16,185,129,0.18)',
-                        }}
-                      >
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <BarChart2 className="w-3.5 h-3.5 text-emerald-400" />
-                          <span className="text-[9px] uppercase font-black text-zinc-500 tracking-widest">Avg Accuracy</span>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-3xl font-black font-mono text-emerald-400">{quizStats.average}</span>
-                          <span className="text-sm font-bold text-emerald-600">%</span>
-                        </div>
-                        <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${quizStats.average}%`, backgroundColor: '#059669', boxShadow: '0 0 8px rgba(52,211,153,0.4)' }} />
-                        </div>
-                      </div>
-                      <div
-                        className="flex-1 rounded-2xl p-4 flex flex-col justify-between"
-                        style={{
-                          background: 'rgba(99,102,241,0.06)',
-                          border: '1px solid rgba(99,102,241,0.18)',
-                        }}
-                      >
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <Target className="w-3.5 h-3.5 text-indigo-400" />
-                          <span className="text-[9px] uppercase font-black text-zinc-500 tracking-widest">Total Attempts</span>
-                        </div>
-                        <span className="text-3xl font-black font-mono text-indigo-300">{quizStats.total}</span>
-                        <span className="text-[10px] text-zinc-600 mt-1">quizzes taken</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── Attempts History ── */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-1 h-4 rounded-full" style={{ backgroundColor: '#7c3aed' }} />
-                      <span className="text-[10px] uppercase font-black text-zinc-500 tracking-widest">Attempt History</span>
-                      <span className="text-[10px] font-mono text-zinc-700 ml-auto">{quizAttempts.length} total</span>
-                    </div>
-                    <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1 custom-scrollbar">
-                      {quizAttempts.map((attempt, index) => {
-                        const p = Math.round(Number(attempt.percentage));
-                        const isBest = attempt.id === quizStats.best?.id;
-
-                        let tier, tierColor, tierBg, tierBorder, barColor;
-                        if (p === 100) {
-                          tier = '✦ Perfect'; tierColor = '#fbbf24'; tierBg = 'rgba(245,158,11,0.10)'; tierBorder = 'rgba(245,158,11,0.25)'; barColor = '#f59e0b';
-                        } else if (p >= 90) {
-                          tier = 'Elite'; tierColor = '#34d399'; tierBg = 'rgba(16,185,129,0.08)'; tierBorder = 'rgba(16,185,129,0.2)'; barColor = '#10b981';
-                        } else if (p >= 70) {
-                          tier = 'Advanced'; tierColor = '#60a5fa'; tierBg = 'rgba(59,130,246,0.08)'; tierBorder = 'rgba(59,130,246,0.2)'; barColor = '#3b82f6';
-                        } else if (p >= 50) {
-                          tier = 'Passing'; tierColor = '#fbbf24'; tierBg = 'rgba(245,158,11,0.08)'; tierBorder = 'rgba(245,158,11,0.2)'; barColor = '#f59e0b';
-                        } else {
-                          tier = 'Practice'; tierColor = '#f87171'; tierBg = 'rgba(239,68,68,0.08)'; tierBorder = 'rgba(239,68,68,0.2)'; barColor = '#ef4444';
-                        }
-
-                        return (
-                          <div
-                            key={attempt.id || index}
-                            className="group rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all duration-200 hover:scale-[1.005]"
-                            style={{
-                              backgroundColor: isBest ? 'rgba(124, 58, 237, 0.05)' : 'rgba(255, 255, 255, 0.02)',
-                              border: isBest ? '1px solid rgba(124,58,237,0.2)' : '1px solid rgba(255,255,255,0.04)',
-                            }}
-                          >
-                            {isBest && <div className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full" style={{ background: '#7c3aed' }} />}
-
-                            {/* Left: icon + info */}
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 relative"
-                                style={{ background: tierBg, border: `1px solid ${tierBorder}` }}
-                              >
-                                <Brain className="w-5 h-5" style={{ color: tierColor }} />
-                                {isBest && (
-                                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: '#7c3aed' }}>
-                                    <Star className="w-2.5 h-2.5 text-white fill-white" />
-                                  </div>
-                                )}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h5 className="text-xs font-bold text-zinc-200">Java Concepts Quiz</h5>
-                                  {isBest && (
-                                    <span className="text-[8px] font-black px-1.5 py-0.5 rounded" style={{ background: 'rgba(124,58,237,0.2)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.3)' }}>
-                                      BEST
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <Clock className="w-3 h-3 text-zinc-700" />
-                                  <span className="text-[10px] text-zinc-600">
-                                    {new Date(attempt.completed_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                                    <span className="mx-1 text-zinc-700">·</span>
-                                    {formatRelativeTime(attempt.completed_at)}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Right: score + bar + badge */}
-                            <div className="flex items-center gap-5 sm:ml-auto">
-                              {/* Score fraction */}
-                              <div className="text-center">
-                                <div className="flex items-baseline gap-0.5">
-                                  <span className="text-xl font-black font-mono text-zinc-100">{attempt.score}</span>
-                                  <span className="text-zinc-600 text-sm">/</span>
-                                  <span className="text-sm font-bold text-zinc-500 font-mono">{attempt.total}</span>
-                                </div>
-                                <span className="text-[9px] uppercase tracking-wider text-zinc-700 font-semibold">score</span>
-                              </div>
-
-                              {/* Progress bar + pct */}
-                              <div className="flex flex-col items-end gap-1.5 min-w-[80px]">
-                                <span className="text-[10px] font-black" style={{ color: tierColor }}>{p}%</span>
-                                <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                                  <div
-                                    className="h-full rounded-full transition-all duration-700"
-                                    style={{ width: `${p}%`, background: barColor, boxShadow: `0 0 6px ${barColor}80` }}
-                                  />
-                                </div>
-                                <span
-                                  className="text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider"
-                                  style={{ background: tierBg, color: tierColor, border: `1px solid ${tierBorder}` }}
-                                >
-                                  {tier}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Duplicate speed/monkeytype secondary rendering block */}
+          {/* ── SPEED TAB ── */}
           {activeModalTab === 'speed' && (
-            <div style={{ display: 'none' }} />
+            <div className="space-y-4 animate-fadeIn">
+              {typingProfile ? (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+                    <div>
+                      <span className="text-[9px] uppercase font-mono text-amber-500/70 font-bold block mb-1">Peak Speed</span>
+                      <span className="text-3xl font-extrabold text-amber-400 font-mono tracking-tight">
+                        {Math.max(typingProfile.wpm_15 || 0, typingProfile.wpm_30 || 0, typingProfile.wpm_60 || 0, typingProfile.wpm_120 || 0)}
+                      </span>
+                      <span className="text-xs font-bold text-amber-600 ml-1">WPM</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-12 text-center text-xs text-zinc-500 italic">No speed data available for this racer.</div>
+              )}
+            </div>
           )}
-        </div>
 
-        {/* ── FOOTER ─────────────────────────────────────────────────────── */}
-        <div
-          className="flex justify-between items-center px-5 sm:px-6 py-3 shrink-0"
-          style={{
-            borderTop: '1px solid rgba(255,255,255,0.04)',
-            background: 'rgba(10,10,13,0.95)',
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
-            <span className="text-[10px] text-zinc-600 font-mono">Realtime sync active</span>
-          </div>
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer"
-            style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.07)',
-              color: '#a1a1aa',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#f4f4f5'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = '#a1a1aa'; }}
-          >
-            Close
-          </button>
+          {/* ── QUIZ TAB ── */}
+          {activeModalTab === 'quiz' && (
+            <div className="space-y-4 animate-fadeIn">
+              {quizAttempts.length > 0 ? (
+                <div className="space-y-2 max-h-[480px] overflow-y-auto custom-scrollbar">
+                  {quizAttempts.map(att => (
+                    <div key={att.id} className="p-3 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-bold text-zinc-200 font-mono">Score: {att.score} / {att.total_questions}</span>
+                        <span className="text-[10px] text-zinc-500 font-mono block">{new Date(att.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <span className="text-xs font-bold font-mono text-emerald-400">{att.percentage}%</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-xs text-zinc-500 italic">No quiz attempts recorded yet.</div>
+              )}
+            </div>
+          )}
+
         </div>
       </motion.div>
     </motion.div>
   );
-};
+}
 
-export default UserProfileModal;
+export { UserProfileModal };
