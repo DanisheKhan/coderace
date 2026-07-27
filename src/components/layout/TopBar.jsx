@@ -10,10 +10,14 @@ import {
   Plus, 
   CheckCircle2, 
   Flame,
+  Eye,
+  Settings,
+  LogOut,
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
 import EditProfileModal from '../EditProfileModal';
+import UserProfileModal from '../UserProfileModal';
 
 // Map routes → page titles
 const PAGE_TITLES = {
@@ -36,7 +40,10 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const userMenuRef = useRef(null);
   const mobileInputRef = useRef(null);
 
   // Close dropdown & mobile search on outside click
@@ -45,6 +52,9 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setShowResults(false);
         setIsMobileSearchOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setIsUserMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -251,17 +261,59 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                   <span>{streak}d</span>
                 </div>
 
-                {/* Avatar */}
-                <div
-                  onClick={() => setIsEditProfileOpen(true)}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-white uppercase text-xs sm:text-sm shadow-sm select-none overflow-hidden cursor-pointer hover:ring-2 hover:ring-violet-500/50 transition-all border border-white/10 shrink-0"
-                  style={{ backgroundColor: profile.avatar_url ? 'transparent' : (profile.avatar_color || '#6366f1') }}
-                  title="Edit profile"
-                >
-                  {profile.avatar_url ? (
-                    <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
-                  ) : (
-                    profile.display_name?.charAt(0) || '?'
+                {/* Avatar with Dropdown */}
+                <div className="relative" ref={userMenuRef}>
+                  <div
+                    onClick={() => setIsUserMenuOpen(prev => !prev)}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-white uppercase text-xs sm:text-sm shadow-sm select-none overflow-hidden cursor-pointer hover:ring-2 hover:ring-violet-500/50 transition-all border border-white/10 shrink-0"
+                    style={{ backgroundColor: profile.avatar_url ? 'transparent' : (profile.avatar_color || '#6366f1') }}
+                    title="User Menu"
+                  >
+                    {profile.avatar_url ? (
+                      <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
+                    ) : (
+                      profile.display_name?.charAt(0) || '?'
+                    )}
+                  </div>
+
+                  {isUserMenuOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-white/[0.08] bg-[#0d0d0f]/95 backdrop-blur-xl shadow-2xl shadow-black/90 p-1.5 z-50 animate-fadeIn">
+                      <div className="px-2.5 py-1.5 border-b border-white/[0.04] mb-1">
+                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Signed in as</p>
+                        <p className="text-xs font-semibold text-zinc-200 truncate mt-0.5">{profile.display_name}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setIsProfileOpen(true);
+                        }}
+                        className="w-full text-left px-2.5 py-2 text-xs font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-violet-400" />
+                        View Profile
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setIsEditProfileOpen(true);
+                        }}
+                        className="w-full text-left px-2.5 py-2 text-xs font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                      >
+                        <Settings className="w-3.5 h-3.5 text-zinc-500" />
+                        Edit Profile
+                      </button>
+                      <div className="h-px bg-white/[0.05] my-1" />
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          signOut();
+                        }}
+                        className="w-full text-left px-2.5 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/[0.05] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        Sign Out
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -274,6 +326,15 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
         isOpen={isEditProfileOpen}
         onClose={() => setIsEditProfileOpen(false)}
       />
+
+      {isProfileOpen && profile && (
+        <UserProfileModal
+          user={profile}
+          progress={progress}
+          questions={questions}
+          onClose={() => setIsProfileOpen(false)}
+        />
+      )}
     </>
   );
 };

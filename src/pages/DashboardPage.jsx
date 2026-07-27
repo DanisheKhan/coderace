@@ -2,14 +2,13 @@ import React, { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuestions } from '../contexts/QuestionsContext';
 import { useProgressStore } from '../store/progressStore';
-import { SolveTags } from './LeaderboardPage';
+import { SolveTags, UserProfileModal } from '../components/UserProfileModal';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area,
 } from 'recharts';
 import {
-  Trophy, Flame, Calendar, ListTodo,
-  TrendingUp, Percent, ExternalLink, Target, Activity, Zap, Clock, Layers, Award, Sparkles, BookOpen, Workflow, BookmarkCheck, Network
+  Trophy, Flame, Calendar, ListTodo, TrendingUp, Percent, ExternalLink, Target, Activity, Zap, Clock, Layers, Award, Sparkles, BookOpen, Workflow, BookmarkCheck, Network, Eye
 } from 'lucide-react';
 import { calculateUserAchievements } from '../lib/achievements';
 import MonkeytypePanel from '../components/MonkeytypePanel';
@@ -185,6 +184,7 @@ const DashboardPage = () => {
   const { questions } = useQuestions();
   const { progress } = useProgressStore();
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const userProgress = useMemo(() => progress.filter(p => p.user_id === profile?.id), [progress, profile]);
 
@@ -316,11 +316,21 @@ const DashboardPage = () => {
     <div className="space-y-4 max-w-7xl mx-auto pb-8">
 
       {/* ── Header ── */}
-      <div className="pb-4 border-b border-white/[0.05]">
-        <h1 className="text-xl font-bold tracking-tight text-zinc-100">
-          Welcome back, <span className="text-violet-400">{profile?.display_name}</span>
-        </h1>
-        <p className="text-zinc-600 text-xs mt-0.5">Your DSA progress & race analytics snapshot.</p>
+      <div className="pb-4 border-b border-white/[0.05] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-zinc-100">
+            Welcome back, <span className="text-violet-400">{profile?.display_name}</span>
+          </h1>
+          <p className="text-zinc-600 text-xs mt-0.5">Your DSA progress & race analytics snapshot.</p>
+        </div>
+        
+        <button
+          onClick={() => setIsProfileOpen(true)}
+          className="px-4 py-2 rounded-xl bg-violet-600/10 hover:bg-violet-600 border border-violet-500/25 hover:border-violet-500 text-violet-400 hover:text-white text-xs font-semibold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <Eye className="w-3.5 h-3.5" />
+          <span>View Profile</span>
+        </button>
       </div>
 
       {/* ── Top 5 Stat Cards ── */}
@@ -590,6 +600,16 @@ const DashboardPage = () => {
         isOpen={isLinkModalOpen}
         onClose={() => setIsLinkModalOpen(false)}
       />
+
+      {/* User profile modal */}
+      {isProfileOpen && profile && (
+        <UserProfileModal
+          user={profile}
+          progress={progress}
+          questions={questions}
+          onClose={() => setIsProfileOpen(false)}
+        />
+      )}
     </div>
   );
 };

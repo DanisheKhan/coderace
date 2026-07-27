@@ -68,7 +68,8 @@ export default function TypingPage() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 animate-fadeIn">
+    <>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 animate-fadeIn">
 
       {/* ── Hero Banner ─────────────────────────── */}
       <div
@@ -287,6 +288,7 @@ export default function TypingPage() {
           <MonkeytypePanel onOpenEditProfile={() => setIsLinkModalOpen(true)} />
         </div>
       </div>
+      </div>
 
       {/* ── Modals ──────────────────────────────── */}
       <LinkMonkeytypeModal
@@ -297,7 +299,7 @@ export default function TypingPage() {
       {selectedUser && (
         <UserTypingProfileModal user={selectedUser} onClose={() => setSelectedUser(null)} />
       )}
-    </div>
+    </>
   );
 }
 
@@ -344,7 +346,7 @@ function UserTypingProfileModal({ user, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 animate-fadeIn"
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
       onClick={onClose}
     >
       <div
