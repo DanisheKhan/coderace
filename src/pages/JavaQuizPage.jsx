@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   fetchQuizQuestions, 
   saveQuizAttempt, 
-  fetchUserAttempts 
+  fetchUserAttempts, 
+  fetchGlobalQuizLeaderboard 
 } from '../lib/quizService';
 import { 
   Brain, 
@@ -19,19 +20,50 @@ import {
   Play,
   FileQuestion,
   ChevronRight,
-  BookOpen
+  BookOpen,
+  Bookmark,
+  BookmarkCheck,
+  Trophy,
+  Layers,
+  Clock,
+  Sparkles,
+  Flame,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  X,
+  Target,
+  BarChart2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { pageTransition, staggerContainer, fadeUp, cardHover, modalVariants } from '../lib/animations';
+import { pageTransition, staggerContainer, fadeUp } from '../lib/animations';
 
-const JavaQuizPage = () => {
+const TOPICS_CONFIG = [
+  { id: 'all', name: 'All Topics', icon: Brain, color: '#8b5cf6', desc: 'Random mix of all Java concepts' },
+  { id: 'OOP Concepts', name: 'OOP Concepts', icon: Layers, color: '#ec4899', desc: 'Inheritance, Polymorphism, Abstraction' },
+  { id: 'Collections Framework', name: 'Collections', icon: Target, color: '#10b981', desc: 'Lists, Sets, HashMaps, Queues' },
+  { id: 'Multithreading & Concurrency', name: 'Concurrency', icon: Zap, color: '#f59e0b', desc: 'Threads, Locks, Synchronization' },
+  { id: 'Exceptions & Memory', name: 'Exceptions & Memory', icon: Flame, color: '#ef4444', desc: 'Try-Catch, GC, Heap vs Stack' },
+  { id: 'Core Java & Syntax', name: 'Core Syntax', icon: BookOpen, color: '#3b82f6', desc: 'Generics, Modifiers, String Pool' },
+];
+
+const SPEED_BLITZ_SECONDS = 15; // 15 seconds per question in Speed Blitz mode
+
+export default function JavaQuizPage() {
   const { profile } = useAuth();
   
+  // App views: 'hub', 'leaderboard', 'bookmarks'
+  const [activeView, setActiveView] = useState('hub');
+
   // Game states: 'start', 'playing', 'result'
   const [gameState, setGameState] = useState('start');
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Selected Quiz Configuration
+  const [selectedTopic, setSelectedTopic] = useState('all');
+  const [selectedMode, setSelectedMode] = useState('standard'); // 'standard' | 'speed'
 
   // Playing states
   const [currentQuestionsList, setCurrentQuestionsList] = useState([]);
@@ -39,10 +71,46 @@ const JavaQuizPage = () => {
   const [selectedOption, setSelectedOption] = useState(null); // null or 0-3
   const [isAnswered, setIsAnswered] = useState(false);
   const [score, setScore] = useState(0);
-  
-  // Stats
-  const [history, setHistory] = useState([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
+  const [userAnswersHistory, setUserAnswersHistory] = useState([]); // Array of { question, selected, isCorrect }
+
+  // Speed Blitz Timer State
+  const [timeLeft, setTimeLeft] = useState(SPEED_BLITZ_SECONDS);
+  const timerRef = useRef(null);
+
+  // Stats & Leaderboard Data
+  const [userHistory, setUserHistory] = useState([]);
+  const [globalLeaderboard, setGlobalLeaderboard] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+
+  // Bookmarking System
+  const [bookmarkedIds, setBookmarkedIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('coderace_bookmarked_quiz_questions');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  // Post-Quiz Review Accordion
+  const [expandedReviewIdx, setExpandedReviewIdx] = useState(null);
+
+  // Save Bookmarks to LocalStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('coderace_bookmarked_quiz_questions', JSON.stringify(bookmarkedIds));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [bookmarkedIds]);
+
+  const toggleBookmark = (questionId) => {
+    setBookmarkedIds(prev => 
+      prev.includes(questionId) 
+        ? prev.filter(id => id !== questionId) 
+        : [...prev, questionId]
+    );
+  };
 
   // Load questions
   const loadData = async () => {
@@ -63,53 +131,124 @@ const JavaQuizPage = () => {
     }
   };
 
-  // Load user attempts
-  const loadHistory = async () => {
-    if (!profile?.id) return;
-    setHistoryLoading(true);
+  // Load user attempts & global leaderboard
+  const loadHistoryAndLeaderboard = async () => {
+    if (profile?.id) {
+      try {
+        const attempts = await fetchUserAttempts(profile.id);
+        setUserHistory(attempts || []);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    setLeaderboardLoading(true);
     try {
-      const attempts = await fetchUserAttempts(profile.id);
-      setHistory(attempts || []);
+      const lead = await fetchGlobalQuizLeaderboard();
+      setGlobalLeaderboard(lead || []);
     } catch (err) {
       console.error(err);
     } finally {
-      setHistoryLoading(false);
+      setLeaderboardLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
-    loadHistory();
+    loadHistoryAndLeaderboard();
   }, [profile?.id]);
 
-  // Start a new quiz session (picks 10 random questions)
+  // Topic Questions Breakdown Count
+  const topicCounts = useMemo(() => {
+    const counts = { all: questions.length };
+    TOPICS_CONFIG.forEach(t => {
+      if (t.id !== 'all') {
+        counts[t.id] = questions.filter(q => q.category === t.id).length;
+      }
+    });
+    return counts;
+  }, [questions]);
+
+  // Filter questions by selected topic
+  const availableQuestionsForTopic = useMemo(() => {
+    if (selectedTopic === 'all') return questions;
+    return questions.filter(q => q.category === selectedTopic);
+  }, [questions, selectedTopic]);
+
+  // Speed Blitz Timer Interval Handler
+  useEffect(() => {
+    if (gameState === 'playing' && selectedMode === 'speed' && !isAnswered) {
+      setTimeLeft(SPEED_BLITZ_SECONDS);
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current);
+            // Auto handle timeout as unanswered/wrong
+            handleTimeout();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+
+    return () => clearInterval(timerRef.current);
+  }, [gameState, currentIndex, isAnswered, selectedMode]);
+
+  const handleTimeout = () => {
+    if (isAnswered) return;
+    setSelectedOption(-1); // -1 indicates timeout
+    setIsAnswered(true);
+
+    const currentQ = currentQuestionsList[currentIndex];
+    setUserAnswersHistory(prev => [
+      ...prev,
+      { question: currentQ, selected: -1, isCorrect: false, timedOut: true }
+    ]);
+  };
+
+  // Start Quiz Challenge
   const startQuiz = () => {
-    if (questions.length < 10) {
-      alert(`Need at least 10 questions to start. Found ${questions.length}.`);
+    const list = availableQuestionsForTopic;
+    if (list.length === 0) {
+      alert(`No questions available for selected topic "${selectedTopic}".`);
       return;
     }
-    // Shuffle array and take first 10
-    const shuffled = [...questions].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, 10);
-    
-    setCurrentQuestionsList(selected);
+
+    // Pick up to 10 random questions
+    const countToTake = Math.min(10, list.length);
+    const shuffled = [...list].sort(() => 0.5 - Math.random()).slice(0, countToTake);
+
+    setCurrentQuestionsList(shuffled);
     setCurrentIndex(0);
     setSelectedOption(null);
     setIsAnswered(false);
     setScore(0);
+    setUserAnswersHistory([]);
+    setExpandedReviewIdx(null);
     setGameState('playing');
   };
 
   // Handle choosing an option
   const handleSelectOption = (idx) => {
     if (isAnswered) return;
+    clearInterval(timerRef.current);
     setSelectedOption(idx);
     setIsAnswered(true);
-    
+
     const currentQ = currentQuestionsList[currentIndex];
-    if (idx === currentQ.correct_option) {
+    const isCorrect = idx === currentQ.correct_option;
+
+    if (isCorrect) {
       setScore(prev => prev + 1);
     }
+
+    setUserAnswersHistory(prev => [
+      ...prev,
+      { question: currentQ, selected: idx, isCorrect, timedOut: false }
+    ]);
   };
 
   // Next question or finish
@@ -121,19 +260,23 @@ const JavaQuizPage = () => {
     } else {
       // Finished!
       setGameState('result');
-      // Save result to Supabase
       if (profile?.id) {
         await saveQuizAttempt(profile.id, score, currentQuestionsList.length);
-        loadHistory(); // refresh history
+        loadHistoryAndLeaderboard();
       }
     }
   };
+
+  // Bookmarked questions array
+  const bookmarkedQuestionsList = useMemo(() => {
+    return questions.filter(q => bookmarkedIds.includes(q.id));
+  }, [questions, bookmarkedIds]);
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-3">
         <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
-        <p className="text-zinc-500 text-xs font-mono">Loading Quiz Questions…</p>
+        <p className="text-zinc-500 text-xs font-mono">Loading Java Quiz Engine…</p>
       </div>
     );
   }
@@ -159,136 +302,350 @@ const JavaQuizPage = () => {
       animate="show"
       exit="exit"
       variants={pageTransition}
-      className="max-w-4xl mx-auto space-y-6 pb-8 font-sans transform-gpu"
+      className="max-w-4xl mx-auto space-y-6 pb-12 font-sans transform-gpu"
     >
-      {/* HEADER */}
-      <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80">
+      {/* HEADER & VIEW TABS */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800/80">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 shrink-0">
-            <Brain className="w-4 h-4 text-violet-400" />
+          <div className="w-9 h-9 rounded-xl bg-violet-600/15 border border-violet-500/25 flex items-center justify-center text-violet-400 shrink-0">
+            <Brain className="w-5 h-5 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-white">Java Interview Quiz</h1>
-            <p className="text-zinc-500 text-xs">Test your core Java knowledge: concepts, memory management, exceptions, and collections.</p>
+            <h1 className="text-lg font-bold tracking-tight text-white">Java Interview Quiz Arena</h1>
+            <p className="text-zinc-500 text-xs">Topic-wise quizzes, speed runs, and core Java concept reviews.</p>
           </div>
         </div>
+
+        {gameState === 'start' && (
+          <div className="flex items-center gap-1.5 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800 font-mono text-xs self-start sm:self-auto">
+            <button
+              onClick={() => setActiveView('hub')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeView === 'hub' ? 'bg-violet-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Brain className="w-3.5 h-3.5" />
+              <span>Quiz Hub</span>
+            </button>
+
+            <button
+              onClick={() => setActiveView('leaderboard')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeView === 'leaderboard' ? 'bg-violet-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span>Leaderboard</span>
+            </button>
+
+            <button
+              onClick={() => setActiveView('bookmarks')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeView === 'bookmarks' ? 'bg-violet-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Bookmark className="w-3.5 h-3.5" />
+              <span>Saved ({bookmarkedIds.length})</span>
+            </button>
+          </div>
+        )}
+
         {gameState === 'playing' && (
           <button 
             onClick={() => {
-              if (window.confirm("Are you sure you want to exit the quiz? Progress will not be saved.")) {
+              if (window.confirm("Are you sure you want to exit the quiz? Current score will not be saved.")) {
                 setGameState('start');
               }
             }}
-            className="px-3 py-1.5 rounded-lg border border-zinc-800 hover:bg-red-500/10 hover:text-red-400 text-zinc-400 text-xs font-semibold transition-all cursor-pointer active:scale-95"
+            className="px-3 py-1.5 rounded-xl border border-zinc-800 hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-400 text-zinc-400 text-xs font-semibold transition-all cursor-pointer"
           >
             Exit Quiz
           </button>
         )}
       </div>
 
-      {/* ── SCREEN 1: START SCREEN ── */}
-      {gameState === 'start' && (
-        <motion.div variants={staggerContainer} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+      {/* ── VIEW 1: QUIZ HUB SCREEN (Start State) ── */}
+      {gameState === 'start' && activeView === 'hub' && (
+        <motion.div variants={staggerContainer} className="space-y-6">
           
-          {/* Main Card */}
-          <motion.div variants={fadeUp} className="md:col-span-2 glass-panel rounded-2xl p-6 relative overflow-hidden space-y-6">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/5 rounded-full blur-[80px] pointer-events-none" />
-
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-violet-400 font-bold bg-violet-500/10 px-2.5 py-1 rounded-md border border-violet-500/20 inline-block">
-                Skill Test
-              </span>
-              <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Ready for 10 Quick Questions?</h2>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Answer 10 random Java concept questions curated for technical interviews. Track your best accuracy and climb the leaderboard!
-              </p>
-            </div>
-
-            {/* Features bullet list */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 flex items-center gap-2.5">
-                <FileQuestion className="w-4 h-4 text-violet-400 shrink-0" />
-                <div className="text-xs">
-                  <span className="font-semibold text-white block">10 Questions</span>
-                  <span className="text-[10px] text-zinc-500">Multiple choice</span>
-                </div>
-              </div>
-              <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 flex items-center gap-2.5">
-                <Zap className="w-4 h-4 text-amber-400 shrink-0" />
-                <div className="text-xs">
-                  <span className="font-semibold text-white block">Instant Feedback</span>
-                  <span className="text-[10px] text-zinc-500">Detailed explanations</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Start CTA */}
-            <div className="pt-2">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={startQuiz}
-                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-violet-600/20 cursor-pointer transition-colors"
-              >
-                <Play className="w-4 h-4 fill-white" />
-                <span>Start Quiz Challenge</span>
-              </motion.button>
-            </div>
-          </motion.div>
-
-          {/* Sidebar Stats */}
-          <motion.div variants={fadeUp} className="space-y-4">
-            <div className="glass-panel rounded-2xl p-5 space-y-4">
-              <h3 className="text-xs font-mono uppercase tracking-wider text-zinc-400 flex items-center gap-2 font-bold">
-                <Award className="w-4 h-4 text-amber-400" />
-                <span>Your Quiz Record</span>
+          {/* TOPIC SELECTION GRID */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-2">
+                <Target className="w-4 h-4 text-violet-400" />
+                <span>Select Quiz Topic</span>
               </h3>
-
-              {history.length > 0 ? (
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-[10px] text-zinc-500 block">BEST ACCURACY</span>
-                    <span className="text-2xl font-bold text-emerald-400">
-                      {Math.max(...history.map(h => Math.round((h.score / h.total_questions) * 100)))}%
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 block">TESTS TAKEN</span>
-                    <span className="text-lg font-bold text-white">{history.length}</span>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-zinc-500 italic">No quiz attempts yet. Complete your first test above!</p>
-              )}
+              <span className="text-[10px] font-mono text-zinc-500">Pick a specific Java concept or test all</span>
             </div>
 
-            {/* Recent Attempts list */}
-            {history.length > 0 && (
-              <div className="glass-panel rounded-2xl p-4 space-y-3">
-                <h4 className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-bold">Recent History</h4>
-                <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                  {history.slice(0, 5).map((att) => {
-                    const pct = Math.round((att.score / att.total_questions) * 100);
-                    return (
-                      <div key={att.id} className="flex items-center justify-between p-2 rounded-lg bg-zinc-900/60 text-xs">
-                        <span className="text-zinc-400 text-[11px] font-mono">
-                          {new Date(att.created_at).toLocaleDateString()}
-                        </span>
-                        <span className={`font-bold font-mono ${pct >= 80 ? 'text-emerald-400' : pct >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
-                          {att.score}/{att.total_questions} ({pct}%)
-                        </span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {TOPICS_CONFIG.map(t => {
+                const IconComp = t.icon;
+                const isSelected = selectedTopic === t.id;
+                const count = topicCounts[t.id] || 0;
+
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => setSelectedTopic(t.id)}
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group ${
+                      isSelected
+                        ? 'bg-violet-600/15 border-violet-500/50 shadow-lg shadow-violet-600/10 ring-1 ring-violet-500/50'
+                        : 'bg-zinc-950/60 border-zinc-800/80 hover:border-zinc-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0 shadow-md"
+                        style={{ backgroundColor: t.color }}
+                      >
+                        <IconComp className="w-4 h-4" />
                       </div>
-                    );
-                  })}
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-zinc-900 border border-zinc-800 text-zinc-400">
+                        {count} Qs
+                      </span>
+                    </div>
+
+                    <div className="mt-2.5">
+                      <h4 className="text-xs font-bold text-white truncate">{t.name}</h4>
+                      <p className="text-[10px] text-zinc-400 line-clamp-1 mt-0.5">{t.desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* MODE SELECTION & CTA */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+            
+            <div className="md:col-span-2 glass-panel rounded-2xl p-6 space-y-6 relative overflow-hidden">
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-violet-400 font-bold bg-violet-500/10 px-2.5 py-1 rounded-md border border-violet-500/20 inline-block">
+                  CHALLENGE MODE
+                </span>
+                <h2 className="text-xl font-bold text-white tracking-tight">Choose Your Battle Pace</h2>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Selected Topic: <span className="text-violet-300 font-bold">{TOPICS_CONFIG.find(t => t.id === selectedTopic)?.name}</span> ({availableQuestionsForTopic.length} Available Questions)
+                </p>
+              </div>
+
+              {/* Mode Selector Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Standard Mode */}
+                <div
+                  onClick={() => setSelectedMode('standard')}
+                  className={`p-4 rounded-xl border transition-all cursor-pointer space-y-2 ${
+                    selectedMode === 'standard'
+                      ? 'bg-violet-500/15 border-violet-500/50 shadow-md'
+                      : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Brain className="w-4 h-4 text-violet-400" />
+                      <span className="text-xs font-bold text-white">Standard Practice</span>
+                    </div>
+                    {selectedMode === 'standard' && <CheckCircle2 className="w-4 h-4 text-violet-400" />}
+                  </div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    10 random questions at your own speed with instant answer explanations.
+                  </p>
+                </div>
+
+                {/* Speed Blitz Mode */}
+                <div
+                  onClick={() => setSelectedMode('speed')}
+                  className={`p-4 rounded-xl border transition-all cursor-pointer space-y-2 ${
+                    selectedMode === 'speed'
+                      ? 'bg-amber-500/15 border-amber-500/50 shadow-md'
+                      : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-400" />
+                      <span className="text-xs font-bold text-amber-300">Speed Blitz (15s)</span>
+                    </div>
+                    {selectedMode === 'speed' && <CheckCircle2 className="w-4 h-4 text-amber-400" />}
+                  </div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    15 seconds per question timer! Tests quick recall under time pressure.
+                  </p>
                 </div>
               </div>
-            )}
-          </motion.div>
+
+              {/* Start Quiz CTA Button */}
+              <div>
+                <button
+                  onClick={startQuiz}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-violet-600/25 cursor-pointer transition-all"
+                >
+                  <Play className="w-4 h-4 fill-white" />
+                  <span>Start {selectedTopic === 'all' ? 'Full' : selectedTopic} Quiz Challenge</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Sidebar Personal Records */}
+            <div className="space-y-4">
+              <div className="glass-panel rounded-2xl p-5 space-y-4">
+                <h3 className="text-xs font-mono uppercase tracking-wider text-zinc-400 flex items-center gap-2 font-bold">
+                  <Award className="w-4 h-4 text-amber-400" />
+                  <span>Your Performance Stats</span>
+                </h3>
+
+                {userHistory.length > 0 ? (
+                  <div className="space-y-3 font-mono">
+                    <div>
+                      <span className="text-[10px] text-zinc-500 block">BEST ACCURACY</span>
+                      <span className="text-2xl font-bold text-emerald-400">
+                        {Math.max(...userHistory.map(h => Math.round((h.score / h.total_questions) * 100)))}%
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-zinc-500 block">TOTAL QUIZZES COMPLETED</span>
+                      <span className="text-lg font-bold text-white">{userHistory.length}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-zinc-500 italic leading-relaxed">
+                    No quiz attempts yet. Pick a topic above and take your first test!
+                  </p>
+                )}
+              </div>
+            </div>
+
+          </div>
 
         </motion.div>
       )}
 
-      {/* ── SCREEN 2: PLAYING SCREEN ── */}
+      {/* ── VIEW 2: GLOBAL QUIZ LEADERBOARD ── */}
+      {gameState === 'start' && activeView === 'leaderboard' && (
+        <div className="glass-panel rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-amber-400" />
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-200">
+                Global Quiz Leaderboard
+              </h3>
+            </div>
+            <span className="text-[10px] font-mono text-zinc-500">Ranked by Highest Accuracy %</span>
+          </div>
+
+          {leaderboardLoading ? (
+            <div className="text-center py-12 text-xs font-mono text-zinc-500">Loading quiz leaderboard...</div>
+          ) : globalLeaderboard.length === 0 ? (
+            <div className="text-center py-12 border border-zinc-800 rounded-xl bg-zinc-950/40">
+              <Trophy className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+              <p className="text-xs text-zinc-500 font-mono">No quiz records found yet.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-zinc-800/60 border border-zinc-800/80 rounded-xl overflow-hidden bg-zinc-950/40 font-mono">
+              {globalLeaderboard.map((item, idx) => (
+                <div key={item.userId} className="p-3.5 flex items-center justify-between hover:bg-zinc-900/40 transition-colors gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xs text-zinc-600 w-5 shrink-0 text-right">#{idx + 1}</span>
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-sm uppercase shrink-0 border border-white/10"
+                      style={{ backgroundColor: item.profile.avatar_url ? 'transparent' : (item.profile.avatar_color || '#8b5cf6') }}
+                    >
+                      {item.profile.avatar_url ? (
+                        <img src={item.profile.avatar_url} alt={item.profile.display_name} className="w-full h-full object-cover rounded-xl" />
+                      ) : (
+                        item.profile.display_name?.charAt(0) || '?'
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-zinc-100 truncate">{item.profile.display_name}</p>
+                      <p className="text-[10px] text-zinc-500 truncate">
+                        {item.profile.username ? `@${item.profile.username}` : `ID: ${item.userId.slice(0, 8)}...`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <p className="text-xs font-bold text-emerald-400">{item.bestPct}% Accuracy</p>
+                    <p className="text-[10px] text-zinc-500">
+                      Best: {item.bestScore}/{item.total} • {item.attemptsCount} attempts
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── VIEW 3: BOOKMARKED QUESTIONS ── */}
+      {gameState === 'start' && activeView === 'bookmarks' && (
+        <div className="glass-panel rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+            <div className="flex items-center gap-2">
+              <Bookmark className="w-4 h-4 text-violet-400" />
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-200">
+                Bookmarked Questions ({bookmarkedQuestionsList.length})
+              </h3>
+            </div>
+            <span className="text-[10px] font-mono text-zinc-500">Saved for Quick Revision</span>
+          </div>
+
+          {bookmarkedQuestionsList.length === 0 ? (
+            <div className="text-center py-12 border border-zinc-800 rounded-xl bg-zinc-950/40">
+              <Bookmark className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+              <p className="text-xs text-zinc-500 font-mono">No bookmarked questions yet. Click the bookmark icon during a quiz to save tricky questions!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {bookmarkedQuestionsList.map(q => (
+                <div key={q.id} className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                        {q.category || 'Java Concept'}
+                      </span>
+                      <h4 className="text-xs sm:text-sm font-semibold text-white leading-relaxed">{q.question_text}</h4>
+                    </div>
+                    <button
+                      onClick={() => toggleBookmark(q.id)}
+                      className="p-1 text-violet-400 hover:text-rose-400 transition-colors shrink-0"
+                      title="Remove Bookmark"
+                    >
+                      <BookmarkCheck className="w-4 h-4 fill-violet-400" />
+                    </button>
+                  </div>
+
+                  {/* Options */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
+                    {q.options.map((opt, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-2 rounded-lg border text-[11px] flex items-center gap-2 ${
+                          idx === q.correct_option
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 font-bold'
+                            : 'bg-zinc-900 border-zinc-800 text-zinc-400'
+                        }`}
+                      >
+                        <span className="w-4 h-4 rounded flex items-center justify-center text-[9px] bg-zinc-800 text-zinc-400">
+                          {String.fromCharCode(65 + idx)}
+                        </span>
+                        <span className="truncate">{opt}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-zinc-300 bg-violet-950/20 p-2.5 rounded-lg border border-violet-500/20 leading-relaxed">
+                    <strong className="text-violet-300 font-mono">Explanation:</strong> {q.explanation}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── PLAYING SCREEN ── */}
       {gameState === 'playing' && currentQuestionsList.length > 0 && (
         <AnimatePresence mode="wait">
           <motion.div 
@@ -296,10 +653,30 @@ const JavaQuizPage = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.2 }}
             className="max-w-2xl mx-auto space-y-6"
           >
-            {/* Progress bar */}
+            {/* Speed Blitz Countdown Bar */}
+            {selectedMode === 'speed' && (
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs font-mono">
+                  <span className="text-amber-400 font-bold flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 animate-pulse" /> Time Remaining
+                  </span>
+                  <span className="text-amber-300 font-extrabold">{timeLeft}s</span>
+                </div>
+                <div className="w-full bg-zinc-900 h-2 rounded-full overflow-hidden border border-amber-500/20">
+                  <motion.div 
+                    className="bg-amber-500 h-full rounded-full" 
+                    initial={{ width: '100%' }}
+                    animate={{ width: `${(timeLeft / SPEED_BLITZ_SECONDS) * 100}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Standard Progress bar */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center text-xs font-mono">
                 <span className="text-zinc-400">Question {currentIndex + 1} of {currentQuestionsList.length}</span>
@@ -317,6 +694,21 @@ const JavaQuizPage = () => {
 
             {/* Question Card */}
             <div className="glass-panel rounded-2xl p-6 space-y-6 shadow-2xl relative">
+              <div className="flex items-start justify-between gap-3">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                  {currentQuestionsList[currentIndex].category || 'Java Concept'}
+                </span>
+
+                {/* Bookmark Toggle */}
+                <button
+                  onClick={() => toggleBookmark(currentQuestionsList[currentIndex].id)}
+                  className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                  title="Bookmark Question"
+                >
+                  <Bookmark className={`w-4 h-4 ${bookmarkedIds.includes(currentQuestionsList[currentIndex].id) ? 'fill-violet-400 text-violet-400' : ''}`} />
+                </button>
+              </div>
+
               {/* Question Text */}
               <h2 className="text-base sm:text-lg font-semibold text-white leading-snug">
                 {currentQuestionsList[currentIndex].question_text}
@@ -384,15 +776,13 @@ const JavaQuizPage = () => {
               {/* Next Button */}
               {isAnswered && (
                 <div className="flex justify-end pt-2">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
+                  <button
                     onClick={handleNextQuestion}
                     className="px-5 py-2.5 rounded-xl bg-white text-zinc-900 font-bold text-xs flex items-center gap-2 hover:bg-zinc-200 transition-colors cursor-pointer shadow-md"
                   >
-                    <span>{currentIndex + 1 === currentQuestionsList.length ? 'See Results' : 'Next Question'}</span>
+                    <span>{currentIndex + 1 === currentQuestionsList.length ? 'See Results & Review' : 'Next Question'}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
-                  </motion.button>
+                  </button>
                 </div>
               )}
             </div>
@@ -400,57 +790,136 @@ const JavaQuizPage = () => {
         </AnimatePresence>
       )}
 
-      {/* ── SCREEN 3: RESULT SCREEN ── */}
+      {/* ── RESULT & FULL QUESTION REVIEW SCREEN ── */}
       {gameState === 'result' && (
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          className="max-w-md mx-auto glass-panel rounded-2xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden"
+          className="max-w-2xl mx-auto space-y-6"
         >
-          <div className="w-16 h-16 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center mx-auto shadow-inner">
-            <Trophy className="w-8 h-8" />
-          </div>
-
-          <div className="space-y-1">
-            <h2 className="text-xl font-bold text-white">Quiz Completed!</h2>
-            <p className="text-xs text-zinc-400">Great effort testing your Java skills.</p>
-          </div>
-
-          {/* Score display */}
-          <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-1">
-            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest block">YOUR SCORE</span>
-            <div className="text-3xl font-extrabold text-white">
-              {score} <span className="text-zinc-500 text-sm font-normal">/ {currentQuestionsList.length}</span>
+          {/* Result Card */}
+          <div className="glass-panel rounded-2xl p-6 text-center space-y-5 shadow-2xl relative overflow-hidden">
+            <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center mx-auto shadow-inner">
+              <Trophy className="w-7 h-7 text-amber-400" />
             </div>
-            <p className="text-xs font-bold text-violet-400 mt-1">
-              {Math.round((score / currentQuestionsList.length) * 100)}% Accuracy
-            </p>
+
+            <div>
+              <h2 className="text-xl font-bold text-white">Quiz Completed!</h2>
+              <p className="text-xs text-zinc-400 mt-0.5">Topic: <span className="text-violet-300 font-bold">{TOPICS_CONFIG.find(t => t.id === selectedTopic)?.name}</span></p>
+            </div>
+
+            {/* Score pill */}
+            <div className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 space-y-1 font-mono inline-block px-8">
+              <span className="text-[10px] text-zinc-500 uppercase tracking-widest block">FINAL ACCURACY</span>
+              <div className="text-3xl font-extrabold text-white">
+                {score} <span className="text-zinc-500 text-sm font-normal">/ {currentQuestionsList.length}</span>
+              </div>
+              <p className="text-xs font-bold text-emerald-400 mt-1">
+                {Math.round((score / currentQuestionsList.length) * 100)}% Correct
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={startQuiz}
+                className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center gap-2 cursor-pointer transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Try Again</span>
+              </button>
+
+              <button
+                onClick={() => setGameState('start')}
+                className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white font-bold text-xs flex items-center gap-2 cursor-pointer transition-colors"
+              >
+                <Home className="w-3.5 h-3.5" />
+                <span>Quiz Hub</span>
+              </button>
+            </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={startQuiz}
-              className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Try Again</span>
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setGameState('start')}
-              className="flex-1 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
-            >
-              <Home className="w-3.5 h-3.5" />
-              <span>Quiz Home</span>
-            </motion.button>
+          {/* 📋 POST-QUIZ QUESTION REVIEW ACCORDION */}
+          <div className="glass-panel rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                <FileQuestion className="w-4 h-4 text-violet-400" />
+                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-200">
+                  Full Question Review ({userAnswersHistory.length})
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono text-zinc-500">Click question to inspect breakdown</span>
+            </div>
+
+            <div className="space-y-2.5">
+              {userAnswersHistory.map((item, idx) => {
+                const isExpanded = expandedReviewIdx === idx;
+
+                return (
+                  <div key={idx} className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 overflow-hidden transition-all">
+                    {/* Item Header */}
+                    <div
+                      onClick={() => setExpandedReviewIdx(isExpanded ? null : idx)}
+                      className="p-3.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-zinc-900/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {item.isCorrect ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                        )}
+                        <span className="text-xs font-semibold text-white truncate">
+                          Q{idx + 1}: {item.question.question_text}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                          item.isCorrect ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                        }`}>
+                          {item.isCorrect ? 'Correct' : item.timedOut ? 'Timed Out' : 'Incorrect'}
+                        </span>
+                        {isExpanded ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                      </div>
+                    </div>
+
+                    {/* Accordion Content Body */}
+                    {isExpanded && (
+                      <div className="p-4 pt-0 border-t border-zinc-800/60 space-y-3 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono pt-3">
+                          {item.question.options.map((opt, optIdx) => {
+                            const isCorrectOpt = optIdx === item.question.correct_option;
+                            const isUserChosen = optIdx === item.selected;
+
+                            let colorClass = "bg-zinc-900 border-zinc-800 text-zinc-400";
+                            if (isCorrectOpt) colorClass = "bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-bold";
+                            else if (isUserChosen && !isCorrectOpt) colorClass = "bg-rose-500/10 border-rose-500/40 text-rose-300 font-bold";
+
+                            return (
+                              <div key={optIdx} className={`p-2.5 rounded-lg border text-[11px] flex items-center gap-2 ${colorClass}`}>
+                                <span className="w-4 h-4 rounded flex items-center justify-center text-[9px] bg-zinc-800 text-zinc-300">
+                                  {String.fromCharCode(65 + optIdx)}
+                                </span>
+                                <span className="truncate">{opt}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div className="p-3 rounded-lg bg-violet-950/20 border border-violet-500/20 text-zinc-300 space-y-1">
+                          <p className="font-bold text-violet-300 font-mono text-[11px]">Explanation:</p>
+                          <p className="leading-relaxed">{item.question.explanation}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </motion.div>
       )}
+
     </motion.div>
   );
-};
-
-export default JavaQuizPage;
+}
