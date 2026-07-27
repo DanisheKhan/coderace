@@ -137,19 +137,9 @@ const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
           {c.rankText}
         </span>
         <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-zinc-500 z-10">
-          <Flame className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-orange-400" />
-          <span>{user.streak}d</span>
-        </div>
-        <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-zinc-500 z-10">
           <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-violet-400" />
           <span>{user.unlockedCount}</span>
         </div>
-        {user.quiz && (
-          <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-zinc-400 font-extrabold z-10" title={`Best Quiz Score: ${user.quiz.score}/${user.quiz.total} (${user.quiz.attempts_count} attempts)`}>
-            <Brain className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-violet-400 shrink-0" />
-            <span>{Math.round(user.quiz.percentage)}%</span>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -387,23 +377,6 @@ const LeaderboardPage = () => {
 
                       {/* Stats */}
                       <div className="flex items-center gap-4 shrink-0">
-                        <div className="flex items-center gap-1 text-[10px] text-zinc-600 hidden sm:flex">
-                          <Flame className="w-3 h-3 text-orange-400" />
-                          <span>{user.streak}d</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-[10px] text-zinc-600 hidden sm:flex">
-                          <Calendar className="w-3 h-3 text-emerald-400" />
-                          <span>+{user.solvedThisWeek}</span>
-                        </div>
-                        {user.quiz && (
-                          <div 
-                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-violet-600/10 border border-violet-500/15 text-[10px] text-violet-400 font-bold font-mono"
-                            title={`Best quiz score: ${user.quiz.score}/${user.quiz.total} (${user.quiz.attempts_count} attempts)`}
-                          >
-                            <Brain className="w-3 h-3 text-violet-400" />
-                            <span>{Math.round(user.quiz.percentage)}%</span>
-                          </div>
-                        )}
                         <div className="text-right">
                           <span className="text-sm font-bold font-mono text-zinc-200">{user.solved}</span>
                           <span className="text-[10px] text-zinc-700 font-mono"> /{totalQ}</span>
