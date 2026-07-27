@@ -89,6 +89,11 @@ const EditProfileModal = ({ isOpen, onClose }) => {
       return;
     }
 
+    if (!avatarFile && !avatarPreview) {
+      setError('Please upload your profile photo.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 

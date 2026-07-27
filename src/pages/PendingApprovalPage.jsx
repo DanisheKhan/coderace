@@ -1,61 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { requestToJoinCommunity } from '../lib/communityService';
-import { Clock, LogOut, RefreshCw, UserCheck, Users, Sparkles, Trophy, ArrowRight, CheckCircle2, ShieldCheck } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { Clock, LogOut, RefreshCw, Code2, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { pageTransition } from '../lib/animations';
 
 const PendingApprovalPage = () => {
   const { profile, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const inviteSquadId = searchParams.get('join') || searchParams.get('comm');
 
-  const handleJoinAndEnter = async () => {
-    if (!profile?.id) return;
+  // Auto check approval status when component mounts or profile changes
+  useEffect(() => {
+    if (profile?.approved || profile?.is_admin) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [profile, navigate]);
+
+  const handleCheckStatus = async () => {
     setLoading(true);
     setMessage('');
     try {
-      // 1. Approve user profile
-      const { error: appErr } = await supabase
-        .from('profiles')
-        .update({ approved: true })
-        .eq('id', profile.id);
-
-      if (appErr) throw appErr;
-
-      // 2. Fetch community to join (either invited squad ID or default official DSA Racer)
-      let targetCommId = null;
-      if (inviteSquadId) {
-        const { data: customComm } = await supabase
-          .from('communities')
-          .select('id')
-          .or(`id.eq.${inviteSquadId},community_id.eq.${inviteSquadId}`)
-          .maybeSingle();
-        if (customComm) targetCommId = customComm.id;
+      const updatedProfile = await refreshProfile();
+      if (updatedProfile?.approved || updatedProfile?.is_admin) {
+        navigate('/dashboard', { replace: true });
+      } else {
+        setMessage('Your account is currently under review by an admin.');
       }
-
-      if (!targetCommId) {
-        const { data: defaultComm } = await supabase
-          .from('communities')
-          .select('id')
-          .eq('community_id', 'dsa-racer')
-          .maybeSingle();
-        if (defaultComm) targetCommId = defaultComm.id;
-      }
-
-      if (targetCommId) {
-        await requestToJoinCommunity(targetCommId, profile.id, true);
-      }
-
-      await refreshProfile();
-      navigate('/dashboard', { replace: true });
     } catch (err) {
-      console.error('Error entering race:', err);
-      setMessage(err.message || 'Failed to auto-join. Try refreshing.');
+      console.error('Error refreshing approval status:', err);
+      setMessage(err.message || 'Failed to check status. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -67,30 +42,42 @@ const PendingApprovalPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-4 relative overflow-hidden font-sans select-none">
-      {/* Glow blobs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-600/15 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
+    <motion.div 
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      variants={pageTransition}
+      className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center p-4 relative font-sans text-zinc-100 selection:bg-zinc-800 selection:text-white"
+    >
+      {/* Subtle Grid Background matching LoginPage */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-[0.02]" 
+        style={{ 
+          backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.8) 1px, transparent 0)`,
+          backgroundSize: '24px 24px' 
+        }} 
+      />
 
-      <div className="w-full max-w-md bg-[#0d0d11]/90 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-6 sm:p-8 relative z-10 shadow-2xl shadow-black/80 text-center space-y-5">
+      <div className="w-full max-w-sm border border-zinc-800 bg-zinc-900/40 rounded-xl p-6 sm:p-8 relative z-10 shadow-xl">
         
-        {/* Top Header Badge */}
-        <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400 shadow-inner">
-          <Users className="w-7 h-7" />
-        </div>
-
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Join the DSA Racer Community</h1>
-          <p className="text-zinc-400 text-xs mt-1 leading-relaxed">
-            Welcome <span className="text-violet-400 font-bold">{profile?.display_name || 'Racer'}</span>! Join the official CodeRace community to solve 390+ DSA questions and compete on the leaderboard.
+        {/* Brand Header matching LoginPage */}
+        <div className="flex flex-col items-center mb-6 text-center">
+          <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center mb-3 text-zinc-100">
+            <Code2 className="w-4 h-4 text-violet-400" />
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-white">
+            Code<span className="text-violet-400">Race</span>
+          </h1>
+          <p className="text-zinc-500 text-xs mt-1">
+            Pending Administrator Approval
           </p>
         </div>
 
-        {/* User Profile Card */}
+        {/* User Info Card */}
         {profile && (
-          <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-white/[0.06] flex items-center gap-3 text-left">
+          <div className="mb-4 p-3 rounded-lg bg-zinc-950/80 border border-zinc-800 flex items-center gap-3 text-left">
             <div
-              className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-white uppercase text-base shrink-0 overflow-hidden border border-white/10 shadow-md"
+              className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white uppercase text-sm shrink-0 overflow-hidden border border-zinc-700 shadow-sm"
               style={{ backgroundColor: profile.avatar_url ? 'transparent' : (profile.avatar_color || '#8b5cf6') }}
             >
               {profile.avatar_url ? (
@@ -100,62 +87,62 @@ const PendingApprovalPage = () => {
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <p className="text-xs font-bold text-zinc-100 truncate">{profile.display_name}</p>
-                {profile.username && (
-                  <span className="text-[11px] font-mono text-amber-400 font-semibold truncate">
-                    @{profile.username}
-                  </span>
-                )}
-              </div>
-              <p className="text-[10px] font-mono text-zinc-500 truncate mt-0.5">{profile.email}</p>
+              <p className="text-xs font-semibold text-zinc-200 truncate">{profile.display_name}</p>
+              <p className="text-[10px] font-mono text-zinc-500 truncate mt-0.5 font-medium">
+                {profile.username ? `@${profile.username}` : profile.email}
+              </p>
             </div>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Ready
+            <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0 flex items-center gap-1">
+              <Clock className="w-3 h-3" /> Pending
             </span>
           </div>
         )}
 
-        {/* Official Community Preview Card */}
-        <div className="p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] text-left space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-xs font-bold text-white uppercase font-mono tracking-wider">Official Community</h3>
-            </div>
-            <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
-              DSA Racer
-            </span>
+        {/* Info Text Box */}
+        <div className="mb-4 p-3 rounded-lg bg-zinc-950/60 border border-zinc-800/80 text-left space-y-1">
+          <div className="flex items-center gap-1.5 text-amber-400">
+            <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-[10px] font-mono uppercase tracking-wider font-bold">APPROVAL REQUIRED</span>
           </div>
-          <p className="text-[11px] text-zinc-300 leading-relaxed">
-            Track 390+ Striver A2Z DSA sheet questions, Monkeytype WPM speed, Java concept quizzes, and side-by-side duels with fellow racers.
+          <p className="text-[11px] text-zinc-400 leading-relaxed">
+            An administrator will review and activate your profile. Once approved, you will get full access to the DSA sheet, leaderboard, typing tests, and Java quizzes.
           </p>
         </div>
 
-        {message && (
-          <p className="text-xs font-mono text-rose-400">{message}</p>
-        )}
+        {/* Message Alert */}
+        <AnimatePresence>
+          {message && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0, y: -6 }}
+              animate={{ opacity: 1, height: "auto", y: 0 }}
+              exit={{ opacity: 0, height: 0, y: -6 }}
+              className="mb-4 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs text-center font-mono overflow-hidden"
+            >
+              <span>{message}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Primary Join & Enter Button */}
-        <div className="space-y-2.5 pt-1">
+        {/* Action Buttons matching LoginPage button style */}
+        <div className="space-y-2 pt-1">
           <button
-            onClick={handleJoinAndEnter}
+            onClick={handleCheckStatus}
             disabled={loading}
-            className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full py-2.5 px-4 rounded-lg bg-white hover:bg-zinc-200 active:bg-zinc-300 text-zinc-900 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
-              <RefreshCw className="w-4 h-4 animate-spin text-white" />
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-zinc-400 border-t-zinc-900 animate-spin" />
             ) : (
               <>
-                <span>Join DSA Racer & Enter CodeRace</span>
-                <ArrowRight className="w-4 h-4" />
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Check Approval Status</span>
               </>
             )}
           </button>
 
           <button
             onClick={handleSignOut}
-            className="w-full py-2.5 px-4 rounded-xl bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer border border-white/[0.04]"
+            className="w-full py-2 px-4 rounded-lg bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
@@ -163,7 +150,7 @@ const PendingApprovalPage = () => {
         </div>
 
       </div>
-    </div>
+    </motion.div>
   );
 };
 
