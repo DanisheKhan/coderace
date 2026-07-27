@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { requestToJoinCommunity } from '../lib/communityService';
-import { Clock, LogOut, RefreshCw, UserCheck, Users, Sparkles, Trophy, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Clock, LogOut, RefreshCw, UserCheck, Users, Sparkles, Trophy, ArrowRight, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const PendingApprovalPage = () => {
   const { profile, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const inviteSquadId = searchParams.get('join') || searchParams.get('comm');
 
   const handleJoinAndEnter = async () => {
     if (!profile?.id) return;
@@ -25,15 +27,28 @@ const PendingApprovalPage = () => {
 
       if (appErr) throw appErr;
 
-      // 2. Fetch official DSA Racer community ID
-      const { data: comm } = await supabase
-        .from('communities')
-        .select('id')
-        .eq('community_id', 'dsa-racer')
-        .maybeSingle();
+      // 2. Fetch community to join (either invited squad ID or default official DSA Racer)
+      let targetCommId = null;
+      if (inviteSquadId) {
+        const { data: customComm } = await supabase
+          .from('communities')
+          .select('id')
+          .or(`id.eq.${inviteSquadId},community_id.eq.${inviteSquadId}`)
+          .maybeSingle();
+        if (customComm) targetCommId = customComm.id;
+      }
 
-      if (comm) {
-        await requestToJoinCommunity(comm.id, profile.id, true);
+      if (!targetCommId) {
+        const { data: defaultComm } = await supabase
+          .from('communities')
+          .select('id')
+          .eq('community_id', 'dsa-racer')
+          .maybeSingle();
+        if (defaultComm) targetCommId = defaultComm.id;
+      }
+
+      if (targetCommId) {
+        await requestToJoinCommunity(targetCommId, profile.id, true);
       }
 
       await refreshProfile();

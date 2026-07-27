@@ -290,3 +290,123 @@ export async function fetchCommunityLeaderboard(community, currentUserId, profil
     return { allowed: false, members: [] };
   }
 }
+
+/**
+ * Community Admin updates squad metadata (Name, Description, Avatar Color, Privacy).
+ */
+export async function updateCommunity(communityId, { name, description, avatarColor, isPrivate }) {
+  try {
+    const { data, error } = await supabase
+      .from('communities')
+      .update({
+        name: name.trim(),
+        description: (description || '').trim(),
+        avatar_color: avatarColor || '#8b5cf6',
+        is_private: isPrivate,
+      })
+      .eq('id', communityId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.error('Error in updateCommunity:', err);
+    throw err;
+  }
+}
+
+/**
+ * Community Admin disbands / deletes a community.
+ */
+export async function deleteCommunity(communityId) {
+  try {
+    // 1. Delete community members junction rows
+    await supabase.from('community_members').delete().eq('community_id', communityId);
+
+    // 2. Delete community
+    const { error } = await supabase.from('communities').delete().eq('id', communityId);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('Error in deleteCommunity:', err);
+    throw err;
+  }
+}
+
+/**
+ * Community Admin promotes or demotes a member's role (admin <-> member).
+ */
+export async function promoteOrDemoteMember(communityId, targetUserId, newRole) {
+  try {
+    const { data, error } = await supabase
+      .from('community_members')
+      .update({ role: newRole })
+      .eq('community_id', communityId)
+      .eq('user_id', targetUserId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.error('Error in promoteOrDemoteMember:', err);
+    throw err;
+  }
+}
+
+/**
+ * Community Admin kicks/removes a member from squad.
+ */
+export async function kickMemberFromCommunity(communityId, targetUserId) {
+  try {
+    const { error } = await supabase
+      .from('community_members')
+      .delete()
+      .eq('community_id', communityId)
+      .eq('user_id', targetUserId);
+
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('Error in kickMemberFromCommunity:', err);
+    throw err;
+  }
+}
+
+/**
+ * Build recent activity feed for approved squad members.
+ */
+export function fetchSquadActivityFeed(approvedMembers = [], progress = [], questions = []) {
+  try {
+    const memberUserIds = new Set(approvedMembers.map(m => m.id));
+    const memberProgress = progress.filter(p => memberUserIds.has(p.user_id) && p.status === 'done');
+
+    // Map question details
+    const questionMap = new Map();
+    questions.forEach(q => {
+      questionMap.set(q.id, q);
+    });
+
+    // Sort by updated_at / completed time descending
+    const feed = memberProgress.map(p => {
+      const userProf = approvedMembers.find(m => m.id === p.user_id) || { display_name: 'Squad Racer' };
+      const qObj = questionMap.get(p.question_id) || { title: `Question #${p.question_id}`, category: 'DSA' };
+
+      return {
+        id: `${p.user_id}-${p.question_id}-${p.updated_at || Date.now()}`,
+        userId: p.user_id,
+        user: userProf,
+        question: qObj,
+        completedAt: p.updated_at ? new Date(p.updated_at) : new Date(),
+        notes: p.notes || null,
+      };
+    }).sort((a, b) => b.completedAt - a.completedAt).slice(0, 30);
+
+    return feed;
+  } catch (err) {
+    console.error('Error building squad activity feed:', err);
+    return [];
+  }
+}
+

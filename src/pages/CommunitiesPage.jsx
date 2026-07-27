@@ -2,21 +2,28 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProgressStore } from '../store/progressStore';
 import { useQuestions } from '../contexts/QuestionsContext';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { 
   fetchCommunities, 
   createCommunity, 
+  updateCommunity, 
+  deleteCommunity, 
   requestToJoinCommunity, 
   sendCommunityInvite, 
   acceptCommunityInvite, 
   declineOrLeaveCommunity, 
   approveMemberRequest, 
-  rejectMemberRequest 
+  rejectMemberRequest, 
+  promoteOrDemoteMember, 
+  kickMemberFromCommunity, 
+  fetchSquadActivityFeed 
 } from '../lib/communityService';
 import UserProfileModal from '../components/UserProfileModal';
 import { 
   Users, Plus, Search, Shield, Lock, Unlock, Crown, Award, Flame, Trophy, Bell,
-  CheckCircle2, XCircle, UserPlus, Check, X, Eye, ExternalLink, Sparkles, AlertCircle, Copy
+  CheckCircle2, XCircle, UserPlus, Check, X, Eye, ExternalLink, Sparkles, AlertCircle, Copy,
+  Share2, Activity, Settings, Trash2, MoreVertical, CheckCircle, Clock, ShieldAlert, CheckSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pageTransition } from '../lib/animations';
@@ -45,16 +52,20 @@ export default function CommunitiesPage() {
   const { profile: currentProfile } = useAuth();
   const { profiles, progress } = useProgressStore();
   const { questions } = useQuestions();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [communities, setCommunities] = useState([]);
   const [selectedCommId, setSelectedCommId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('leaderboard'); // 'leaderboard' | 'activity' | 'settings'
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   // Modals & Panels
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedModalUser, setSelectedModalUser] = useState(null);
+  const [memberMenuUserId, setMemberMenuUserId] = useState(null);
 
   // Create Form State
   const [newCommName, setNewCommName] = useState('');
@@ -64,11 +75,24 @@ export default function CommunitiesPage() {
   const [newCommIsPrivate, setNewCommIsPrivate] = useState(true);
   const [createError, setCreateError] = useState('');
 
+  // Edit Form State (for Admin Settings tab)
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editColor, setEditColor] = useState('#8b5cf6');
+  const [editIsPrivate, setEditIsPrivate] = useState(true);
+  const [editMsg, setEditMsg] = useState('');
+
   // Admin Invite State
   const [inviteUserInput, setInviteUserInput] = useState('');
   const [showInviteSuggestions, setShowInviteSuggestions] = useState(false);
   const [inviteMsg, setInviteMsg] = useState('');
   const searchInviteRef = useRef(null);
+
+  // Helper toast notification
+  const triggerToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
 
   // Load Communities Data
   const loadData = async () => {
@@ -77,7 +101,17 @@ export default function CommunitiesPage() {
     try {
       const data = await fetchCommunities(currentProfile.id);
       setCommunities(data);
-      if (data.length > 0 && !selectedCommId) {
+
+      // Check query params for join or comm ID
+      const queryId = searchParams.get('join') || searchParams.get('comm');
+      if (queryId) {
+        const matched = data.find(c => c.id === queryId || c.community_id === queryId);
+        if (matched) {
+          setSelectedCommId(matched.id);
+        } else if (data.length > 0 && !selectedCommId) {
+          setSelectedCommId(data[0].id);
+        }
+      } else if (data.length > 0 && !selectedCommId) {
         setSelectedCommId(data[0].id);
       }
     } catch (err) {
@@ -91,12 +125,23 @@ export default function CommunitiesPage() {
     loadData();
   }, [currentProfile?.id]);
 
-  // Selected Community Object
+  // Active Selected Community
   const activeComm = useMemo(() => {
     return communities.find(c => c.id === selectedCommId) || communities[0];
   }, [communities, selectedCommId]);
 
-  // Filtered Communities by search query
+  // Sync Edit Form state when active community changes
+  useEffect(() => {
+    if (activeComm) {
+      setEditName(activeComm.name || '');
+      setEditDesc(activeComm.description || '');
+      setEditColor(activeComm.avatar_color || '#8b5cf6');
+      setEditIsPrivate(activeComm.is_private ?? true);
+      setEditMsg('');
+    }
+  }, [activeComm]);
+
+  // Filtered Communities list by search query
   const filteredCommunities = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return communities;
@@ -132,7 +177,7 @@ export default function CommunitiesPage() {
     return list;
   }, [communities, profiles]);
 
-  // Active Community Leaderboard (Computed with Privacy Access Check)
+  // Active Community Leaderboard
   const activeLeaderboard = useMemo(() => {
     if (!activeComm) return { allowed: false, members: [] };
 
@@ -167,6 +212,24 @@ export default function CommunitiesPage() {
     return { allowed: true, members: ranked };
   }, [activeComm, questions, profiles, progress]);
 
+  // Squad Aggregate Statistics
+  const squadStats = useMemo(() => {
+    if (!activeLeaderboard.allowed || activeLeaderboard.members.length === 0) {
+      return { totalSolved: 0, avgPct: 0, mvp: null };
+    }
+    const total = activeLeaderboard.members.reduce((acc, m) => acc + m.solved, 0);
+    const avgPct = Math.round(activeLeaderboard.members.reduce((acc, m) => acc + m.pct, 0) / activeLeaderboard.members.length);
+    const mvp = activeLeaderboard.members[0];
+
+    return { totalSolved: total, avgPct, mvp };
+  }, [activeLeaderboard]);
+
+  // Squad Activity Feed
+  const squadActivity = useMemo(() => {
+    if (!activeLeaderboard.allowed) return [];
+    return fetchSquadActivityFeed(activeLeaderboard.members, progress, questions);
+  }, [activeLeaderboard, progress, questions]);
+
   // Admin Pending Join Requests Queue
   const pendingJoinRequests = useMemo(() => {
     if (!activeComm || !activeComm.isUserAdmin) return [];
@@ -195,6 +258,14 @@ export default function CommunitiesPage() {
   }, [inviteUserInput, profiles, activeComm]);
 
   // ── Actions ─────────────────────────────────────────────────────────────
+  const handleCopyInviteLink = (comm) => {
+    const target = comm || activeComm;
+    if (!target) return;
+    const inviteUrl = `${window.location.origin}/communities?join=${target.community_id}`;
+    navigator.clipboard.writeText(inviteUrl);
+    triggerToast(`Copied squad invite link for "${target.name}"!`);
+  };
+
   const handleCreateCommunity = async (e) => {
     e.preventDefault();
     setCreateError('');
@@ -205,7 +276,7 @@ export default function CommunitiesPage() {
 
     setActionLoading(true);
     try {
-      await createCommunity({
+      const comm = await createCommunity({
         name: newCommName,
         communityId: newCommId,
         description: newCommDesc,
@@ -217,9 +288,49 @@ export default function CommunitiesPage() {
       setNewCommName('');
       setNewCommId('');
       setNewCommDesc('');
+      triggerToast(`Squad "${comm.name}" created successfully!`);
       await loadData();
+      if (comm?.id) setSelectedCommId(comm.id);
     } catch (err) {
       setCreateError(err.message || 'Failed to create community. Check if Community ID is taken.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUpdateCommunity = async (e) => {
+    e.preventDefault();
+    if (!activeComm?.id || !activeComm.isUserAdmin) return;
+    setEditMsg('');
+    setActionLoading(true);
+    try {
+      await updateCommunity(activeComm.id, {
+        name: editName,
+        description: editDesc,
+        avatarColor: editColor,
+        isPrivate: editIsPrivate,
+      });
+      triggerToast('Squad settings updated!');
+      await loadData();
+    } catch (err) {
+      setEditMsg(err.message || 'Failed to update squad settings.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteCommunity = async () => {
+    if (!activeComm?.id || !activeComm.isUserAdmin) return;
+    if (!window.confirm(`Are you sure you want to disband and delete squad "${activeComm.name}"? This action cannot be undone.`)) return;
+
+    setActionLoading(true);
+    try {
+      await deleteCommunity(activeComm.id);
+      triggerToast(`Squad "${activeComm.name}" has been disbanded.`);
+      setSelectedCommId('');
+      await loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to delete community.');
     } finally {
       setActionLoading(false);
     }
@@ -231,6 +342,7 @@ export default function CommunitiesPage() {
     try {
       const autoApprove = !comm.is_private || comm.is_official;
       await requestToJoinCommunity(comm.id, currentProfile.id, autoApprove);
+      triggerToast(autoApprove ? `Joined ${comm.name} squad!` : `Join request sent to ${comm.name} admins.`);
       await loadData();
     } catch (err) {
       console.error('Failed to request join:', err);
@@ -243,6 +355,7 @@ export default function CommunitiesPage() {
     setActionLoading(true);
     try {
       await acceptCommunityInvite(commId, currentProfile.id);
+      triggerToast('Accepted community invitation!');
       await loadData();
     } catch (err) {
       console.error('Failed to accept invite:', err);
@@ -255,6 +368,7 @@ export default function CommunitiesPage() {
     setActionLoading(true);
     try {
       await declineOrLeaveCommunity(commId, currentProfile.id);
+      triggerToast('Left community.');
       await loadData();
     } catch (err) {
       console.error('Failed to leave:', err);
@@ -284,6 +398,7 @@ export default function CommunitiesPage() {
     setActionLoading(true);
     try {
       await approveMemberRequest(activeComm.id, targetUserId);
+      triggerToast('Approved member request.');
       await loadData();
     } catch (err) {
       console.error('Failed to approve request:', err);
@@ -296,9 +411,42 @@ export default function CommunitiesPage() {
     setActionLoading(true);
     try {
       await rejectMemberRequest(activeComm.id, targetUserId);
+      triggerToast('Rejected join request.');
       await loadData();
     } catch (err) {
       console.error('Failed to reject request:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handlePromoteDemote = async (targetUserId, currentRole) => {
+    if (!activeComm?.id || !activeComm.isUserAdmin) return;
+    const newRole = currentRole === 'admin' ? 'member' : 'admin';
+    setActionLoading(true);
+    setMemberMenuUserId(null);
+    try {
+      await promoteOrDemoteMember(activeComm.id, targetUserId, newRole);
+      triggerToast(`Member role updated to ${newRole.toUpperCase()}.`);
+      await loadData();
+    } catch (err) {
+      alert('Failed to update member role.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleKickMember = async (targetUserId, targetName) => {
+    if (!activeComm?.id || !activeComm.isUserAdmin) return;
+    if (!window.confirm(`Kick "${targetName}" from this squad?`)) return;
+    setActionLoading(true);
+    setMemberMenuUserId(null);
+    try {
+      await kickMemberFromCommunity(activeComm.id, targetUserId);
+      triggerToast(`Kicked ${targetName} from squad.`);
+      await loadData();
+    } catch (err) {
+      alert('Failed to kick member.');
     } finally {
       setActionLoading(false);
     }
@@ -312,18 +460,33 @@ export default function CommunitiesPage() {
       animate="show"
       exit="exit"
       variants={pageTransition}
-      className="space-y-6 pb-12 font-sans"
+      className="space-y-6 pb-12 font-sans relative"
     >
+
+      {/* ── TOAST NOTIFICATION ── */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-6 right-6 z-[120] px-4 py-2.5 rounded-xl bg-violet-600 border border-violet-400 text-white text-xs font-semibold shadow-2xl shadow-violet-600/50 flex items-center gap-2"
+          >
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── HEADER ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800/80">
         <div>
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-violet-400" />
-            <h1 className="text-lg font-bold tracking-tight text-white">Communities & Squads</h1>
+            <h1 className="text-lg font-bold tracking-tight text-white">Communities & Coding Squads</h1>
           </div>
           <p className="text-zinc-500 text-xs mt-0.5">
-            Join official squads or build private coding communities to track progress together.
+            Join official squads or build private coding communities to track progress & solve together.
           </p>
         </div>
 
@@ -452,7 +615,10 @@ export default function CommunitiesPage() {
                 return (
                   <div
                     key={comm.id}
-                    onClick={() => setSelectedCommId(comm.id)}
+                    onClick={() => {
+                      setSelectedCommId(comm.id);
+                      setSearchParams({ join: comm.community_id });
+                    }}
                     className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative ${
                       isSelected
                         ? 'bg-violet-500/[0.08] border-violet-500/30 shadow-lg shadow-violet-500/5'
@@ -482,10 +648,22 @@ export default function CommunitiesPage() {
                         </div>
                       </div>
 
-                      {/* Privacy Icon */}
-                      <span className="text-zinc-500 text-[10px] shrink-0 font-mono flex items-center gap-0.5">
-                        {comm.is_private ? <Lock className="w-3 h-3 text-zinc-500" /> : <Unlock className="w-3 h-3 text-emerald-400" />}
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Copy Link Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyInviteLink(comm);
+                          }}
+                          className="p-1 rounded-md text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
+                          title="Copy Shareable Invite Link"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="text-zinc-500 text-[10px] font-mono">
+                          {comm.is_private ? <Lock className="w-3 h-3 text-zinc-500" /> : <Unlock className="w-3 h-3 text-emerald-400" />}
+                        </span>
+                      </div>
                     </div>
 
                     <p className="text-[11px] text-zinc-400 line-clamp-2 mt-2 leading-relaxed">
@@ -517,7 +695,7 @@ export default function CommunitiesPage() {
                             handleJoinOrRequest(comm);
                           }}
                           disabled={actionLoading}
-                          className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-violet-600 text-zinc-200 hover:text-white transition-all font-semibold"
+                          className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-violet-600 text-zinc-200 hover:text-white transition-all font-semibold cursor-pointer"
                         >
                           {comm.is_private ? 'Request Join' : 'Join Squad'}
                         </button>
@@ -530,13 +708,13 @@ export default function CommunitiesPage() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Selected Community Squad Leaderboard & Admin Controls (8 cols) */}
+        {/* RIGHT COLUMN: Selected Community Squad Leaderboard, Activity & Admin Tools (8 cols) */}
         <div className="lg:col-span-8 space-y-5">
           {activeComm ? (
             <div className="space-y-5 animate-fadeIn">
 
-              {/* Community Banner */}
-              <div className="rounded-2xl border border-white/[0.05] p-5 sm:p-6" style={panelStyle}>
+              {/* ── SQUAD HEADER & AGGREGATE DASHBOARD ── */}
+              <div className="rounded-2xl border border-white/[0.05] p-5 sm:p-6 space-y-5" style={panelStyle}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4 min-w-0">
                     <div
@@ -559,13 +737,21 @@ export default function CommunitiesPage() {
                       </div>
                       <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{activeComm.description || 'Community squad for tracking DSA progress.'}</p>
                       <p className="text-[10px] font-mono text-zinc-500 mt-1">
-                        Unique Community ID: <span className="text-violet-400 font-semibold">{activeComm.community_id}</span>
+                        Unique Squad Handle: <span className="text-violet-400 font-semibold">@{activeComm.community_id}</span>
                       </p>
                     </div>
                   </div>
 
-                  {/* Actions */}
+                  {/* Header Actions */}
                   <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                    <button
+                      onClick={() => handleCopyInviteLink(activeComm)}
+                      className="px-3 py-1.5 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Copy Invite Link</span>
+                    </button>
+
                     {activeComm.userStatus === 'approved' && !activeComm.is_official && (
                       <button
                         onClick={() => handleDeclineOrLeave(activeComm.id)}
@@ -577,202 +763,393 @@ export default function CommunitiesPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Squad Aggregate Stats Chips */}
+                {activeLeaderboard.allowed && (
+                  <div className="grid grid-cols-3 gap-3 pt-3 border-t border-zinc-800/80 font-mono">
+                    <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Total Team Solved</span>
+                      <span className="text-base font-bold text-violet-400 mt-0.5 block">{squadStats.totalSolved}</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Avg Solve Rate</span>
+                      <span className="text-base font-bold text-emerald-400 mt-0.5 block">{squadStats.avgPct}%</span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80 min-w-0">
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider block truncate">Squad MVP</span>
+                      <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                        <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span className="text-xs font-bold text-zinc-200 truncate">
+                          {squadStats.mvp ? squadStats.mvp.display_name : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* ── ADMIN MANAGEMENT PANEL (If User is Community Admin) ── */}
-              {activeComm.isUserAdmin && (
-                <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-4 sm:p-5 space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-violet-500/20">
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-violet-400" />
-                      <h3 className="text-xs font-bold text-white uppercase font-mono tracking-wider">Community Admin Control Panel</h3>
-                    </div>
-                    {pendingJoinRequests.length > 0 && (
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                        {pendingJoinRequests.length} Pending Approval
-                      </span>
-                    )}
-                  </div>
+              {/* ── SQUAD TAB NAVIGATION ── */}
+              <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2">
+                <button
+                  onClick={() => setActiveTab('leaderboard')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer flex items-center gap-2 ${
+                    activeTab === 'leaderboard'
+                      ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20'
+                      : 'bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-800/60'
+                  }`}
+                >
+                  <Trophy className="w-3.5 h-3.5" />
+                  <span>Leaderboard & Roster</span>
+                </button>
 
-                  {/* Admin Action 1: Invite Fellow Racer */}
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-mono text-zinc-400">Invite Fellow Racer by User ID or @username:</p>
-                    <div className="relative" ref={searchInviteRef}>
-                      <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveTab('activity')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer flex items-center gap-2 ${
+                    activeTab === 'activity'
+                      ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20'
+                      : 'bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-800/60'
+                  }`}
+                >
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>Squad Activity ({squadActivity.length})</span>
+                </button>
+
+                {activeComm.isUserAdmin && (
+                  <button
+                    onClick={() => setActiveTab('settings')}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer flex items-center gap-2 ${
+                      activeTab === 'settings'
+                        ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20'
+                        : 'bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-zinc-800/60'
+                    }`}
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                    <span>Squad Settings</span>
+                  </button>
+                )}
+              </div>
+
+              {/* ── TAB 1: LEADERBOARD & ROSTER ── */}
+              {activeTab === 'leaderboard' && (
+                <div className="space-y-5">
+                  {/* Admin Invite Panel */}
+                  {activeComm.isUserAdmin && (
+                    <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-4 space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-violet-500/20">
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-4 h-4 text-violet-400" />
+                          <h3 className="text-xs font-bold text-white uppercase font-mono tracking-wider">Invite Squad Member</h3>
+                        </div>
+                        {pendingJoinRequests.length > 0 && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            {pendingJoinRequests.length} Pending Approval
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="relative" ref={searchInviteRef}>
                         <input
                           type="text"
                           value={inviteUserInput}
                           onFocus={() => setShowInviteSuggestions(true)}
                           onChange={e => { setInviteUserInput(e.target.value); setShowInviteSuggestions(true); }}
-                          placeholder="Enter User ID or @username..."
-                          className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500/50 font-mono"
+                          placeholder="Search registered racer by name or @username..."
+                          className="w-full px-3 py-1.5 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500/50 font-mono"
                         />
+
+                        {/* Autocomplete */}
+                        <AnimatePresence>
+                          {showInviteSuggestions && inviteUserInput.trim() && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 4 }}
+                              className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-zinc-800 bg-[#0d0d11]/95 backdrop-blur-md shadow-2xl p-1.5 z-50 max-h-48 overflow-y-auto"
+                            >
+                              {inviteUserSuggestions.length === 0 ? (
+                                <div className="px-3 py-2 text-center text-[11px] text-zinc-500 font-mono">No matching racers found.</div>
+                              ) : (
+                                inviteUserSuggestions.map(u => (
+                                  <div
+                                    key={u.id}
+                                    onClick={() => handleSendInvite(u.id)}
+                                    className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-zinc-800/80 transition-colors cursor-pointer"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <Avatar user={u} size="sm" />
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-semibold text-zinc-200 truncate">{u.display_name}</p>
+                                        <p className="text-[9px] font-mono text-zinc-500 truncate">{u.username ? `@${u.username}` : `ID: ${u.id.slice(0, 8)}...`}</p>
+                                      </div>
+                                    </div>
+                                    <span className="text-[10px] font-mono text-violet-400 font-bold px-2 py-0.5 rounded bg-violet-500/10 border border-violet-500/20">
+                                      + Invite
+                                    </span>
+                                  </div>
+                                ))
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      {inviteMsg && <p className="text-[11px] font-mono text-emerald-400">{inviteMsg}</p>}
+                    </div>
+                  )}
+
+                  {/* Leaderboard Table / Lock Shield */}
+                  {activeLeaderboard.allowed ? (
+                    <div className="rounded-2xl border border-white/[0.05] p-5 space-y-4" style={panelStyle}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Trophy className="w-4 h-4 text-amber-400" />
+                          <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">
+                            Squad Leaderboard ({activeLeaderboard.members.length})
+                          </h3>
+                        </div>
+                        <span className="text-[10px] font-mono text-zinc-500">Sorted by Solved Problems</span>
                       </div>
 
-                      {/* Suggestions Dropdown */}
-                      <AnimatePresence>
-                        {showInviteSuggestions && inviteUserInput.trim() && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 4 }}
-                            className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-zinc-800 bg-[#0d0d11]/95 backdrop-blur-md shadow-2xl p-1.5 z-50 max-h-48 overflow-y-auto"
-                          >
-                            {inviteUserSuggestions.length === 0 ? (
-                              <div className="px-3 py-2 text-center text-[11px] text-zinc-500 font-mono">No matching racers found.</div>
-                            ) : (
-                              inviteUserSuggestions.map(u => (
-                                <div
-                                  key={u.id}
-                                  onClick={() => handleSendInvite(u.id)}
-                                  className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-zinc-800/80 transition-colors cursor-pointer"
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <Avatar user={u} size="sm" />
-                                    <div className="min-w-0">
-                                      <p className="text-xs font-semibold text-zinc-200 truncate">{u.display_name}</p>
-                                      <p className="text-[9px] font-mono text-zinc-500 truncate">{u.username ? `@${u.username}` : `ID: ${u.id.slice(0, 8)}...`}</p>
-                                    </div>
+                      {activeLeaderboard.members.length === 0 ? (
+                        <div className="text-center py-12 border border-zinc-800 rounded-xl bg-zinc-950/40">
+                          <Users className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+                          <p className="text-xs text-zinc-500 font-mono">No approved members in this community yet.</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-zinc-800/60 border border-zinc-800/80 rounded-xl overflow-hidden bg-zinc-950/40">
+                          {activeLeaderboard.members.map((mem, idx) => (
+                            <div
+                              key={mem.id}
+                              className="p-3 sm:p-3.5 flex items-center justify-between hover:bg-zinc-900/40 transition-colors gap-3 group relative"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className="text-xs font-mono text-zinc-600 w-5 shrink-0 text-right">
+                                  #{idx + 1}
+                                </span>
+                                <Avatar user={mem} size="md" />
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-xs font-semibold text-zinc-200 group-hover:text-amber-400 transition-colors truncate">
+                                      {mem.display_name}
+                                    </p>
+                                    {mem.role === 'admin' && (
+                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                                        ADMIN
+                                      </span>
+                                    )}
                                   </div>
-                                  <span className="text-[10px] font-mono text-violet-400 font-bold px-2 py-0.5 rounded bg-violet-500/10 border border-violet-500/20">
-                                    + Send Invite
-                                  </span>
+                                  <p className="text-[10px] font-mono text-zinc-500 mt-0.5 truncate">
+                                    {mem.username ? `@${mem.username}` : `ID: ${mem.id.slice(0, 8)}...`}
+                                  </p>
                                 </div>
-                              ))
-                            )}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                    {inviteMsg && <p className="text-[11px] font-mono text-emerald-400">{inviteMsg}</p>}
-                  </div>
+                              </div>
 
-                  {/* Admin Action 2: Pending Requests Approval Queue */}
-                  {pendingJoinRequests.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-zinc-800/60">
-                      <p className="text-[11px] font-mono text-zinc-400">Join Requests Awaiting Approval:</p>
-                      <div className="space-y-1.5">
-                        {pendingJoinRequests.map(u => (
-                          <div key={u.id} className="p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <Avatar user={u} size="sm" />
-                              <div className="min-w-0">
-                                <p className="text-xs font-semibold text-zinc-200 truncate">{u.display_name}</p>
-                                <p className="text-[9px] font-mono text-zinc-500 truncate">ID: {u.id}</p>
+                              <div className="flex items-center gap-3 shrink-0">
+                                <div className="text-right font-mono">
+                                  <p className="text-xs font-bold text-violet-400">{mem.solved} solved</p>
+                                  <p className="text-[9px] text-zinc-500">{mem.pct}% completion</p>
+                                </div>
+
+                                <button
+                                  onClick={() => setSelectedModalUser(mem)}
+                                  className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                                  title="View Public Profile"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Admin Action Dropdown Menu */}
+                                {activeComm.isUserAdmin && mem.id !== currentProfile?.id && (
+                                  <div className="relative">
+                                    <button
+                                      onClick={() => setMemberMenuUserId(memberMenuUserId === mem.id ? null : mem.id)}
+                                      className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                                      title="Admin Actions"
+                                    >
+                                      <MoreVertical className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    {memberMenuUserId === mem.id && (
+                                      <div className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-zinc-800 bg-zinc-950 p-1 z-50 shadow-2xl space-y-1 font-mono text-[11px]">
+                                        <button
+                                          onClick={() => handlePromoteDemote(mem.id, mem.role)}
+                                          className="w-full px-2.5 py-1.5 rounded-lg text-left text-zinc-300 hover:bg-violet-600/20 hover:text-violet-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                                        >
+                                          <Crown className="w-3.5 h-3.5 text-amber-400" />
+                                          <span>{mem.role === 'admin' ? 'Demote to Member' : 'Promote to Admin'}</span>
+                                        </button>
+                                        <button
+                                          onClick={() => handleKickMember(mem.id, mem.display_name)}
+                                          className="w-full px-2.5 py-1.5 rounded-lg text-left text-rose-400 hover:bg-rose-500/20 transition-colors flex items-center gap-1.5 cursor-pointer"
+                                        >
+                                          <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                                          <span>Kick from Squad</span>
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <button
-                                onClick={() => handleApproveRequest(u.id)}
-                                disabled={actionLoading}
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold transition-colors flex items-center gap-1 cursor-pointer"
-                              >
-                                <Check className="w-3 h-3" /> Approve
-                              </button>
-                              <button
-                                onClick={() => handleRejectRequest(u.id)}
-                                disabled={actionLoading}
-                                className="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-[11px] transition-colors cursor-pointer"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* 🔒 PRIVATE LOCK SHIELD */
+                    <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-8 text-center space-y-4">
+                      <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mx-auto">
+                        <Lock className="w-6 h-6" />
+                      </div>
+                      <div className="max-w-md mx-auto space-y-1">
+                        <h3 className="text-sm font-bold text-white">Private Community Squad</h3>
+                        <p className="text-xs text-zinc-400 leading-relaxed">
+                          Only approved squad members can view this community's internal member rankings, solve stats, and leaderboards.
+                        </p>
+                      </div>
+                      <div>
+                        <button
+                          onClick={() => handleJoinOrRequest(activeComm)}
+                          disabled={actionLoading}
+                          className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-all cursor-pointer shadow-lg shadow-violet-600/20"
+                        >
+                          Request to Join Squad
+                        </button>
                       </div>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* ── SQUAD LEADERBOARD OR PRIVATE LOCK SHIELD ── */}
-              {activeLeaderboard.allowed ? (
+              {/* ── TAB 2: SQUAD ACTIVITY FEED ── */}
+              {activeTab === 'activity' && (
                 <div className="rounded-2xl border border-white/[0.05] p-5 space-y-4" style={panelStyle}>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pb-3 border-b border-zinc-800/80">
                     <div className="flex items-center gap-2">
-                      <Trophy className="w-4 h-4 text-amber-400" />
+                      <Activity className="w-4 h-4 text-violet-400" />
                       <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">
-                        Squad Leaderboard ({activeLeaderboard.members.length})
+                        Recent Squad Solves & Activity
                       </h3>
                     </div>
-                    <span className="text-[10px] font-mono text-zinc-500">Sorted by Solved Problems</span>
+                    <span className="text-[10px] font-mono text-zinc-500">Live Solves Feed</span>
                   </div>
 
-                  {activeLeaderboard.members.length === 0 ? (
-                    <div className="text-center py-12 border border-zinc-800 rounded-xl bg-zinc-950/40">
-                      <Users className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-                      <p className="text-xs text-zinc-500 font-mono">No approved members in this community yet.</p>
+                  {!activeLeaderboard.allowed ? (
+                    <p className="text-xs text-zinc-500 font-mono text-center py-8">Join squad to view activity feed.</p>
+                  ) : squadActivity.length === 0 ? (
+                    <div className="text-center py-12 border border-zinc-800/60 rounded-xl bg-zinc-950/40">
+                      <Clock className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+                      <p className="text-xs text-zinc-500 font-mono">No recent solve activity recorded for this squad yet.</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-zinc-800/60 border border-zinc-800/80 rounded-xl overflow-hidden bg-zinc-950/40">
-                      {activeLeaderboard.members.map((mem, idx) => (
-                        <div
-                          key={mem.id}
-                          className="p-3 sm:p-3.5 flex items-center justify-between hover:bg-zinc-900/40 transition-colors gap-3 group"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span className="text-xs font-mono text-zinc-600 w-5 shrink-0 text-right">
-                              #{idx + 1}
-                            </span>
-                            <Avatar user={mem} size="md" />
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="text-xs font-semibold text-zinc-200 group-hover:text-amber-400 transition-colors truncate">
-                                  {mem.display_name}
-                                </p>
-                                {mem.role === 'admin' && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-violet-500/10 text-violet-300 border border-violet-500/20">
-                                    ADMIN
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[10px] font-mono text-zinc-500 mt-0.5 truncate">
-                                {mem.username ? `@${mem.username}` : `ID: ${mem.id.slice(0, 8)}...`}
+                    <div className="space-y-3">
+                      {squadActivity.map(act => (
+                        <div key={act.id} className="p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80 flex items-start gap-3">
+                          <Avatar user={act.user} size="sm" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-bold text-white truncate">
+                                {act.user.display_name} <span className="text-zinc-400 font-normal">solved</span>{' '}
+                                <span className="text-violet-300 font-semibold">{act.question.title}</span>
                               </p>
+                              <span className="text-[10px] font-mono text-zinc-500 shrink-0">
+                                {act.completedAt ? act.completedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently'}
+                              </span>
                             </div>
-                          </div>
-
-                          <div className="flex items-center gap-3 shrink-0">
-                            <div className="text-right font-mono">
-                              <p className="text-xs font-bold text-violet-400">{mem.solved} solved</p>
-                              <p className="text-[9px] text-zinc-500">{mem.pct}% completion</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                {act.question.category || 'DSA Question'}
+                              </span>
+                              <span className="text-[10px] font-mono text-zinc-500 flex items-center gap-1">
+                                <CheckSquare className="w-3 h-3 text-emerald-400" /> Solved & Verified
+                              </span>
                             </div>
-
-                            {/* Public Profile Eye Icon */}
-                            <button
-                              onClick={() => setSelectedModalUser(mem)}
-                              className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                              title="View Public Profile"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-              ) : (
-                /* 🔒 PRIVATE COMMUNITY LOCK SHIELD */
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-8 text-center space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mx-auto">
-                    <Lock className="w-6 h-6" />
+              )}
+
+              {/* ── TAB 3: SQUAD SETTINGS (ADMIN ONLY) ── */}
+              {activeTab === 'settings' && activeComm.isUserAdmin && (
+                <div className="rounded-2xl border border-white/[0.05] p-5 space-y-6" style={panelStyle}>
+                  <div className="flex items-center justify-between pb-3 border-b border-zinc-800/80">
+                    <div className="flex items-center gap-2">
+                      <Settings className="w-4 h-4 text-violet-400" />
+                      <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">
+                        Admin Squad Settings
+                      </h3>
+                    </div>
                   </div>
-                  <div className="max-w-md mx-auto space-y-1">
-                    <h3 className="text-sm font-bold text-white">Private Community Squad</h3>
-                    <p className="text-xs text-zinc-400 leading-relaxed">
-                      Only approved squad members can view this community's internal member rankings, solve stats, and leaderboards.
-                    </p>
-                  </div>
-                  <div>
+
+                  <form onSubmit={handleUpdateCommunity} className="space-y-4 max-w-lg">
+                    {editMsg && <p className="text-xs text-rose-400 font-mono">{editMsg}</p>}
+
+                    <div>
+                      <label className="text-xs font-mono text-zinc-400 block mb-1">Squad Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        className="w-full px-3 py-2 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-white focus:outline-none focus:border-violet-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-mono text-zinc-400 block mb-1">Description</label>
+                      <textarea
+                        rows={3}
+                        value={editDesc}
+                        onChange={e => setEditDesc(e.target.value)}
+                        className="w-full px-3 py-2 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 focus:outline-none focus:border-violet-500"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="checkbox"
+                        id="editPrivacyCheck"
+                        checked={editIsPrivate}
+                        onChange={e => setEditIsPrivate(e.target.checked)}
+                        className="w-4 h-4 rounded border-zinc-800 bg-zinc-900 text-violet-600 focus:ring-0 cursor-pointer"
+                      />
+                      <label htmlFor="editPrivacyCheck" className="text-xs text-zinc-300 cursor-pointer">
+                        Require Admin Approval to Join (Private Squad)
+                      </label>
+                    </div>
+
                     <button
-                      onClick={() => handleJoinOrRequest(activeComm)}
+                      type="submit"
                       disabled={actionLoading}
                       className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-all cursor-pointer shadow-lg shadow-violet-600/20"
                     >
-                      Request to Join Squad
+                      Save Squad Settings
                     </button>
-                  </div>
+                  </form>
+
+                  {/* Danger Zone */}
+                  {!activeComm.is_official && (
+                    <div className="pt-6 border-t border-rose-500/20 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <ShieldAlert className="w-4 h-4 text-rose-400" />
+                        <h4 className="text-xs font-bold text-rose-300 uppercase font-mono">Danger Zone</h4>
+                      </div>
+                      <p className="text-xs text-zinc-400">
+                        Disbanding will permanently delete this squad and remove all members.
+                      </p>
+                      <button
+                        onClick={handleDeleteCommunity}
+                        disabled={actionLoading}
+                        className="px-4 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600 border border-rose-500/30 text-rose-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Disband Squad
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 

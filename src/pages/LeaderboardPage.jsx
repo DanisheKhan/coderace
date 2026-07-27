@@ -314,33 +314,7 @@ const LeaderboardPage = () => {
         </div>
       </div>
 
-      {/* ── JOIN COMMUNITY PROMPT BANNER ── */}
-      <div className="p-4 sm:p-5 rounded-2xl border border-violet-500/30 bg-gradient-to-r from-violet-500/10 via-indigo-500/10 to-emerald-500/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg shadow-violet-500/5">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-300 shrink-0">
-            <Users className="w-5 h-5 text-violet-300" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-xs sm:text-sm font-bold text-white">Join Coding Communities & Private Squads</h3>
-              <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                DSA RACER
-              </span>
-            </div>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Connect with fellow racers, track squad progress together, and compete on team leaderboards.
-            </p>
-          </div>
-        </div>
 
-        <Link
-          to="/communities"
-          className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-all shadow-md shadow-violet-600/25 flex items-center gap-1.5 shrink-0 cursor-pointer"
-        >
-          <span>Join Community</span>
-          <ArrowRight className="w-4 h-4" />
-        </Link>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
         
