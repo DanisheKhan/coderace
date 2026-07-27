@@ -80,47 +80,27 @@ export default function TypingPage() {
     >
 
       {/* ── Hero Banner ─────────────────────────── */}
-      <div
-        className="relative overflow-hidden rounded-2xl p-6 sm:p-8"
-        style={{
-          background: 'linear-gradient(135deg, rgba(12,12,14,0.97) 0%, rgba(16,14,8,0.95) 100%)',
-          border: '1px solid rgba(245,158,11,0.12)',
-          boxShadow: '0 0 60px rgba(245,158,11,0.04) inset',
-        }}
-      >
-        {/* Glows */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/[0.06] rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-0 left-16 w-40 h-40 bg-violet-500/[0.04] rounded-full blur-[60px] pointer-events-none" />
-        {/* Edge gradient top */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest"
-              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
-              <Keyboard className="w-3 h-3" />
-              Speed Typing Arena
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-zinc-100 tracking-tight">
-              CodeRace Typing Leaderboard
-            </h1>
-            <p className="text-sm text-zinc-400 max-w-lg leading-relaxed">
-              Track your typing benchmarks, compare speeds with other developers, and keep your hands ready for high-speed coding.
-            </p>
+      <div className="relative rounded-xl p-6 border border-zinc-800 bg-zinc-900/40 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md text-[10px] font-mono text-zinc-400 uppercase tracking-wider border border-zinc-800 bg-zinc-900">
+            <Keyboard className="w-3 h-3 text-zinc-400" />
+            Speed Typing Arena
           </div>
-
-          <button
-            onClick={() => setIsLinkModalOpen(true)}
-            className="self-start md:self-auto flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-zinc-950 cursor-pointer transition-all active:scale-95"
-            style={{
-              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-              boxShadow: '0 4px 20px rgba(245,158,11,0.35)',
-            }}
-          >
-            <Keyboard className="w-4 h-4" />
-            Link Monkeytype Profile
-          </button>
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            CodeRace Typing Leaderboard
+          </h1>
+          <p className="text-xs text-zinc-400 max-w-lg leading-relaxed">
+            Track your typing benchmarks, compare speeds with other developers, and keep your hands ready for high-speed coding.
+          </p>
         </div>
+
+        <button
+          onClick={() => setIsLinkModalOpen(true)}
+          className="self-start md:self-auto flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-xs text-zinc-900 bg-white hover:bg-zinc-200 cursor-pointer transition-colors"
+        >
+          <Keyboard className="w-3.5 h-3.5" />
+          Link Monkeytype Profile
+        </button>
       </div>
 
       {/* ── Main Grid ───────────────────────────── */}

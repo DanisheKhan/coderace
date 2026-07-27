@@ -467,33 +467,33 @@ const MySheetPage = () => {
     >
 
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-white/[0.05]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-zinc-800/80">
         <div>
-          <h1 className="text-xl font-bold text-zinc-100 tracking-tight">DSA Master Sheet</h1>
+          <h1 className="text-lg font-bold text-white tracking-tight">DSA Master Sheet</h1>
           <div className="flex items-center gap-3 mt-2">
-            <div className="w-36 h-1 bg-zinc-900 rounded-full overflow-hidden">
+            <div className="w-36 h-1 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
               <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${totalPct}%`, background: 'linear-gradient(90deg, #7c3aed, #a78bfa)' }}
+                className="h-full rounded-full transition-all duration-500 bg-violet-500"
+                style={{ width: `${totalPct}%` }}
               />
             </div>
-            <span className="text-[10px] text-zinc-600 font-mono">
-              <strong className="text-zinc-400">{totalDone}</strong>/{questions.length} solved
-              <span className="text-zinc-700 ml-1">({totalPct}%)</span>
+            <span className="text-[10px] text-zinc-500 font-mono">
+              <strong className="text-zinc-300">{totalDone}</strong>/{questions.length} solved
+              <span className="text-zinc-600 ml-1">({totalPct}%)</span>
             </span>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/20 transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white hover:bg-zinc-200 text-zinc-900 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Problem
           </button>
           <button
             onClick={handleSurpriseMe}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl border border-white/[0.07] text-zinc-400 hover:border-violet-500/30 hover:text-violet-400 hover:bg-violet-500/[0.05] transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium rounded-lg border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer"
           >
             <Shuffle className="w-3.5 h-3.5" />
             Surprise Me
@@ -505,11 +505,11 @@ const MySheetPage = () => {
 
       {/* ── Surprise Banner ── */}
       {surpriseQuestion && (
-        <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl border border-violet-500/20 bg-violet-500/[0.05]" style={{ boxShadow: '0 0 20px rgba(139,92,246,0.06)' }}>
+        <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-lg border border-zinc-800 bg-zinc-900/80">
           <div className="min-w-0 flex items-center gap-2.5 flex-wrap">
-            <span className="text-[9px] text-violet-500 uppercase font-bold tracking-widest">Challenge →</span>
-            <span className="text-sm text-zinc-200 font-semibold">{surpriseQuestion.problem_name}</span>
-            <span className="text-zinc-600 text-xs">{surpriseQuestion.topic} · {surpriseQuestion.subtopic}</span>
+            <span className="text-[10px] font-mono text-violet-400 uppercase tracking-wider">Challenge →</span>
+            <span className="text-xs text-white font-semibold">{surpriseQuestion.problem_name}</span>
+            <span className="text-zinc-500 text-xs">{surpriseQuestion.topic} · {surpriseQuestion.subtopic}</span>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {surpriseQuestion.link && (
@@ -518,7 +518,7 @@ const MySheetPage = () => {
                 Open ↗
               </a>
             )}
-            <button onClick={() => setSurpriseQuestion(null)} className="text-zinc-700 hover:text-zinc-300 cursor-pointer transition-colors">
+            <button onClick={() => setSurpriseQuestion(null)} className="text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -528,21 +528,21 @@ const MySheetPage = () => {
       {/* ── Filter Bar ── */}
       <div className="flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-700 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
           <input
             type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search problem, topic…"
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl glass-input text-zinc-200 placeholder:text-zinc-700 focus:outline-none"
+            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-zinc-900/80 border border-zinc-800 focus:border-zinc-700 text-zinc-200 placeholder:text-zinc-500 focus:outline-none transition-colors"
           />
         </div>
         <FilterSelect value={selectedDifficulty} onChange={setSelectedDifficulty} options={DIFFICULTY_OPTIONS} placeholder="All Difficulties" />
         <FilterSelect value={selectedStatus}     onChange={setSelectedStatus}     options={STATUS_FILTER_OPTIONS} placeholder="All Statuses" />
         <button
           onClick={() => setFilterRevisit(v => !v)}
-          className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs rounded-xl border cursor-pointer transition-all select-none ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border cursor-pointer transition-colors select-none ${
             filterRevisit
-              ? 'border-rose-500/30 bg-rose-500/[0.07] text-rose-400'
-              : 'glass-input text-zinc-500 hover:text-zinc-200'
+              ? 'border-red-500/30 bg-red-500/10 text-red-400 font-medium'
+              : 'border-zinc-800 bg-zinc-900/80 text-zinc-400 hover:text-zinc-200'
           }`}
         >
           <Bookmark className="w-3.5 h-3.5" />

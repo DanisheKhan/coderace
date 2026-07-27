@@ -14,7 +14,6 @@ import {
   Settings,
   LogOut,
 } from 'lucide-react';
-import { NavLink, useNavigate } from 'react-router-dom';
 
 import EditProfileModal from '../EditProfileModal';
 import UserProfileModal from '../UserProfileModal';
@@ -26,6 +25,10 @@ const PAGE_TITLES = {
   '/sheet':       'My Sheet',
   '/leaderboard': 'Leaderboard',
   '/compare':     'Compare',
+  '/achievements':'Achievements',
+  '/typing':      'Typing',
+  '/quiz':        'Java Quiz',
+  '/admin':       'Approvals'
 };
 
 const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
@@ -126,33 +129,33 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
 
   return (
     <>
-      <header className="h-[56px] sm:h-[60px] border-b border-[#1f1f23] bg-[#111113]/90 backdrop-blur-md flex items-center justify-between px-3 sm:px-5 sticky top-0 z-30 w-full">
+      <header className="h-[56px] border-b border-zinc-800/80 bg-[#09090b]/90 backdrop-blur-md flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 w-full font-sans">
         
         {/* Expanded Mobile Search Overlay */}
         <AnimatePresence>
           {isMobileSearchOpen && (
             <motion.div 
-              initial={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="absolute inset-0 bg-[#0d0d0f]/95 backdrop-blur-xl z-40 px-3 flex items-center gap-2 border-b border-violet-500/20" 
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="absolute inset-0 bg-[#09090b] z-40 px-3 flex items-center gap-2 border-b border-zinc-800" 
               ref={dropdownRef}
             >
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-violet-400 pointer-events-none" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                 <input
                   ref={mobileInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={handleSearchChange}
                   placeholder="Search problem to quick solve…"
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl glass-input text-zinc-100 placeholder:text-zinc-500 focus:outline-none border-violet-500/30"
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
                 />
               </div>
               <button
                 onClick={closeMobileSearch}
-                className="w-8 h-8 rounded-xl bg-zinc-800/60 border border-white/[0.08] text-zinc-400 hover:text-zinc-100 transition-colors flex items-center justify-center shrink-0 touch-target"
+                className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors flex items-center justify-center shrink-0"
                 aria-label="Close search"
               >
                 <X className="w-4 h-4" />
@@ -162,21 +165,21 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
               <AnimatePresence>
                 {showResults && searchResults.length > 0 && (
                   <motion.div 
-                    initial={{ opacity: 0, y: 5, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 5, scale: 0.98 }}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 5 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute top-full left-3 right-3 mt-1.5 rounded-xl border border-white/[0.08] bg-[#0d0d0f] shadow-2xl shadow-black/90 p-1.5 z-50"
+                    className="absolute top-full left-3 right-3 mt-1.5 rounded-lg border border-zinc-800 bg-zinc-900 shadow-2xl p-1.5 z-50"
                   >
                     {searchResults.map((q) => {
                       const done = isQuestionDone(q.id);
                       return (
                         <div
                           key={q.id}
-                          className="flex items-center justify-between px-3 py-2.5 hover:bg-white/[0.04] rounded-lg transition-colors"
+                          className="flex items-center justify-between px-3 py-2 hover:bg-zinc-800/60 rounded-md transition-colors"
                         >
                           <div className="min-w-0 flex-1 pr-3">
-                            <p className="text-xxs text-zinc-500 truncate">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
+                            <p className="text-[10px] text-zinc-500 truncate font-mono">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
                             <p className="text-xs text-zinc-200 font-medium truncate mt-0.5">{q.problem_name}</p>
                           </div>
                           {done ? (
@@ -184,9 +187,9 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                           ) : (
                             <button
                               onClick={() => handleQuickSolve(q.id)}
-                              className="p-1.5 rounded-lg bg-violet-500/10 hover:bg-violet-500 text-violet-400 hover:text-white transition-all cursor-pointer flex items-center justify-center shrink-0 border border-violet-500/20"
+                              className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer border border-zinc-700 shrink-0"
                             >
-                              <Plus className="w-4 h-4" />
+                              <Plus className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
@@ -202,19 +205,19 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
         {!isMobileSearchOpen && (
           <>
             {/* Left: Mobile hamburger + page title */}
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="flex items-center gap-3 shrink-0">
               <button
                 onClick={toggleMobileMenu}
-                className="md:hidden p-1.5 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors touch-target flex items-center justify-center"
+                className="md:hidden p-1 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors flex items-center justify-center"
                 aria-label="Toggle Menu"
               >
                 {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
               {/* Desktop: dynamic page name */}
-              <span className="font-semibold text-sm text-zinc-300 max-md:hidden">{pageTitle}</span>
+              <span className="font-semibold text-xs text-zinc-300 max-md:hidden uppercase tracking-wider font-mono">{pageTitle}</span>
               {/* Mobile: brand name */}
-              <span className="font-bold text-base bg-gradient-to-r from-violet-400 via-violet-300 to-indigo-300 bg-clip-text text-transparent md:hidden tracking-tight">
-                CodeRace
+              <span className="font-bold text-base text-white md:hidden tracking-tight">
+                Code<span className="text-violet-400">Race</span>
               </span>
             </div>
 
@@ -227,28 +230,28 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                   value={searchQuery}
                   onChange={handleSearchChange}
                   placeholder="Quick log: Today I solved…"
-                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg glass-input text-zinc-200 placeholder:text-zinc-500 focus:outline-none truncate"
+                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-zinc-900/80 border border-zinc-800 focus:border-zinc-700 text-zinc-200 placeholder:text-zinc-500 focus:outline-none truncate transition-colors"
                 />
               </div>
 
               <AnimatePresence>
                 {showResults && searchResults.length > 0 && (
                   <motion.div 
-                    initial={{ opacity: 0, y: 5, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 5, scale: 0.98 }}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 4 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute top-full left-0 right-0 mt-1.5 rounded-xl border border-[#1f1f23] bg-[#111113] shadow-2xl shadow-black/80 p-1.5 z-50"
+                    className="absolute top-full left-0 right-0 mt-1.5 rounded-lg border border-zinc-800 bg-zinc-900 shadow-2xl p-1.5 z-50"
                   >
                     {searchResults.map((q) => {
                       const done = isQuestionDone(q.id);
                       return (
                         <div
                           key={q.id}
-                          className="flex items-center justify-between px-3 py-2 hover:bg-zinc-800/50 rounded-lg transition-colors group/item"
+                          className="flex items-center justify-between px-3 py-2 hover:bg-zinc-800/70 rounded-md transition-colors"
                         >
                           <div className="min-w-0 flex-1 pr-3">
-                            <p className="text-xxs text-zinc-500 truncate">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
+                            <p className="text-[10px] text-zinc-500 truncate font-mono">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
                             <p className="text-xs text-zinc-200 font-medium truncate mt-0.5">{q.problem_name}</p>
                           </div>
                           {done ? (
@@ -256,7 +259,7 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                           ) : (
                             <button
                               onClick={() => handleQuickSolve(q.id)}
-                              className="p-1.5 rounded-md bg-violet-500/10 hover:bg-violet-500 text-violet-400 hover:text-white transition-all cursor-pointer touch-target flex items-center justify-center"
+                              className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center justify-center border border-zinc-700"
                               title="Mark Solved"
                             >
                               <Plus className="w-3.5 h-3.5" />
@@ -272,19 +275,19 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
 
             {/* Right: Search Icon (Mobile) + Streak + Avatar */}
             {profile && (
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2.5 shrink-0">
                 {/* Mobile Search Button */}
                 <button
                   onClick={openMobileSearch}
-                  className="sm:hidden w-8 h-8 rounded-xl bg-[#18181b]/80 border border-white/[0.08] hover:border-violet-500/30 text-zinc-400 hover:text-violet-300 hover:bg-violet-500/10 transition-all flex items-center justify-center cursor-pointer touch-target shrink-0"
+                  className="sm:hidden w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 transition-all flex items-center justify-center cursor-pointer shrink-0"
                   aria-label="Search"
                   title="Quick log solved problem"
                 >
                   <Search className="w-3.5 h-3.5" />
                 </button>
 
-                {/* Streak */}
-                <div className="h-8 px-2.5 rounded-xl bg-[#18181b]/80 border border-white/[0.08] text-zinc-300 text-xs font-medium flex items-center gap-1.5 shrink-0">
+                {/* Streak Pill */}
+                <div className="h-7 px-2.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs font-mono font-medium flex items-center gap-1.5 shrink-0">
                   <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
                   <span>{streak}d</span>
                 </div>
@@ -293,7 +296,7 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                 <div className="relative" ref={userMenuRef}>
                   <div
                     onClick={() => setIsUserMenuOpen(prev => !prev)}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-white uppercase text-xs sm:text-sm shadow-sm select-none overflow-hidden cursor-pointer hover:ring-2 hover:ring-violet-500/50 transition-all border border-white/10 shrink-0"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-xs shadow-sm select-none overflow-hidden cursor-pointer border border-zinc-700 hover:border-zinc-500 transition-colors shrink-0"
                     style={{ backgroundColor: profile.avatar_url ? 'transparent' : (profile.avatar_color || '#6366f1') }}
                     title="User Menu"
                   >
@@ -307,14 +310,14 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                   <AnimatePresence>
                     {isUserMenuOpen && (
                       <motion.div 
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        initial={{ opacity: 0, y: 6, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                        className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-white/[0.08] bg-[#0d0d0f]/95 backdrop-blur-xl shadow-2xl shadow-black/90 p-1.5 z-50"
+                        exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-zinc-800 bg-zinc-900 shadow-2xl p-1.5 z-50"
                       >
-                        <div className="px-2.5 py-1.5 border-b border-white/[0.04] mb-1">
-                          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Signed in as</p>
+                        <div className="px-2.5 py-1.5 border-b border-zinc-800 mb-1">
+                          <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">Signed in as</p>
                           <p className="text-xs font-semibold text-zinc-200 truncate mt-0.5">{profile.display_name}</p>
                         </div>
                         <button
@@ -322,9 +325,9 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                             setIsUserMenuOpen(false);
                             setIsProfileOpen(true);
                           }}
-                          className="w-full text-left px-2.5 py-2 text-xs font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                          className="w-full text-left px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors flex items-center gap-2 cursor-pointer"
                         >
-                          <Eye className="w-3.5 h-3.5 text-violet-400" />
+                          <Eye className="w-3.5 h-3.5 text-zinc-400" />
                           View Profile
                         </button>
                         <button
@@ -332,18 +335,18 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                             setIsUserMenuOpen(false);
                             setIsEditProfileOpen(true);
                           }}
-                          className="w-full text-left px-2.5 py-2 text-xs font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                          className="w-full text-left px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors flex items-center gap-2 cursor-pointer"
                         >
-                          <Settings className="w-3.5 h-3.5 text-zinc-500" />
+                          <Settings className="w-3.5 h-3.5 text-zinc-400" />
                           Edit Profile
                         </button>
-                        <div className="h-px bg-white/[0.05] my-1" />
+                        <div className="h-px bg-zinc-800 my-1" />
                         <button
                           onClick={() => {
                             setIsUserMenuOpen(false);
                             signOut();
                           }}
-                          className="w-full text-left px-2.5 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/[0.05] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                          className="w-full text-left px-2.5 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors flex items-center gap-2 cursor-pointer"
                         >
                           <LogOut className="w-3.5 h-3.5" />
                           Sign Out

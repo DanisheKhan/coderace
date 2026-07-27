@@ -205,19 +205,18 @@ const JavaQuizPage = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-8">
+    <div className="max-w-4xl mx-auto space-y-6 pb-8 font-sans">
       {/* HEADER */}
-      <div className="flex items-center justify-between pb-4 border-b border-white/[0.05]">
+      <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-400 shrink-0">
-            <Brain className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 shrink-0">
+            <Brain className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-zinc-100">Java Interview Quiz</h1>
+            <h1 className="text-lg font-bold tracking-tight text-white">Java Interview Quiz</h1>
             <p className="text-zinc-500 text-xs">Test your core Java knowledge: concepts, memory management, exceptions, and collections.</p>
           </div>
         </div>
-        
         {gameState === 'playing' && (
           <button 
             onClick={() => {
@@ -225,7 +224,7 @@ const JavaQuizPage = () => {
                 setGameState('start');
               }
             }}
-            className="px-3 py-1.5 rounded-lg border border-white/[0.06] hover:bg-red-500/10 hover:text-red-400 text-zinc-400 text-xs font-semibold transition-all cursor-pointer"
+            className="px-3 py-1.5 rounded-lg border border-zinc-800 hover:bg-red-500/10 hover:text-red-400 text-zinc-400 text-xs font-semibold transition-all cursor-pointer"
           >
             Exit Quiz
           </button>

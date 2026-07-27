@@ -97,19 +97,16 @@
    GLASS PANEL — primary card surface
 ──────────────────────────────────────────── */
 .glass-panel {
-  background: rgba(17, 17, 19, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(18, 18, 22, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .glass-panel-hover {
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .glass-panel-hover:hover {
-  border-color: rgba(139, 92, 246, 0.25);
-  box-shadow: 0 8px 24px -8px rgba(139, 92, 246, 0.12);
+  border-color: rgba(255, 255, 255, 0.16);
   transform: translateY(-1px);
 }
 
@@ -117,16 +114,15 @@
    GLASS INPUT
 ──────────────────────────────────────────── */
 .glass-input {
-  background: rgba(24, 24, 27, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  background: rgba(24, 24, 27, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: border-color 0.15s;
 }
 
 .glass-input:focus {
-  background: rgba(24, 24, 27, 0.95);
-  border-color: rgba(139, 92, 246, 0.5);
+  background: rgba(24, 24, 27, 1);
+  border-color: rgba(255, 255, 255, 0.25);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
 /* ─────────────────────────────────────────

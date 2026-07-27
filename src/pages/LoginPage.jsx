@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { Code2, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Code2, Mail, Lock, AlertCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pageTransition } from '../lib/animations';
 
 const InputField = ({ label, type, value, onChange, placeholder, icon: Icon, disabled }) => (
   <div>
-    <label className="section-label block mb-2">{label}</label>
+    <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-2">{label}</label>
     <div className="relative">
       <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
       <input
@@ -16,7 +16,7 @@ const InputField = ({ label, type, value, onChange, placeholder, icon: Icon, dis
         onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
-        className="w-full pl-10 pr-4 py-3 rounded-xl glass-input text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-sm"
+        className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-zinc-950/80 border border-zinc-800 focus:border-zinc-600 text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-xs transition-colors"
       />
     </div>
   </div>
@@ -61,34 +61,47 @@ const LoginPage = () => {
       animate="show"
       exit="exit"
       variants={pageTransition}
-      className="min-h-screen bg-[#09090b] flex items-center justify-center p-4 relative overflow-hidden"
+      className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center p-4 relative font-sans text-zinc-100 selection:bg-zinc-800 selection:text-white"
     >
-      {/* Ambient blobs */}
-      <div className="absolute top-1/3 left-1/4 w-80 h-80 bg-violet-600/8 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-violet-500/5 rounded-full blur-[100px] pointer-events-none" />
+      {/* Subtle Grid Background */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-[0.02]" 
+        style={{ 
+          backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.8) 1px, transparent 0)`,
+          backgroundSize: '24px 24px' 
+        }} 
+      />
 
-      <div className="w-full max-w-sm glass-panel rounded-2xl p-8 relative z-10 shadow-2xl shadow-black/50">
-        {/* Brand */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-11 h-11 rounded-xl bg-violet-600 flex items-center justify-center mb-4 shadow-md shadow-violet-500/20">
-            <Code2 className="w-5 h-5 text-white" />
+      {/* Back to Home Link */}
+      <Link 
+        to="/" 
+        className="absolute top-6 left-6 text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1.5 transition-colors"
+      >
+        <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
+      </Link>
+
+      <div className="w-full max-w-sm border border-zinc-800 bg-zinc-900/40 rounded-xl p-6 sm:p-8 relative z-10 shadow-xl">
+        {/* Brand Header */}
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center mb-3 text-zinc-100">
+            <Code2 className="w-4 h-4 text-violet-400" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-violet-400 to-violet-300 bg-clip-text text-transparent">
-            CodeRace
+          <h1 className="text-xl font-bold tracking-tight text-white">
+            Code<span className="text-violet-400">Race</span>
           </h1>
-          <p className="text-zinc-500 text-xs mt-2 text-center">
-            {isSignUp ? 'Create your account to join the race' : 'Sign in to track your DSA progress'}
+          <p className="text-zinc-500 text-xs mt-1 text-center">
+            {isSignUp ? 'Create an account to track your DSA progress' : 'Sign in to access your sheet and leaderboard'}
           </p>
         </div>
 
-        {/* Error */}
+        {/* Error Alert */}
         <AnimatePresence>
           {error && (
             <motion.div 
-              initial={{ opacity: 0, height: 0, y: -10 }}
+              initial={{ opacity: 0, height: 0, y: -6 }}
               animate={{ opacity: 1, height: "auto", y: 0 }}
-              exit={{ opacity: 0, height: 0, y: -10 }}
-              className="mb-5 p-3.5 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-xs flex items-start gap-2.5 overflow-hidden"
+              exit={{ opacity: 0, height: 0, y: -6 }}
+              className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2 overflow-hidden"
             >
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{error}</span>
@@ -98,19 +111,43 @@ const LoginPage = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <InputField label="Email Address" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" icon={Mail} disabled={loading} />
-          <InputField label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" icon={Lock} disabled={loading} />
+          <InputField 
+            label="Email Address" 
+            type="email" 
+            value={email} 
+            onChange={e => setEmail(e.target.value)} 
+            placeholder="you@example.com" 
+            icon={Mail} 
+            disabled={loading} 
+          />
+          <InputField 
+            label="Password" 
+            type="password" 
+            value={password} 
+            onChange={e => setPassword(e.target.value)} 
+            placeholder="••••••••" 
+            icon={Lock} 
+            disabled={loading} 
+          />
           
           <AnimatePresence initial={false}>
             {isSignUp && (
               <motion.div
-                initial={{ opacity: 0, height: 0, y: -10 }}
+                initial={{ opacity: 0, height: 0, y: -6 }}
                 animate={{ opacity: 1, height: "auto", y: 0 }}
-                exit={{ opacity: 0, height: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
+                exit={{ opacity: 0, height: 0, y: -6 }}
+                transition={{ duration: 0.15 }}
                 className="overflow-hidden"
               >
-                <InputField label="Confirm Password" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" icon={Lock} disabled={loading} />
+                <InputField 
+                  label="Confirm Password" 
+                  type="password" 
+                  value={confirmPassword} 
+                  onChange={e => setConfirmPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  icon={Lock} 
+                  disabled={loading} 
+                />
               </motion.div>
             )}
           </AnimatePresence>
@@ -118,26 +155,26 @@ const LoginPage = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 mt-2 rounded-xl bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white text-sm font-semibold transition-all shadow-md shadow-violet-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
+            className="w-full py-2.5 px-4 mt-1 rounded-lg bg-white hover:bg-zinc-200 active:bg-zinc-300 text-zinc-900 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
-              <span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-zinc-400 border-t-zinc-900 animate-spin" />
             ) : (
               <>
                 <span>{isSignUp ? 'Create Account' : 'Sign In'}</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </>
             )}
           </button>
         </form>
 
-        {/* Toggle sign in / sign up */}
-        <div className="mt-6 pt-5 border-t border-[#1f1f23] text-center">
+        {/* Toggle Sign In / Sign Up */}
+        <div className="mt-6 pt-4 border-t border-zinc-800/80 text-center">
           <p className="text-zinc-500 text-xs">
             {isSignUp ? 'Already have an account?' : 'Need to join the sheet?'}{' '}
             <button
               onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
-              className="text-violet-400 hover:text-violet-300 font-semibold cursor-pointer transition-colors"
+              className="text-zinc-300 hover:text-white font-medium cursor-pointer transition-colors"
               disabled={loading}
             >
               {isSignUp ? 'Sign In' : 'Create Account'}

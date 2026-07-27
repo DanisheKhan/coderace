@@ -31,27 +31,26 @@ const tooltipStyle = {
 };
 
 // ── Shared panel style ─────────────────────────────────────────────────────────
-const panelCls = 'rounded-2xl border border-white/[0.05]';
-const panelBg  = { background: 'rgba(11,11,14,0.8)' };
+const panelCls = 'rounded-xl border border-zinc-800 bg-zinc-900/40';
+const panelBg  = { background: 'rgba(13, 13, 17, 0.4)' };
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
-const StatCard = ({ label, value, unit, sub, subColor = 'text-zinc-600', icon: Icon, accentBorder, accentBg, accentIcon }) => (
+const StatCard = ({ label, value, unit, sub, subColor = 'text-zinc-500', icon: Icon }) => (
   <motion.div 
     variants={fadeUp}
-    whileHover={{ y: -4, transition: { duration: 0.15 } }}
-    className={`${panelCls} p-3 sm:p-4 flex items-center justify-between gap-2.5 sm:gap-3`} 
-    style={panelBg}
+    whileHover={{ y: -2, transition: { duration: 0.15 } }}
+    className={`${panelCls} p-4 flex items-center justify-between gap-3`}
   >
-    <div className="space-y-0.5 sm:space-y-1 min-w-0">
-      <p className="text-[8.5px] sm:text-[9px] text-zinc-600 uppercase font-bold tracking-widest truncate">{label}</p>
+    <div className="space-y-1 min-w-0">
+      <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider truncate">{label}</p>
       <div className="flex items-baseline gap-1 leading-none">
-        <span className="text-xl sm:text-2xl font-black text-zinc-100 tracking-tight">{value}</span>
-        {unit && <span className="text-zinc-600 text-xs font-normal">{unit}</span>}
+        <span className="text-xl font-bold text-white tracking-tight">{value}</span>
+        {unit && <span className="text-zinc-500 text-xs font-normal">{unit}</span>}
       </div>
-      <p className={`text-[9.5px] sm:text-[10px] font-medium flex items-center gap-1 truncate ${subColor}`}>{sub}</p>
+      <p className={`text-[10px] font-medium flex items-center gap-1 truncate ${subColor}`}>{sub}</p>
     </div>
-    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 border ${accentBorder} ${accentBg} ${accentIcon}`}>
-      <Icon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+    <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0 text-zinc-300">
+      <Icon className="w-4 h-4" />
     </div>
   </motion.div>
 );
@@ -60,8 +59,8 @@ const StatCard = ({ label, value, unit, sub, subColor = 'text-zinc-600', icon: I
 const PanelHeader = ({ label, icon: Icon, extra }) => (
   <div className="flex items-center justify-between mb-3">
     <div className="flex items-center gap-2 min-w-0">
-      {Icon && <Icon className="w-3.5 h-3.5 text-violet-400 shrink-0" />}
-      <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest truncate">{label}</p>
+      {Icon && <Icon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+      <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider truncate">{label}</p>
     </div>
     {extra}
   </div>
@@ -73,7 +72,7 @@ const DiffDot = ({ d }) => {
   return (
     <div className="flex gap-0.5 items-center">
       {[1,2,3,4,5].map(i => (
-        <span key={i} className="w-1 h-1 rounded-full" style={{ backgroundColor: i <= d ? color : '#1f1f23' }} />
+        <span key={i} className="w-1 h-1 rounded-full" style={{ backgroundColor: i <= d ? color : '#27272a' }} />
       ))}
     </div>
   );
@@ -93,26 +92,26 @@ const TopicCompletionPanel = ({ topicData }) => {
   }, [topicData, filter]);
 
   return (
-    <div className={`${panelCls} flex flex-col lg:col-span-2 h-[482px]`} style={panelBg}>
+    <div className={`${panelCls} flex flex-col lg:col-span-2 h-[482px]`}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3.5 sm:px-4 pt-3.5 sm:pt-4 pb-3 border-b border-white/[0.04] shrink-0">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-violet-500/[0.08] border border-violet-500/15 flex items-center justify-center text-violet-400 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-zinc-800/80 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 shrink-0">
             <Target className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-xs sm:text-sm font-bold text-zinc-200 truncate">Topic Completion</h3>
-              <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/[0.08] text-violet-400 border border-violet-500/15 font-mono">
+              <h3 className="text-xs font-bold text-white truncate">Topic Completion</h3>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-900 text-zinc-400 border border-zinc-800">
                 {activeCount}/{topicData.length} started
               </span>
             </div>
-            <p className="text-[10px] text-zinc-600 mt-0.5 truncate">Problem solving progress per topic</p>
+            <p className="text-[10px] text-zinc-500 mt-0.5 truncate">Problem solving progress per topic</p>
           </div>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex items-center gap-1 bg-[#111115] p-1 rounded-xl border border-white/[0.05] shrink-0 overflow-x-auto custom-scrollbar max-w-full">
+        <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 shrink-0 overflow-x-auto custom-scrollbar max-w-full">
           {[
             { key: 'all',    label: `All (${topicData.length})` },
             { key: 'active', label: `Active (${activeCount - doneCount})` },
@@ -121,10 +120,10 @@ const TopicCompletionPanel = ({ topicData }) => {
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors cursor-pointer whitespace-nowrap ${
                 filter === key
-                  ? 'bg-violet-600 text-white shadow-sm'
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  ? 'bg-white text-zinc-900 font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
               {label}
@@ -137,40 +136,40 @@ const TopicCompletionPanel = ({ topicData }) => {
       <div className="flex-1 overflow-y-auto px-4 py-2 custom-scrollbar min-h-0">
         {filteredTopics.length === 0 ? (
           <div className="h-40 flex items-center justify-center">
-            <p className="text-xs text-zinc-700">No topics match selected filter.</p>
+            <p className="text-xs text-zinc-600">No topics match selected filter.</p>
           </div>
         ) : (
           filteredTopics.map((topic) => {
             const isCompleted = topic.completed === 100;
             const hasProgress = topic.solved > 0;
             return (
-              <div key={topic.name} className="group py-2 border-b border-white/[0.03] last:border-0">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-semibold text-zinc-300 group-hover:text-violet-300 transition-colors truncate max-w-[55%]">
+              <div key={topic.name} className="group py-2.5 border-b border-zinc-800/40 last:border-0">
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="font-medium text-zinc-300 group-hover:text-white transition-colors truncate max-w-[55%]">
                     {topic.name}
                   </span>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-mono text-[10px] text-zinc-600">
-                      <strong className="text-zinc-400">{topic.solved}</strong> / {topic.total}
+                    <span className="font-mono text-[10px] text-zinc-500">
+                      <strong className="text-zinc-300">{topic.solved}</strong> / {topic.total}
                     </span>
-                    <span className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-md ${
+                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md ${
                       isCompleted
-                        ? 'bg-emerald-500/[0.08] text-emerald-400 border border-emerald-500/15'
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                         : hasProgress
-                        ? 'bg-violet-500/[0.08] text-violet-400 border border-violet-500/15'
-                        : 'bg-zinc-900/50 text-zinc-600 border border-white/[0.04]'
+                        ? 'bg-zinc-800 text-zinc-200 border border-zinc-700'
+                        : 'bg-zinc-900/50 text-zinc-600 border border-zinc-800/60'
                     }`}>
                       {topic.completed}%
                     </span>
                   </div>
                 </div>
-                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-700 ${
+                    className={`h-full rounded-full transition-all duration-500 ${
                       isCompleted
-                        ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                        ? 'bg-emerald-500'
                         : hasProgress
-                        ? 'bg-gradient-to-r from-violet-600 to-indigo-500'
+                        ? 'bg-violet-500'
                         : 'bg-zinc-800'
                     }`}
                     style={{ width: `${Math.max(hasProgress ? 2 : 0, topic.completed)}%` }}
@@ -329,17 +328,17 @@ const DashboardPage = () => {
     >
 
       {/* ── Header ── */}
-      <div className="pb-4 border-b border-white/[0.05] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="pb-4 border-b border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-100">
-            Welcome back, <span className="text-violet-400">{profile?.display_name}</span>
+          <h1 className="text-lg font-bold tracking-tight text-white">
+            Welcome back, <span className="text-zinc-300 font-semibold">{profile?.display_name}</span>
           </h1>
-          <p className="text-zinc-600 text-xs mt-0.5">Your DSA progress & race analytics snapshot.</p>
+          <p className="text-zinc-500 text-xs mt-0.5 font-normal">Your DSA progress & race analytics snapshot.</p>
         </div>
         
         <button
           onClick={() => setIsProfileOpen(true)}
-          className="px-4 py-2 rounded-xl bg-violet-600/10 hover:bg-violet-600 border border-violet-500/25 hover:border-violet-500 text-violet-400 hover:text-white text-xs font-semibold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+          className="px-3.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <Eye className="w-3.5 h-3.5" />
           <span>View Profile</span>

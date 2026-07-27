@@ -69,66 +69,64 @@ const AchievementsPage = () => {
   const completionPct = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 font-sans">
       {/* Page Header */}
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-zinc-100">Achievements & Badges</h1>
-        <p className="text-zinc-500 text-sm mt-1">Track your problem-solving milestones and badges.</p>
+      <div className="pb-4 border-b border-zinc-800/80">
+        <h1 className="text-lg font-bold tracking-tight text-white">Achievements & Badges</h1>
+        <p className="text-zinc-500 text-xs mt-0.5">Track your problem-solving milestones and badges.</p>
       </div>
 
       {/* Overview Dashboard Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-4">
         {/* Total Milestones */}
-        <div className="glass-panel p-4 sm:p-5 rounded-2xl flex items-center justify-between">
-          <div className="space-y-1 sm:space-y-1.5">
-            <p className="section-label">Total Milestones</p>
-            <h3 className="text-2xl sm:text-3xl font-bold tracking-tight leading-none text-zinc-100 flex items-center gap-2">
+        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Total Milestones</p>
+            <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
               {totalCount}
-              <span className="text-zinc-500 text-xs sm:text-sm font-normal uppercase tracking-wider">Badges</span>
+              <span className="text-zinc-500 text-xs font-normal">Badges</span>
             </h3>
-            <p className="text-xxs text-violet-400 font-semibold flex items-center gap-1">
-              Available to unlock
-            </p>
+            <p className="text-[10px] text-zinc-400 font-medium">Available to unlock</p>
           </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center shrink-0">
-            <Award className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center shrink-0">
+            <Award className="w-4 h-4" />
           </div>
         </div>
 
         {/* Badges Progress */}
-        <div className="glass-panel p-4 sm:p-5 rounded-2xl flex items-center justify-between">
-          <div className="space-y-1 sm:space-y-1.5 flex-1 pr-3 sm:pr-4">
-            <p className="section-label">Badges Unlocked</p>
-            <h3 className="text-2xl sm:text-3xl font-bold tracking-tight leading-none text-zinc-100">
-              {unlockedCount} <span className="text-zinc-500 text-sm sm:text-base font-normal">/ {totalCount}</span>
+        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between">
+          <div className="space-y-1 flex-1 pr-3">
+            <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Badges Unlocked</p>
+            <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+              {unlockedCount} <span className="text-zinc-500 text-xs font-normal">/ {totalCount}</span>
             </h3>
-            <div className="w-full bg-zinc-800/80 h-1.5 rounded-full overflow-hidden mt-2">
+            <div className="w-full bg-zinc-900 h-1 rounded-full overflow-hidden mt-2 border border-zinc-800">
               <div
-                className="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full transition-all duration-500 rounded-full"
+                className="bg-emerald-500 h-full transition-all duration-500 rounded-full"
                 style={{ width: `${completionPct}%` }}
               />
             </div>
-            <p className="text-[10px] text-zinc-400 font-medium mt-1">
+            <p className="text-[10px] text-zinc-500 font-medium mt-1">
               {completionPct}% of all achievements completed
             </p>
           </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 text-emerald-400 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
         </div>
 
         {/* Next Badge Goal */}
-        <div className="glass-panel p-4 sm:p-5 rounded-2xl flex items-center justify-between sm:col-span-2 md:col-span-1">
+        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/40 flex items-center justify-between sm:col-span-2 md:col-span-1">
           {nextClosestAchievement ? (
-            <div className="space-y-1 sm:space-y-1.5 flex-1 pr-3 sm:pr-4 min-w-0">
-              <p className="section-label">Next Up</p>
-              <h4 className="text-xs sm:text-sm font-semibold text-zinc-200 truncate leading-snug">
+            <div className="space-y-1 flex-1 pr-3 min-w-0">
+              <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Next Up</p>
+              <h4 className="text-xs font-semibold text-zinc-200 truncate leading-snug">
                 {nextClosestAchievement.title}
               </h4>
-              <p className="text-xxs text-zinc-500 truncate leading-none">
+              <p className="text-[10px] text-zinc-500 truncate leading-none">
                 {nextClosestAchievement.description}
               </p>
-              <div className="w-full bg-zinc-800/80 h-1.5 rounded-full overflow-hidden mt-2">
+              <div className="w-full bg-zinc-900 h-1 rounded-full overflow-hidden mt-2 border border-zinc-800">
                 <div
                   className="bg-violet-500 h-full transition-all duration-500 rounded-full"
                   style={{
@@ -136,33 +134,29 @@ const AchievementsPage = () => {
                   }}
                 />
               </div>
-              <p className="text-[10px] text-zinc-400 font-medium mt-1">
+              <p className="text-[10px] text-zinc-500 font-mono mt-1">
                 Progress: {nextClosestAchievement.currentProgress} / {nextClosestAchievement.maxProgress}
               </p>
             </div>
           ) : (
-            <div className="space-y-1.5 flex-1 min-w-0">
-              <p className="section-label">Next Up</p>
-              <h4 className="text-xs sm:text-sm font-semibold text-zinc-200 truncate">All Achievements Unlocked!</h4>
-              <p className="text-xxs text-zinc-500 mt-1">You are a DSA Grandmaster.</p>
-            </div>
+            <div className="text-xs text-zinc-500">All achievements unlocked!</div>
           )}
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-zinc-800 border border-zinc-700/40 text-zinc-400 flex items-center justify-center shrink-0">
-            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-500" />
+          <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 text-violet-400 flex items-center justify-center shrink-0">
+            <Zap className="w-4 h-4" />
           </div>
         </div>
       </div>
 
-      {/* Category Navigation / Filters */}
-      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto custom-scrollbar pb-1">
-        {categories.map(cat => (
+      {/* Category Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+        {categories.map((cat) => (
           <button
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-all select-none border whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
               activeCategory === cat.id
-                ? 'bg-violet-500/10 text-violet-400 border-violet-500/35 font-semibold'
-                : 'bg-zinc-900/40 text-zinc-500 border-[#1f1f23] hover:text-zinc-200 hover:bg-zinc-800/40'
+                ? 'bg-white text-zinc-900 font-semibold'
+                : 'border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200'
             }`}
           >
             {cat.label}

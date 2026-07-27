@@ -318,14 +318,14 @@ const ComparePage = () => {
     >
 
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 border-b border-white/[0.05]">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-zinc-800/80 font-sans">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-100 mb-1">Compare Progress</h1>
-          <p className="text-zinc-600 text-xs">Side-by-side progression across topics and subtopics.</p>
+          <h1 className="text-lg font-bold tracking-tight text-white mb-1">Compare Progress</h1>
+          <p className="text-zinc-500 text-xs">Side-by-side progression across topics and subtopics.</p>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex bg-[#111115] p-1 rounded-xl border border-white/[0.05] self-start sm:self-auto">
+        <div className="flex bg-zinc-950 p-1 rounded-lg border border-zinc-800 self-start sm:self-auto">
           {[
             { key: 'group', label: 'Group Arena', icon: Users },
             { key: 'duel',  label: '1v1 Duel',    icon: Swords },
@@ -333,10 +333,10 @@ const ComparePage = () => {
             <button
               key={key}
               onClick={() => setActiveTab(key)}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer select-none ${
+              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer select-none ${
                 activeTab === key
-                  ? 'bg-violet-600 text-white shadow-md shadow-violet-600/20'
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  ? 'bg-white text-zinc-900 font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />

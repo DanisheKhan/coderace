@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { QuestionsProvider } from './contexts/QuestionsContext';
 
 // Pages
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
 import MySheetPage from './pages/MySheetPage';
@@ -30,6 +31,21 @@ const LoadingSpinner = () => (
     <p className="mt-4 text-zinc-400 font-medium animate-pulse">Initializing CodeRace...</p>
   </div>
 );
+
+// Landing Route Wrapper (Shows Landing Page if logged out, redirects to /dashboard if logged in)
+const LandingRoute = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <LandingPage />;
+};
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }) => {
@@ -148,6 +164,10 @@ function AppRoutes() {
 
   return (
     <Routes>
+      {/* Public Landing Page */}
+      <Route path="/" element={<LandingRoute />} />
+      <Route path="/landing" element={<LandingPage />} />
+
       {/* Public / Auth routes */}
       <Route
         path="/login"
@@ -176,14 +196,12 @@ function AppRoutes() {
 
       {/* Protected App Routes */}
       <Route
-        path="/"
         element={
           <ProtectedRoute>
             <Layout />
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="sheet" element={<MySheetPage />} />
         <Route path="leaderboard" element={<LeaderboardPage />} />
