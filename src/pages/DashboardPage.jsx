@@ -13,6 +13,8 @@ import {
 import { calculateUserAchievements } from '../lib/achievements';
 import MonkeytypePanel from '../components/MonkeytypePanel';
 import LinkMonkeytypeModal from '../components/LinkMonkeytypeModal';
+import { motion } from 'framer-motion';
+import { pageTransition, staggerContainer, fadeUp, scaleIn } from '../lib/animations';
 
 const IconMap = {
   Award, Zap, Flame, Trophy, Calendar, Activity,
@@ -34,7 +36,12 @@ const panelBg  = { background: 'rgba(11,11,14,0.8)' };
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, unit, sub, subColor = 'text-zinc-600', icon: Icon, accentBorder, accentBg, accentIcon }) => (
-  <div className={`${panelCls} p-3 sm:p-4 flex items-center justify-between gap-2.5 sm:gap-3`} style={panelBg}>
+  <motion.div 
+    variants={fadeUp}
+    whileHover={{ y: -4, transition: { duration: 0.15 } }}
+    className={`${panelCls} p-3 sm:p-4 flex items-center justify-between gap-2.5 sm:gap-3`} 
+    style={panelBg}
+  >
     <div className="space-y-0.5 sm:space-y-1 min-w-0">
       <p className="text-[8.5px] sm:text-[9px] text-zinc-600 uppercase font-bold tracking-widest truncate">{label}</p>
       <div className="flex items-baseline gap-1 leading-none">
@@ -46,7 +53,7 @@ const StatCard = ({ label, value, unit, sub, subColor = 'text-zinc-600', icon: I
     <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 border ${accentBorder} ${accentBg} ${accentIcon}`}>
       <Icon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
     </div>
-  </div>
+  </motion.div>
 );
 
 // ── Panel Section Header ──────────────────────────────────────────────────────
@@ -313,7 +320,13 @@ const DashboardPage = () => {
   const totalGoalCircumference = 2 * Math.PI * 48;
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-8">
+    <motion.div 
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      variants={pageTransition}
+      className="space-y-4 max-w-7xl mx-auto pb-8"
+    >
 
       {/* ── Header ── */}
       <div className="pb-4 border-b border-white/[0.05] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -334,7 +347,10 @@ const DashboardPage = () => {
       </div>
 
       {/* ── Top 5 Stat Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <motion.div 
+        variants={staggerContainer}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"
+      >
         <StatCard
           label="Total Solved"
           value={stats.solved}
@@ -390,7 +406,7 @@ const DashboardPage = () => {
           accentBg="bg-white/[0.03]"
           accentIcon="text-zinc-500"
         />
-      </div>
+      </motion.div>
 
       {/* ── Row 2: Topic Completion + Right Column ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -610,7 +626,7 @@ const DashboardPage = () => {
           onClose={() => setIsProfileOpen(false)}
         />
       )}
-    </div>
+    </motion.div>
   );
 };
 

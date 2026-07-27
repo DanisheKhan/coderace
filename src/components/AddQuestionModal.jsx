@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useQuestions } from '../contexts/QuestionsContext';
 import { X, Plus, BookOpen, Link2, Layers, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { backdropVariants, modalVariants } from '../lib/animations';
 
 const TOPIC_SUGGESTIONS = [
   'Arrays',
@@ -29,7 +31,7 @@ const AddQuestionModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  if (!isOpen) return null;
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,8 +68,21 @@ const AddQuestionModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="w-full max-w-lg glass-panel rounded-2xl p-4 sm:p-6 relative z-10 shadow-2xl shadow-black/80 border border-[#252528] max-h-[92vh] overflow-y-auto custom-scrollbar">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          initial="hidden"
+          animate="show"
+          exit="exit"
+          variants={backdropVariants}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm"
+          onClick={onClose}
+        >
+          <motion.div
+            variants={modalVariants}
+            className="w-full max-w-lg glass-panel rounded-2xl p-4 sm:p-6 relative z-10 shadow-2xl shadow-black/80 border border-[#252528] max-h-[92vh] overflow-y-auto custom-scrollbar"
+            onClick={e => e.stopPropagation()}
+          >
         <div className="flex items-center justify-between pb-3.5 sm:pb-4 border-b border-[#1f1f23] mb-4 sm:mb-5">
           <div className="flex items-center gap-2">
             <Plus className="w-4 h-4 text-violet-400" />
@@ -197,8 +212,10 @@ const AddQuestionModal = ({ isOpen, onClose }) => {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

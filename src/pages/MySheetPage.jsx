@@ -12,6 +12,8 @@ import {
   Sparkles, Copy, Lightbulb, Eye, Plus
 } from 'lucide-react';
 import AddQuestionModal from '../components/AddQuestionModal';
+import { motion, AnimatePresence } from 'framer-motion';
+import { pageTransition, staggerContainer, fadeUp, backdropVariants, modalVariants } from '../lib/animations';
 
 // ── Portal Dropdown ──────────────────────────────────────────────────────────
 const PortalDropdown = ({ anchor, open, children, onClose, align = 'auto' }) => {
@@ -456,7 +458,13 @@ const MySheetPage = () => {
   const totalPct  = questions.length ? Math.round((totalDone / questions.length) * 100) : 0;
 
   return (
-    <div className="space-y-4 pb-10">
+    <motion.div 
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      variants={pageTransition}
+      className="space-y-4 pb-10"
+    >
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-white/[0.05]">
@@ -728,58 +736,69 @@ const MySheetPage = () => {
       )}
 
       {/* ── Notes Modal ── */}
-      {activeNotes && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-fadeIn">
-          <div className="w-full max-w-md border border-white/[0.07] rounded-2xl shadow-2xl shadow-black/90 overflow-hidden"
-            style={{ background: '#0d0d0f', boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.9)' }}>
-            {/* Header */}
-            <div className="flex items-start justify-between px-5 py-4 border-b border-white/[0.05]">
-              <div>
-                <h3 className="font-bold text-zinc-100 text-sm leading-tight">{activeNotes.problem_name}</h3>
-                <p className="text-[10px] text-zinc-600 mt-0.5">{activeNotes.topic} · {activeNotes.subtopic}</p>
+      <AnimatePresence>
+        {activeNotes && (
+          <motion.div 
+            initial="hidden"
+            animate="show"
+            exit="exit"
+            variants={backdropVariants}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl"
+          >
+            <motion.div 
+              variants={modalVariants}
+              className="w-full max-w-md border border-white/[0.07] rounded-2xl shadow-2xl shadow-black/90 overflow-hidden"
+              style={{ background: '#0d0d0f', boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.9)' }}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between px-5 py-4 border-b border-white/[0.05]">
+                <div>
+                  <h3 className="font-bold text-zinc-100 text-sm leading-tight">{activeNotes.problem_name}</h3>
+                  <p className="text-[10px] text-zinc-600 mt-0.5">{activeNotes.topic} · {activeNotes.subtopic}</p>
+                </div>
+                <button onClick={() => setActiveNotes(null)} className="text-zinc-700 hover:text-zinc-200 cursor-pointer ml-4 p-0.5 mt-0.5 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button onClick={() => setActiveNotes(null)} className="text-zinc-700 hover:text-zinc-200 cursor-pointer ml-4 p-0.5 mt-0.5 transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            {/* Body */}
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest block mb-2">Solution Link</label>
-                <div className="relative">
-                  <Code className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-700" />
-                  <input type="url" value={solutionLink} onChange={e => setSolutionLink(e.target.value)}
-                    placeholder="https://github.com/..."
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl glass-input text-zinc-200 placeholder:text-zinc-700 focus:outline-none"
+              {/* Body */}
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest block mb-2">Solution Link</label>
+                  <div className="relative">
+                    <Code className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-700" />
+                    <input type="url" value={solutionLink} onChange={e => setSolutionLink(e.target.value)}
+                      placeholder="https://github.com/..."
+                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl glass-input text-zinc-200 placeholder:text-zinc-700 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest block mb-2">Notes</label>
+                  <textarea value={notesText} onChange={e => setNotesText(e.target.value)}
+                    placeholder="Approach, complexity, edge cases…"
+                    rows={6}
+                    className="w-full px-3 py-2 text-xs rounded-xl glass-input text-zinc-200 placeholder:text-zinc-700 focus:outline-none resize-none leading-relaxed"
                   />
                 </div>
               </div>
-              <div>
-                <label className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest block mb-2">Notes</label>
-                <textarea value={notesText} onChange={e => setNotesText(e.target.value)}
-                  placeholder="Approach, complexity, edge cases…"
-                  rows={6}
-                  className="w-full px-3 py-2 text-xs rounded-xl glass-input text-zinc-200 placeholder:text-zinc-700 focus:outline-none resize-none leading-relaxed"
-                />
-              </div>
-            </div>
 
-            {/* Footer */}
-            <div className="flex justify-end gap-2 px-5 py-4 border-t border-white/[0.05]" style={{ background: 'rgba(10,10,12,0.9)' }}>
-              <button onClick={() => setActiveNotes(null)}
-                className="px-3.5 py-2 text-xs rounded-xl border border-white/[0.07] text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] transition-colors cursor-pointer">
-                Cancel
-              </button>
-              <button onClick={saveNotes}
-                className="px-3.5 py-2 text-xs rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors cursor-pointer flex items-center gap-1.5 shadow-lg shadow-violet-600/20">
-                <Save className="w-3.5 h-3.5" /> Save Notes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+              {/* Footer */}
+              <div className="flex justify-end gap-2 px-5 py-4 border-t border-white/[0.05]" style={{ background: 'rgba(10,10,12,0.9)' }}>
+                <button onClick={() => setActiveNotes(null)}
+                  className="px-3.5 py-2 text-xs rounded-xl border border-white/[0.07] text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] transition-colors cursor-pointer">
+                  Cancel
+                </button>
+                <button onClick={saveNotes}
+                  className="px-3.5 py-2 text-xs rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-colors cursor-pointer flex items-center gap-1.5 shadow-lg shadow-violet-600/20">
+                  <Save className="w-3.5 h-3.5" /> Save Notes
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 

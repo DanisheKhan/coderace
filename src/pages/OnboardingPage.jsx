@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Sparkles, User, Check, Camera } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { pageTransition, staggerContainer, fadeUp } from '../lib/animations';
 
 const COLORS = [
   { name: 'Indigo', value: '#6366f1' },
@@ -161,7 +163,13 @@ const OnboardingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-4 relative overflow-hidden">
+    <motion.div 
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      variants={pageTransition}
+      className="min-h-screen bg-[#09090b] flex items-center justify-center p-4 relative overflow-hidden"
+    >
       {/* Ambient blobs */}
       <div className="absolute top-1/3 left-1/4 w-80 h-80 bg-violet-600/8 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-violet-500/5 rounded-full blur-[100px] pointer-events-none" />
@@ -177,11 +185,18 @@ const OnboardingPage = () => {
           </p>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3.5 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-xs flex items-start gap-2">
-            {error}
-          </div>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0, y: -10 }}
+              animate={{ opacity: 1, height: "auto", y: 0 }}
+              exit={{ opacity: 0, height: 0, y: -10 }}
+              className="mb-4 p-3.5 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-xs flex items-start gap-2 overflow-hidden"
+            >
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Avatar Upload area */}
@@ -237,43 +252,62 @@ const OnboardingPage = () => {
 
           <div>
             <label className="section-label block mb-3">Avatar Color</label>
-            <div className="grid grid-cols-4 gap-3">
+            <motion.div 
+              variants={staggerContainer}
+              initial="hidden"
+              animate="show"
+              className="grid grid-cols-4 gap-3"
+            >
               {COLORS.filter(color => !takenColors.includes(color.value.toLowerCase())).map((color) => {
                 const isSelected = selectedColor.toLowerCase() === color.value.toLowerCase();
                 return (
-                  <button
+                  <motion.button
+                    variants={fadeUp}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     key={color.name}
                     type="button"
                     onClick={() => setSelectedColor(color.value)}
-                    className="h-12 rounded-xl relative flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+                    className="h-12 rounded-xl relative flex items-center justify-center transition-all cursor-pointer shadow-md"
                     style={{ backgroundColor: color.value }}
                     disabled={loading}
                     title={color.name}
                   >
                     {isSelected && (
-                      <span className="bg-black/30 w-6 h-6 rounded-full flex items-center justify-center text-white">
+                      <motion.span 
+                        layoutId="activeColorCheck"
+                        className="bg-black/30 w-6 h-6 rounded-full flex items-center justify-center text-white"
+                      >
                         <Check className="w-4 h-4" />
-                      </span>
+                      </motion.span>
                     )}
-                  </button>
+                  </motion.button>
                 );
               })}
               
               {/* Show custom color box if not in defaults */}
-              {!COLORS.some(color => color.value.toLowerCase() === selectedColor.toLowerCase()) && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedColor(selectedColor)}
-                  className="h-12 rounded-xl relative flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md border border-white/20 animate-fadeIn"
-                  style={{ backgroundColor: selectedColor }}
-                  disabled={loading}
-                >
-                  <span className="bg-black/30 w-6 h-6 rounded-full flex items-center justify-center text-white">
-                    <Check className="w-4 h-4" />
-                  </span>
-                </button>
-              )}
-            </div>
+              <AnimatePresence>
+                {!COLORS.some(color => color.value.toLowerCase() === selectedColor.toLowerCase()) && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    type="button"
+                    onClick={() => setSelectedColor(selectedColor)}
+                    className="h-12 rounded-xl relative flex items-center justify-center cursor-pointer shadow-md border border-white/20"
+                    style={{ backgroundColor: selectedColor }}
+                    disabled={loading}
+                  >
+                    <motion.span 
+                      layoutId="activeColorCheck"
+                      className="bg-black/30 w-6 h-6 rounded-full flex items-center justify-center text-white"
+                    >
+                      <Check className="w-4 h-4" />
+                    </motion.span>
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </motion.div>
             
             <button
               type="button"
@@ -307,7 +341,7 @@ const OnboardingPage = () => {
           </button>
         </form>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

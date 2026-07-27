@@ -6,6 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { calculateUserAchievements, calculateStreak } from '../lib/achievements';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Users, Award, Flame, Trophy, ExternalLink, Sparkles, BookOpen, Crown, ChevronDown, Swords } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { pageTransition, staggerContainer, fadeUp } from '../lib/animations';
 
 // ── Tooltip Style ──────────────────────────────────────────────────────────────
 const tooltipStyle = {
@@ -140,8 +142,8 @@ const StatDuelCard = ({ label, icon: Icon, myValue, compValue, myLabel, compLabe
 
       {/* Numbers */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex-1 text-center">
-          <p className="text-[10px] text-zinc-600 mb-1">{myLabel}</p>
+        <div className="flex-1 text-center min-w-0">
+          <p className="text-[10px] text-zinc-600 mb-1 truncate" title={myLabel}>{myLabel}</p>
           <p className={`text-3xl font-black font-mono ${myColor}`}>{myValue}{unit}</p>
         </div>
         <div className="flex flex-col items-center shrink-0">
@@ -149,8 +151,8 @@ const StatDuelCard = ({ label, icon: Icon, myValue, compValue, myLabel, compLabe
           <span className="text-[10px] text-zinc-700 font-bold my-1">VS</span>
           <div className="w-px h-8 bg-white/[0.06]" />
         </div>
-        <div className="flex-1 text-center">
-          <p className="text-[10px] text-zinc-600 mb-1">{compLabel}</p>
+        <div className="flex-1 text-center min-w-0">
+          <p className="text-[10px] text-zinc-600 mb-1 truncate" title={compLabel}>{compLabel}</p>
           <p className={`text-3xl font-black font-mono ${compColor}`}>{compValue}{unit}</p>
         </div>
       </div>
@@ -307,7 +309,13 @@ const ComparePage = () => {
   const panelStyle = { background: 'rgba(11,11,14,0.7)' };
 
   return (
-    <div className="space-y-6 pb-12">
+    <motion.div 
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      variants={pageTransition}
+      className="space-y-6 pb-12"
+    >
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 border-b border-white/[0.05]">
@@ -697,7 +705,7 @@ const ComparePage = () => {
           )}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

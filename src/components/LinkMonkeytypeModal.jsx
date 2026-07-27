@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { X, User, Key, Eye, EyeOff, ExternalLink, Keyboard } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { backdropVariants, modalVariants } from '../lib/animations';
 
 export default function LinkMonkeytypeModal({ isOpen, onClose, onSaved }) {
   const { profile, updateProfile, refreshProfile } = useAuth();
@@ -22,7 +24,7 @@ export default function LinkMonkeytypeModal({ isOpen, onClose, onSaved }) {
     }
   }, [isOpen, profile]);
 
-  if (!isOpen || !profile) return null;
+  if (!profile) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,8 +59,21 @@ export default function LinkMonkeytypeModal({ isOpen, onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="w-full max-w-md glass-panel rounded-2xl p-4 sm:p-6 relative z-10 shadow-2xl shadow-black/80 border border-[#252528] max-h-[92vh] overflow-y-auto custom-scrollbar">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          initial="hidden"
+          animate="show"
+          exit="exit"
+          variants={backdropVariants}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm"
+          onClick={onClose}
+        >
+          <motion.div
+            variants={modalVariants}
+            className="w-full max-w-md glass-panel rounded-2xl p-4 sm:p-6 relative z-10 shadow-2xl shadow-black/80 border border-[#252528] max-h-[92vh] overflow-y-auto custom-scrollbar"
+            onClick={e => e.stopPropagation()}
+          >
         {/* Header */}
         <div className="flex items-center justify-between pb-3.5 sm:pb-4 border-b border-[#1f1f23] mb-4 sm:mb-5">
           <div className="flex items-center gap-2">
@@ -166,7 +181,9 @@ export default function LinkMonkeytypeModal({ isOpen, onClose, onSaved }) {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

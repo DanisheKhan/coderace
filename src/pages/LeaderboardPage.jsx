@@ -12,6 +12,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { calculateUserAchievements } from '../lib/achievements';
 import UserProfileModal, { SolveTags, DiffDot, formatRelativeTime } from '../components/UserProfileModal';
 import { fetchAllUsersQuizBest, fetchRecentQuizAttempts } from '../lib/quizService';
+import { motion, AnimatePresence } from 'framer-motion';
+import { pageTransition, staggerContainer, fadeUp, slideInLeft } from '../lib/animations';
 
 const calculateUserStreak = (userId, progress) => {
   const doneDates = progress
@@ -35,7 +37,6 @@ const calculateUserStreak = (userId, progress) => {
   return streak;
 };
 
-// ── Podium Card (Top 3) ────────────────────────────────────────────────────────
 // ── Podium Card (Top 3) ────────────────────────────────────────────────────────
 const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
   const totalQ = questions.length || 502;
@@ -92,7 +93,12 @@ const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
   const Icon = c.icon;
 
   return (
-    <div className={`flex flex-col items-center gap-1.5 sm:gap-2 cursor-pointer group ${c.order} flex-1 max-w-[100px] xs:max-w-[110px] sm:max-w-none`} onClick={onClick}>
+    <motion.div 
+      variants={fadeUp}
+      whileHover={{ y: -6, transition: { duration: 0.15 } }}
+      className={`flex flex-col items-center gap-1.5 sm:gap-2 cursor-pointer group ${c.order} flex-1 max-w-[85px] xs:max-w-[105px] sm:max-w-none`} 
+      onClick={onClick}
+    >
       {/* Avatar & Info above podium */}
       <div className="flex flex-col items-center gap-1 mb-0.5">
         <div className="relative">
@@ -141,7 +147,7 @@ const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
           <span>{user.unlockedCount}</span>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -257,7 +263,13 @@ const LeaderboardPage = () => {
   const totalQ = questions.length || 502;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-8">
+    <motion.div 
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      variants={pageTransition}
+      className="space-y-6 max-w-7xl mx-auto pb-8"
+    >
       
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 border-b border-white/[0.05]">
@@ -300,7 +312,12 @@ const LeaderboardPage = () => {
               <div className="px-5 pt-4 pb-1 border-b border-white/[0.04]">
                 <p className="text-[10px] text-zinc-600 uppercase font-bold tracking-widest">Top Performers</p>
               </div>
-              <div className="flex items-end justify-center gap-4 px-6 pt-6 pb-0">
+              <motion.div 
+                variants={staggerContainer}
+                initial="hidden"
+                animate="show"
+                className="flex items-end justify-center gap-2 sm:gap-4 px-2 sm:px-6 pt-6 pb-0"
+              >
                 {top3.map((user, idx) => (
                   <PodiumCard
                     key={user.id}
@@ -311,7 +328,7 @@ const LeaderboardPage = () => {
                     onClick={() => setSelectedUser(user)}
                   />
                 ))}
-              </div>
+              </motion.div>
             </div>
           )}
 
@@ -321,17 +338,24 @@ const LeaderboardPage = () => {
               <div className="px-5 py-3 border-b border-white/[0.04]">
                 <p className="text-[10px] text-zinc-600 uppercase font-bold tracking-widest">Rankings</p>
               </div>
-              <div className="divide-y divide-white/[0.04]">
+              <motion.div 
+                variants={staggerContainer}
+                initial="hidden"
+                animate="show"
+                className="divide-y divide-white/[0.04]"
+              >
                 {restList.map((user, idx) => {
                   const rank = idx + 4;
                   const isCurrent = user.id === currentProfile?.id;
                   const pct = Math.round((user.solved / totalQ) * 100);
 
                   return (
-                    <div
+                    <motion.div
                       key={user.id}
+                      variants={fadeUp}
+                      whileHover={{ scale: 1.002, x: 2, transition: { duration: 0.15 } }}
                       onClick={() => setSelectedUser(user)}
-                      className={`flex items-center gap-4 px-5 py-3.5 transition-all cursor-pointer group ${
+                      className={`flex items-center gap-2.5 sm:gap-4 px-3 sm:px-5 py-3.5 transition-all cursor-pointer group ${
                         isCurrent
                           ? 'bg-violet-500/[0.06] hover:bg-violet-500/[0.09]'
                           : 'hover:bg-white/[0.02]'
@@ -392,10 +416,10 @@ const LeaderboardPage = () => {
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
-              </div>
+              </motion.div>
             </div>
           )}
 
@@ -511,7 +535,7 @@ const LeaderboardPage = () => {
           onClose={() => setSelectedUser(null)}
         />
       )}
-    </div>
+    </motion.div>
   );
 };
 

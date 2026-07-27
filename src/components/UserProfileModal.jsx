@@ -10,6 +10,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadialBarCha
 import { calculateUserAchievements } from '../lib/achievements';
 import { getTypingProfile, fetchMonkeytypeData, syncTypingProfileToSupabase } from '../lib/monkeytypeService';
 import { fetchUserAttempts } from '../lib/quizService';
+import { motion, AnimatePresence } from 'framer-motion';
+import { backdropVariants, modalVariants } from '../lib/animations';
 
 const IconMap = {
   Award, Zap, Flame, Trophy, Calendar, Activity,
@@ -269,9 +271,18 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-2xl animate-fadeIn">
-      <div
-        className="w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] max-h-[840px] mx-auto relative"
+    <motion.div 
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      variants={backdropVariants}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-2xl cursor-pointer"
+      onClick={onClose}
+    >
+      <motion.div
+        variants={modalVariants}
+        className="w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] max-h-[840px] mx-auto relative cursor-default"
+        onClick={e => e.stopPropagation()}
         style={{
           backgroundColor: '#0d0d0f',
           borderRadius: '20px',
@@ -717,7 +728,7 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
                       <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest flex items-center gap-1.5 mb-2">
                         <Award className="w-3 h-3 text-amber-400" /> Category Benchmark Breakdown
                       </span>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 xs:grid-cols-2 gap-2.5">
                         {modes.map(item => {
                           const isBest = item.wpm && item.wpm === topWPM && topWPM > 0;
                           const barPct = topWPM > 0 && item.wpm ? Math.min(100, Math.round((item.wpm / 150) * 100)) : 0;
@@ -788,13 +799,7 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
                     value={modalSearch}
                     onChange={e => setModalSearch(e.target.value)}
                     placeholder="Search by name, topic or subtopic…"
-                    className="w-full pl-9 pr-9 py-2 text-xs rounded-xl text-zinc-200 placeholder:text-zinc-700 focus:outline-none transition-all"
-                    style={{
-                      background: 'rgba(255,255,255,0.03)',
-                      border: '1px solid rgba(255,255,255,0.07)',
-                    }}
-                    onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.4)'}
-                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.07)'}
+                    className="w-full pl-9 pr-9 py-2 text-xs rounded-xl text-zinc-200 placeholder:text-zinc-650 focus:outline-none transition-all glass-input"
                   />
                   {modalSearch && (
                     <button onClick={() => setModalSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-300 text-xs">×</button>
@@ -1167,8 +1172,8 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
             Close
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

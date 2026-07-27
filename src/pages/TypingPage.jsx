@@ -11,6 +11,9 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer
 } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
+import { pageTransition, staggerContainer, fadeUp, backdropVariants, modalVariants } from '../lib/animations';
+
 
 export default function TypingPage() {
   const { profile } = useAuth();
@@ -68,8 +71,13 @@ export default function TypingPage() {
   ];
 
   return (
-    <>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 animate-fadeIn">
+    <motion.div 
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      variants={pageTransition}
+      className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6"
+    >
 
       {/* ── Hero Banner ─────────────────────────── */}
       <div
@@ -143,8 +151,7 @@ export default function TypingPage() {
                   placeholder="Search racers…"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs text-zinc-300 placeholder:text-zinc-600 focus:outline-none"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs text-zinc-300 placeholder:text-zinc-650 focus:outline-none glass-input"
                 />
               </div>
             </div>
@@ -166,7 +173,7 @@ export default function TypingPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse" style={{ minWidth: 580 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
                       className="text-[9px] text-zinc-600 uppercase font-black tracking-widest">
@@ -180,7 +187,11 @@ export default function TypingPage() {
                       <th className="py-3 text-right pr-5">Tests</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <motion.tbody
+                    variants={staggerContainer}
+                    initial="hidden"
+                    animate="show"
+                  >
                     {filteredLeaderboard.map((item, idx) => {
                       const isSelf = item.id === profile?.id;
                       const medal = medalMeta[idx];
@@ -190,8 +201,10 @@ export default function TypingPage() {
                         : <span className="text-zinc-700 text-xs">—</span>;
 
                       return (
-                        <tr
+                        <motion.tr
                           key={item.id}
+                          variants={fadeUp}
+                          whileHover={{ x: 2, transition: { duration: 0.1 } }}
                           onClick={() => setSelectedUser(item)}
                           className="cursor-pointer transition-all"
                           style={{
@@ -200,22 +213,25 @@ export default function TypingPage() {
                               ? 'linear-gradient(90deg, rgba(245,158,11,0.04), transparent)'
                               : 'transparent',
                           }}
-                          onMouseEnter={e => e.currentTarget.style.background = isSelf
-                            ? 'linear-gradient(90deg, rgba(245,158,11,0.07), transparent)'
-                            : 'rgba(255,255,255,0.02)'}
-                          onMouseLeave={e => e.currentTarget.style.background = isSelf
-                            ? 'linear-gradient(90deg, rgba(245,158,11,0.04), transparent)'
-                            : 'transparent'}
                         >
                           {/* Rank */}
                           <td className="py-3.5 pl-5">
                             {medal ? (
                               <div className="w-6 h-6 rounded-full flex items-center justify-center"
-                                style={{ background: `rgba(${medal.color === '#facc15' ? '250,204,21' : medal.color === '#a1a1aa' ? '161,161,170' : '205,124,47'},0.12)`, border: `1px solid ${medal.color}30` }}>
-                                <Star className="w-3 h-3 fill-current" style={{ color: medal.color }} />
+                                style={{
+                                  background: `linear-gradient(135deg, ${medal.color}20, ${medal.color}05)`,
+                                  border: `1px solid ${medal.color}30`,
+                                  boxShadow: `0 0 10px ${medal.shadow}`,
+                                }}
+                              >
+                                <span className="text-[9px] font-black" style={{ color: medal.color }}>
+                                  {medal.label}
+                                </span>
                               </div>
                             ) : (
-                              <span className="text-[10px] text-zinc-600 font-mono font-bold pl-1">#{idx + 1}</span>
+                              <span className="text-xs font-bold font-mono text-zinc-600 pl-1.5">
+                                #{idx + 1}
+                              </span>
                             )}
                           </td>
 
@@ -273,10 +289,10 @@ export default function TypingPage() {
                           <td className="py-3.5 text-right pr-5 font-mono text-[10px] text-zinc-600">
                             {item.stats.tests_completed?.toLocaleString() || 0}
                           </td>
-                        </tr>
+                        </motion.tr>
                       );
                     })}
-                  </tbody>
+                  </motion.tbody>
                 </table>
               </div>
             )}
@@ -288,18 +304,18 @@ export default function TypingPage() {
           <MonkeytypePanel onOpenEditProfile={() => setIsLinkModalOpen(true)} />
         </div>
       </div>
-      </div>
-
       {/* ── Modals ──────────────────────────────── */}
       <LinkMonkeytypeModal
         isOpen={isLinkModalOpen}
         onClose={() => { setIsLinkModalOpen(false); loadTypingLeaderboard(); }}
       />
 
-      {selectedUser && (
-        <UserTypingProfileModal user={selectedUser} onClose={() => setSelectedUser(null)} />
-      )}
-    </>
+      <AnimatePresence>
+        {selectedUser && (
+          <UserTypingProfileModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -346,10 +362,16 @@ function UserTypingProfileModal({ user, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
+    <motion.div 
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      variants={backdropVariants}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md"
       onClick={onClose}
     >
-      <div
+      <motion.div
+        variants={modalVariants}
         className="w-full max-w-2xl relative overflow-hidden rounded-2xl max-h-[92vh] overflow-y-auto custom-scrollbar"
         style={{
           background: 'rgba(9,9,11,0.97)',
@@ -571,7 +593,7 @@ function UserTypingProfileModal({ user, onClose }) {
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

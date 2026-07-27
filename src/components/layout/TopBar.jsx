@@ -18,6 +18,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 
 import EditProfileModal from '../EditProfileModal';
 import UserProfileModal from '../UserProfileModal';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Map routes → page titles
 const PAGE_TITLES = {
@@ -106,7 +107,7 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
         const d = new Date(p.updated_at);
         return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
       });
-    if (doneDates.length === 0) return 0;
+    if (!doneDates.length) return 0;
     const unique = [...new Set(doneDates)].sort((a, b) => b - a);
     const today = new Date();
     const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
@@ -128,58 +129,77 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
       <header className="h-[56px] sm:h-[60px] border-b border-[#1f1f23] bg-[#111113]/90 backdrop-blur-md flex items-center justify-between px-3 sm:px-5 sticky top-0 z-30 w-full">
         
         {/* Expanded Mobile Search Overlay */}
-        {isMobileSearchOpen ? (
-          <div className="absolute inset-0 bg-[#0d0d0f]/95 backdrop-blur-xl z-40 px-3 flex items-center gap-2 animate-fadeIn border-b border-violet-500/20" ref={dropdownRef}>
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-violet-400 pointer-events-none" />
-              <input
-                ref={mobileInputRef}
-                type="text"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                placeholder="Search problem to quick solve…"
-                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl glass-input text-zinc-100 placeholder:text-zinc-500 focus:outline-none border-violet-500/30"
-              />
-            </div>
-            <button
-              onClick={closeMobileSearch}
-              className="w-8 h-8 rounded-xl bg-zinc-800/60 border border-white/[0.08] text-zinc-400 hover:text-zinc-100 transition-colors flex items-center justify-center shrink-0 touch-target"
-              aria-label="Close search"
+        <AnimatePresence>
+          {isMobileSearchOpen && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-[#0d0d0f]/95 backdrop-blur-xl z-40 px-3 flex items-center gap-2 border-b border-violet-500/20" 
+              ref={dropdownRef}
             >
-              <X className="w-4 h-4" />
-            </button>
-
-            {/* Mobile Search Dropdown Results */}
-            {showResults && searchResults.length > 0 && (
-              <div className="absolute top-full left-3 right-3 mt-1.5 rounded-xl border border-white/[0.08] bg-[#0d0d0f] shadow-2xl shadow-black/90 p-1.5 z-50">
-                {searchResults.map((q) => {
-                  const done = isQuestionDone(q.id);
-                  return (
-                    <div
-                      key={q.id}
-                      className="flex items-center justify-between px-3 py-2.5 hover:bg-white/[0.04] rounded-lg transition-colors"
-                    >
-                      <div className="min-w-0 flex-1 pr-3">
-                        <p className="text-xxs text-zinc-500 truncate">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
-                        <p className="text-xs text-zinc-200 font-medium truncate mt-0.5">{q.problem_name}</p>
-                      </div>
-                      {done ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                      ) : (
-                        <button
-                          onClick={() => handleQuickSolve(q.id)}
-                          className="p-1.5 rounded-lg bg-violet-500/10 hover:bg-violet-500 text-violet-400 hover:text-white transition-all cursor-pointer flex items-center justify-center shrink-0 border border-violet-500/20"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-violet-400 pointer-events-none" />
+                <input
+                  ref={mobileInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  placeholder="Search problem to quick solve…"
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl glass-input text-zinc-100 placeholder:text-zinc-500 focus:outline-none border-violet-500/30"
+                />
               </div>
-            )}
-          </div>
-        ) : (
+              <button
+                onClick={closeMobileSearch}
+                className="w-8 h-8 rounded-xl bg-zinc-800/60 border border-white/[0.08] text-zinc-400 hover:text-zinc-100 transition-colors flex items-center justify-center shrink-0 touch-target"
+                aria-label="Close search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              {/* Mobile Search Dropdown Results */}
+              <AnimatePresence>
+                {showResults && searchResults.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 5, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 5, scale: 0.98 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-3 right-3 mt-1.5 rounded-xl border border-white/[0.08] bg-[#0d0d0f] shadow-2xl shadow-black/90 p-1.5 z-50"
+                  >
+                    {searchResults.map((q) => {
+                      const done = isQuestionDone(q.id);
+                      return (
+                        <div
+                          key={q.id}
+                          className="flex items-center justify-between px-3 py-2.5 hover:bg-white/[0.04] rounded-lg transition-colors"
+                        >
+                          <div className="min-w-0 flex-1 pr-3">
+                            <p className="text-xxs text-zinc-500 truncate">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
+                            <p className="text-xs text-zinc-200 font-medium truncate mt-0.5">{q.problem_name}</p>
+                          </div>
+                          {done ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          ) : (
+                            <button
+                              onClick={() => handleQuickSolve(q.id)}
+                              className="p-1.5 rounded-lg bg-violet-500/10 hover:bg-violet-500 text-violet-400 hover:text-white transition-all cursor-pointer flex items-center justify-center shrink-0 border border-violet-500/20"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {!isMobileSearchOpen && (
           <>
             {/* Left: Mobile hamburger + page title */}
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -211,35 +231,43 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                 />
               </div>
 
-              {showResults && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1.5 rounded-xl border border-[#1f1f23] bg-[#111113] shadow-2xl shadow-black/80 p-1.5 z-50 animate-fadeIn">
-                  {searchResults.map((q) => {
-                    const done = isQuestionDone(q.id);
-                    return (
-                      <div
-                        key={q.id}
-                        className="flex items-center justify-between px-3 py-2 hover:bg-zinc-800/50 rounded-lg transition-colors group/item"
-                      >
-                        <div className="min-w-0 flex-1 pr-3">
-                          <p className="text-xxs text-zinc-500 truncate">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
-                          <p className="text-xs text-zinc-200 font-medium truncate mt-0.5">{q.problem_name}</p>
+              <AnimatePresence>
+                {showResults && searchResults.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 5, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 5, scale: 0.98 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-0 right-0 mt-1.5 rounded-xl border border-[#1f1f23] bg-[#111113] shadow-2xl shadow-black/80 p-1.5 z-50"
+                  >
+                    {searchResults.map((q) => {
+                      const done = isQuestionDone(q.id);
+                      return (
+                        <div
+                          key={q.id}
+                          className="flex items-center justify-between px-3 py-2 hover:bg-zinc-800/50 rounded-lg transition-colors group/item"
+                        >
+                          <div className="min-w-0 flex-1 pr-3">
+                            <p className="text-xxs text-zinc-500 truncate">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
+                            <p className="text-xs text-zinc-200 font-medium truncate mt-0.5">{q.problem_name}</p>
+                          </div>
+                          {done ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          ) : (
+                            <button
+                              onClick={() => handleQuickSolve(q.id)}
+                              className="p-1.5 rounded-md bg-violet-500/10 hover:bg-violet-500 text-violet-400 hover:text-white transition-all cursor-pointer touch-target flex items-center justify-center"
+                              title="Mark Solved"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
-                        {done ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                        ) : (
-                          <button
-                            onClick={() => handleQuickSolve(q.id)}
-                            className="p-1.5 rounded-md bg-violet-500/10 hover:bg-violet-500 text-violet-400 hover:text-white transition-all cursor-pointer touch-target flex items-center justify-center"
-                            title="Mark Solved"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Right: Search Icon (Mobile) + Streak + Avatar */}
@@ -276,45 +304,53 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                     )}
                   </div>
 
-                  {isUserMenuOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-white/[0.08] bg-[#0d0d0f]/95 backdrop-blur-xl shadow-2xl shadow-black/90 p-1.5 z-50 animate-fadeIn">
-                      <div className="px-2.5 py-1.5 border-b border-white/[0.04] mb-1">
-                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Signed in as</p>
-                        <p className="text-xs font-semibold text-zinc-200 truncate mt-0.5">{profile.display_name}</p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          setIsProfileOpen(true);
-                        }}
-                        className="w-full text-left px-2.5 py-2 text-xs font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                  <AnimatePresence>
+                    {isUserMenuOpen && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                        className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-white/[0.08] bg-[#0d0d0f]/95 backdrop-blur-xl shadow-2xl shadow-black/90 p-1.5 z-50"
                       >
-                        <Eye className="w-3.5 h-3.5 text-violet-400" />
-                        View Profile
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          setIsEditProfileOpen(true);
-                        }}
-                        className="w-full text-left px-2.5 py-2 text-xs font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
-                      >
-                        <Settings className="w-3.5 h-3.5 text-zinc-500" />
-                        Edit Profile
-                      </button>
-                      <div className="h-px bg-white/[0.05] my-1" />
-                      <button
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          signOut();
-                        }}
-                        className="w-full text-left px-2.5 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/[0.05] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        Sign Out
-                      </button>
-                    </div>
-                  )}
+                        <div className="px-2.5 py-1.5 border-b border-white/[0.04] mb-1">
+                          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Signed in as</p>
+                          <p className="text-xs font-semibold text-zinc-200 truncate mt-0.5">{profile.display_name}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            setIsProfileOpen(true);
+                          }}
+                          className="w-full text-left px-2.5 py-2 text-xs font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-violet-400" />
+                          View Profile
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            setIsEditProfileOpen(true);
+                          }}
+                          className="w-full text-left px-2.5 py-2 text-xs font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                        >
+                          <Settings className="w-3.5 h-3.5 text-zinc-500" />
+                          Edit Profile
+                        </button>
+                        <div className="h-px bg-white/[0.05] my-1" />
+                        <button
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            signOut();
+                          }}
+                          className="w-full text-left px-2.5 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/[0.05] rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          Sign Out
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
             )}
