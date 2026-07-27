@@ -360,13 +360,13 @@ function UserTypingProfileModal({ user, onClose }) {
         <div className="absolute top-0 right-0 w-60 h-60 bg-amber-500/[0.05] rounded-full blur-[80px] pointer-events-none" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
 
-        <div className="relative z-10 p-5 sm:p-6 space-y-5">
+        <div className="relative z-10 p-4 sm:p-5 space-y-3.5">
 
           {/* Header */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
               <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-white text-lg uppercase shrink-0 overflow-hidden"
+                className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-base uppercase shrink-0 overflow-hidden"
                 style={{
                   backgroundColor: user.avatar_url ? 'transparent' : (user.avatar_color || '#6366f1'),
                   border: '1px solid rgba(255,255,255,0.12)',
@@ -379,8 +379,8 @@ function UserTypingProfileModal({ user, onClose }) {
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-base font-black text-zinc-100">{user.display_name}</h2>
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded font-mono"
+                  <h2 className="text-sm font-black text-zinc-100">{user.display_name}</h2>
+                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded font-mono"
                     style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
                     Typing Profile
                   </span>
@@ -389,10 +389,10 @@ function UserTypingProfileModal({ user, onClose }) {
                   <a
                     href={`https://monkeytype.com/profile/${user.monkeytype_username}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-amber-400 hover:underline flex items-center gap-1 mt-0.5"
+                    className="text-[11px] text-amber-400 hover:underline flex items-center gap-1 mt-0.5 font-medium"
                     onClick={e => e.stopPropagation()}
                   >
-                    @{user.monkeytype_username} <ExternalLink className="w-3 h-3" />
+                    @{user.monkeytype_username} <ExternalLink className="w-2.5 h-2.5" />
                   </a>
                 )}
               </div>
@@ -410,7 +410,7 @@ function UserTypingProfileModal({ user, onClose }) {
 
           {/* Peak WPM hero */}
           <div
-            className="rounded-xl p-4 flex items-center justify-between relative overflow-hidden"
+            className="rounded-xl p-3 flex items-center justify-between relative overflow-hidden"
             style={{
               background: 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(217,119,6,0.03))',
               borderLeft: '3px solid rgba(245,158,11,0.5)',
@@ -419,37 +419,37 @@ function UserTypingProfileModal({ user, onClose }) {
             }}
           >
             <div className="absolute right-4 opacity-[0.04]">
-              <TrendingUp className="w-20 h-20 text-amber-400" />
+              <TrendingUp className="w-16 h-16 text-amber-400" />
             </div>
             <div>
-              <span className="text-[8px] uppercase font-black text-amber-500/70 tracking-widest block mb-1">Peak WPM · All Modes</span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-black text-amber-400 font-mono tracking-tight">{topWPM > 0 ? topWPM : '--'}</span>
-                <span className="text-xs font-bold text-amber-600 uppercase">WPM</span>
+              <span className="text-[8px] uppercase font-black text-amber-500/70 tracking-widest block mb-0.5">Peak WPM · All Modes</span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-3xl font-black text-amber-400 font-mono tracking-tight">{topWPM > 0 ? topWPM : '--'}</span>
+                <span className="text-[10px] font-bold text-amber-600 uppercase">WPM</span>
               </div>
             </div>
             <div className="text-right">
-              <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest block mb-1">Tests Done</span>
-              <span className="text-2xl font-black text-zinc-200 font-mono">{stats.tests_completed?.toLocaleString() || 0}</span>
+              <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest block mb-0.5">Tests Done</span>
+              <span className="text-xl font-black text-zinc-200 font-mono">{stats.tests_completed?.toLocaleString() || 0}</span>
             </div>
           </div>
 
           {/* Stats + Chart */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Activity stats */}
-            <div className="rounded-xl p-4 space-y-3"
+            <div className="rounded-xl p-3 space-y-2.5"
               style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
               <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest flex items-center gap-1.5">
                 <Activity className="w-3 h-3 text-amber-400" /> Monkeytype Activity
               </span>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-1.5">
                 {[
                   { label: 'Started', value: stats.tests_started?.toLocaleString() || 0, color: '#e4e4e7' },
                   { label: 'Completed', value: stats.tests_completed?.toLocaleString() || 0, color: '#e4e4e7' },
                   { label: 'Completion', value: `${completionRate}%`, color: '#34d399' },
                   { label: 'Time Spent', value: formatTime(stats.time_typing), color: '#a78bfa' },
                 ].map(s => (
-                  <div key={s.label} className="p-2.5 rounded-lg text-center"
+                  <div key={s.label} className="p-1.5 rounded-lg text-center"
                     style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.03)' }}>
                     <span className="text-[8px] text-zinc-600 uppercase tracking-wider block mb-0.5">{s.label}</span>
                     <span className="text-xs font-black font-mono" style={{ color: s.color }}>{s.value}</span>
@@ -459,12 +459,12 @@ function UserTypingProfileModal({ user, onClose }) {
             </div>
 
             {/* Bar chart */}
-            <div className="rounded-xl p-4 flex flex-col min-h-[160px]"
+            <div className="rounded-xl p-3 flex flex-col min-h-[130px]"
               style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest flex items-center gap-1.5 mb-3">
+              <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest flex items-center gap-1.5 mb-1.5">
                 <Zap className="w-3 h-3 text-amber-400" /> Speed Curve (WPM)
               </span>
-              <div className="flex-1 min-h-[100px]">
+              <div className="flex-1 min-h-[85px]">
                 {chartData.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-zinc-700 text-xs">No data yet</div>
                 ) : (
@@ -476,10 +476,10 @@ function UserTypingProfileModal({ user, onClose }) {
                           <stop offset="95%" stopColor="#d97706" stopOpacity={0.2} />
                         </linearGradient>
                       </defs>
-                      <XAxis dataKey="name" stroke="#3f3f46" fontSize={9} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#3f3f46" fontSize={9} tickLine={false} axisLine={false} />
+                      <XAxis dataKey="name" stroke="#3f3f46" fontSize={8} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#3f3f46" fontSize={8} tickLine={false} axisLine={false} />
                       <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
-                      <Bar dataKey="WPM" fill="url(#barGrad)" radius={[5, 5, 0, 0]} barSize={26} />
+                      <Bar dataKey="WPM" fill="url(#barGrad)" radius={[3, 3, 0, 0]} barSize={22} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -489,10 +489,10 @@ function UserTypingProfileModal({ user, onClose }) {
 
           {/* Mode Breakdown */}
           <div>
-            <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest flex items-center gap-1.5 mb-3">
+            <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest flex items-center gap-1.5 mb-2">
               <Award className="w-3 h-3 text-amber-400" /> Category Benchmark Breakdown
             </span>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-2">
               {modes.map(item => {
                 const isBest = item.wpm && item.wpm === topWPM && topWPM > 0;
                 const barPct = topWPM > 0 && item.wpm ? Math.min(100, Math.round((item.wpm / 150) * 100)) : 0;
@@ -501,7 +501,7 @@ function UserTypingProfileModal({ user, onClose }) {
                 return (
                   <div
                     key={item.label}
-                    className="rounded-xl p-3.5 relative overflow-hidden transition-all"
+                    className="rounded-xl p-2.5 relative overflow-hidden transition-all"
                     style={{
                       background: isBest
                         ? 'linear-gradient(145deg, rgba(245,158,11,0.08), rgba(217,119,6,0.03))'
@@ -513,24 +513,24 @@ function UserTypingProfileModal({ user, onClose }) {
                     {isBest && (
                       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
                     )}
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-1">
                       <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest">{item.label}</span>
                       {isBest && (
-                        <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded"
+                        <div className="flex items-center gap-0.5 px-1 py-0.5 rounded"
                           style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.25)' }}>
-                          <Zap className="w-2 h-2 text-amber-400 fill-amber-400" />
+                          <Zap className="w-1.5 h-1.5 text-amber-400 fill-amber-400" />
                           <span className="text-[7px] font-black text-amber-400 uppercase">Best</span>
                         </div>
                       )}
                     </div>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-xl font-black font-mono tracking-tight"
+                      <span className="text-lg font-black font-mono tracking-tight"
                         style={{ color: isBest ? '#fbbf24' : '#e4e4e7' }}>
                         {item.wpm ?? '--'}
                       </span>
                       <span className="text-[8px] text-zinc-600 font-semibold uppercase">wpm</span>
                     </div>
-                    <div className="mt-2.5 space-y-1 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div className="mt-1.5 space-y-0.5 pt-1.5" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                       <div className="flex justify-between text-[9px]">
                         <span className="text-zinc-600">Accuracy</span>
                         <span className="font-bold font-mono" style={{ color: accColor }}>
@@ -544,7 +544,7 @@ function UserTypingProfileModal({ user, onClose }) {
                         </span>
                       </div>
                     </div>
-                    <div className="w-full rounded-full mt-2.5 overflow-hidden" style={{ height: '2px', background: 'rgba(255,255,255,0.05)' }}>
+                    <div className="w-full rounded-full mt-1.5 overflow-hidden" style={{ height: '2px', background: 'rgba(255,255,255,0.05)' }}>
                       <div
                         className="h-full rounded-full transition-all duration-700"
                         style={{
@@ -563,7 +563,7 @@ function UserTypingProfileModal({ user, onClose }) {
 
           {/* Footer timestamp */}
           {stats.last_synced && (
-            <div className="text-center text-[9px] font-mono text-zinc-700 pt-2"
+            <div className="text-center text-[9px] font-mono text-zinc-700 pt-1.5"
               style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
               Last synced from Monkeytype · {new Date(stats.last_synced).toLocaleString()}
             </div>

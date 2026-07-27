@@ -21,6 +21,9 @@ import { supabase } from '../../lib/supabase';
 
 const Layout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('sidebar-collapsed') === 'true';
+  });
   const { profiles, fetchProfiles, fetchProgress, subscribeToRealtime } = useProgressStore();
   const { profile, signOut } = useAuth();
   const [toasts, setToasts] = useState([]);
@@ -33,6 +36,10 @@ const Layout = () => {
   const removeToast = (id) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
+
+  useEffect(() => {
+    localStorage.setItem('sidebar-collapsed', isSidebarCollapsed);
+  }, [isSidebarCollapsed]);
 
   useEffect(() => {
     fetchProfiles();
@@ -85,7 +92,7 @@ const Layout = () => {
   return (
     <div className="min-h-screen bg-[#09090b] flex text-zinc-100 relative">
       {/* Desktop Sidebar */}
-      <Sidebar />
+      <Sidebar isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} />
 
       {/* Mobile Drawer */}
       {isMobileMenuOpen && (
@@ -176,9 +183,9 @@ const Layout = () => {
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-x-hidden">
+      <div className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden">
         <TopBar toggleMobileMenu={toggleMobileMenu} isMobileMenuOpen={isMobileMenuOpen} />
-        <main className="flex-1 p-3 xs:p-4 sm:p-6 min-w-0">
+        <main className="flex-1 p-3 xs:p-4 sm:p-6 min-w-0 overflow-y-auto custom-scrollbar">
           <Outlet />
         </main>
       </div>

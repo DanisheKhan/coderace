@@ -115,7 +115,7 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
 
   return (
     <>
-      <header className="h-[56px] sm:h-[60px] border-b border-[#1f1f23] bg-[#111113]/90 backdrop-blur-md flex items-center justify-between px-3 sm:px-5 sticky top-0 z-30 w-full relative">
+      <header className="h-[56px] sm:h-[60px] border-b border-[#1f1f23] bg-[#111113]/90 backdrop-blur-md flex items-center justify-between px-3 sm:px-5 sticky top-0 z-30 w-full">
         
         {/* Expanded Mobile Search Overlay */}
         {isMobileSearchOpen ? (
