@@ -2,12 +2,14 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Trophy, Flame, Calendar, Activity, Crown, Award, X, Zap, 
   Sparkles, BookOpen, Workflow, BookmarkCheck, Layers, Network, 
-  ExternalLink, CheckCircle2, Copy, Lightbulb, Eye, Search, Keyboard, TrendingUp, RefreshCw 
+  ExternalLink, CheckCircle2, Copy, Lightbulb, Eye, Search, Keyboard, TrendingUp, RefreshCw,
+  Brain
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { calculateUserAchievements } from '../lib/achievements';
 import { getTypingProfile, fetchMonkeytypeData, syncTypingProfileToSupabase } from '../lib/monkeytypeService';
+import { fetchUserAttempts } from '../lib/quizService';
 
 const IconMap = {
   Award, Zap, Flame, Trophy, Calendar, Activity,
@@ -131,6 +133,31 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
       getTypingProfile(user.id).then(setTypingProfile);
     }
   }, [user?.id]);
+
+  const [quizAttempts, setQuizAttempts] = useState([]);
+  const [loadingAttempts, setLoadingAttempts] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      setLoadingAttempts(true);
+      fetchUserAttempts(user.id)
+        .then(setQuizAttempts)
+        .catch(err => console.error('Error fetching quiz attempts:', err))
+        .finally(() => setLoadingAttempts(false));
+    }
+  }, [user?.id]);
+
+  const quizStats = useMemo(() => {
+    if (!quizAttempts || quizAttempts.length === 0) {
+      return { best: null, total: 0, average: 0, recent: null };
+    }
+    const total = quizAttempts.length;
+    const percentages = quizAttempts.map(a => Number(a.percentage));
+    const best = [...quizAttempts].sort((a, b) => Number(b.percentage) - Number(a.percentage))[0];
+    const average = Math.round(percentages.reduce((sum, val) => sum + val, 0) / total);
+    const recent = quizAttempts[0];
+    return { best, total, average, recent };
+  }, [quizAttempts]);
 
   const { achievementsList, unlockedCount } = useMemo(() => {
     return calculateUserAchievements(user.id, progress, questions);
@@ -278,6 +305,17 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
               >
                 <Keyboard className="w-3.5 h-3.5" />
                 <span>Speed {typingProfile?.wpm_60 ? `(${typingProfile.wpm_60} WPM)` : ''}</span>
+              </button>
+              <button
+                onClick={() => setActiveModalTab('quiz')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none flex items-center gap-1.5 whitespace-nowrap ${
+                  activeModalTab === 'quiz'
+                    ? 'bg-violet-600 text-white shadow-sm shadow-violet-600/30'
+                    : 'text-zinc-500 hover:text-zinc-300'
+                }`}
+              >
+                <Brain className="w-3.5 h-3.5" />
+                <span>Quiz {quizAttempts.length > 0 ? `(${quizAttempts.length})` : ''}</span>
               </button>
             </div>
             {isCurrentUser && currentProfile?.monkeytype_ape_key && (
@@ -669,7 +707,7 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
                 );
               })()}
             </div>
-          ) : (
+          ) : activeModalTab === 'solved' ? (
             /* TAB 2: SOLVED QUESTIONS EXPLORER */
             <div className="space-y-4 animate-fadeIn">
               <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -776,7 +814,135 @@ export const UserProfileModal = ({ user, progress, questions, onClose }) => {
                 </div>
               )}
             </div>
-          )}
+          ) : activeModalTab === 'quiz' ? (
+            <div className="space-y-6 animate-fadeIn max-w-3xl mx-auto">
+              {loadingAttempts ? (
+                <div className="py-20 flex flex-col items-center justify-center text-center">
+                  <RefreshCw className="w-8 h-8 text-violet-500 animate-spin mb-3" />
+                  <p className="text-xs text-zinc-500">Loading quiz attempts...</p>
+                </div>
+              ) : quizAttempts.length === 0 ? (
+                <div className="py-14 flex flex-col items-center justify-center text-center border border-dashed border-zinc-800/80 rounded-2xl bg-white/[0.01] p-6">
+                  <Brain className="w-10 h-10 text-violet-500/40 mb-3" />
+                  <h4 className="text-sm font-bold text-zinc-200">No Quiz Attempts Yet</h4>
+                  <p className="text-xs text-zinc-500 max-w-xs mt-1.5 leading-relaxed">
+                    This user has not attempted any Java quizzes yet. Head over to the Quiz section to get started!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {/* Hero Stats Card */}
+                  <div
+                    className="rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(124,58,237,0.08), rgba(99,102,241,0.03))',
+                      border: '1px solid rgba(124,58,237,0.15)',
+                      borderLeft: '4px solid rgba(124,58,237,0.6)',
+                    }}
+                  >
+                    <div className="absolute right-4 opacity-[0.03] pointer-events-none">
+                      <Brain className="w-20 h-20 text-violet-400" />
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-black text-violet-400/80 tracking-widest block mb-0.5">Personal Best</span>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-3xl font-black text-violet-400 font-mono tracking-tight">
+                          {quizStats.best ? `${quizStats.best.score}/${quizStats.best.total}` : '--'}
+                        </span>
+                        <span className="text-xs font-bold text-violet-500 font-mono">
+                          ({quizStats.best ? Math.round(Number(quizStats.best.percentage)) : 0}%)
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-zinc-500 block mt-1">
+                        Achieved {quizStats.best ? formatRelativeTime(quizStats.best.completed_at) : ''}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                      <div>
+                        <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest block mb-0.5">Total Attempts</span>
+                        <span className="text-xl font-black text-zinc-200 font-mono">{quizStats.total}</span>
+                      </div>
+                      <div>
+                        <span className="text-[8px] uppercase font-black text-zinc-500 tracking-widest block mb-0.5">Avg Accuracy</span>
+                        <span className="text-xl font-black text-zinc-200 font-mono text-emerald-400">{quizStats.average}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Attempts List */}
+                  <div className="space-y-2.5">
+                    <span className="text-[9px] uppercase font-black text-zinc-500 tracking-widest flex items-center gap-1.5 mb-1">
+                      <Activity className="w-3 h-3 text-violet-400" /> Attempt History
+                    </span>
+                    <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1.5 custom-scrollbar">
+                      {quizAttempts.map((attempt, index) => {
+                        const pct = Math.round(Number(attempt.percentage));
+                        let badgeColor = 'bg-rose-500/10 text-rose-400 border-rose-500/15';
+                        let badgeText = 'Needs Practice';
+                        if (pct >= 90) {
+                          badgeColor = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/15';
+                          badgeText = pct === 100 ? 'Perfect' : 'Elite';
+                        } else if (pct >= 70) {
+                          badgeColor = 'bg-blue-500/10 text-blue-400 border-blue-500/15';
+                          badgeText = 'Advanced';
+                        } else if (pct >= 50) {
+                          badgeColor = 'bg-amber-500/10 text-amber-400 border-amber-500/15';
+                          badgeText = 'Passing';
+                        }
+
+                        return (
+                          <div
+                            key={attempt.id || index}
+                            className="p-3.5 rounded-xl bg-zinc-900/40 border border-white/[0.04] hover:border-white/[0.08] hover:bg-zinc-900/60 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-violet-500/10 text-violet-400 flex items-center justify-center shrink-0">
+                                <Brain className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h5 className="text-xs font-bold text-zinc-200">Java Concepts Quiz</h5>
+                                <span className="text-[10px] text-zinc-500 block mt-0.5">
+                                  {new Date(attempt.completed_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                                  <span className="mx-1.5">·</span>
+                                  {formatRelativeTime(attempt.completed_at)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between sm:justify-end gap-4">
+                              <div className="text-right">
+                                <div className="flex items-baseline gap-1 justify-end">
+                                  <span className="text-sm font-extrabold text-zinc-100 font-mono">{attempt.score}</span>
+                                  <span className="text-[10px] text-zinc-500">/</span>
+                                  <span className="text-[10px] text-zinc-500 font-mono">{attempt.total}</span>
+                                </div>
+                                <span className="text-[9px] text-zinc-600 block mt-0.5 uppercase tracking-wider font-semibold">Score</span>
+                              </div>
+
+                              <div className="flex flex-col items-end gap-1 shrink-0">
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${badgeColor} uppercase tracking-wider`}>
+                                  {badgeText}
+                                </span>
+                                <div className="w-20 bg-white/5 h-1 rounded-full overflow-hidden mt-1">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${
+                                      pct >= 70 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-rose-500'
+                                    }`}
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
 
           {/* Speed / Monkeytype Tab */}
           {activeModalTab === 'speed' && (

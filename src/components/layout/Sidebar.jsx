@@ -13,7 +13,8 @@ import {
   ShieldAlert,
   Keyboard,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Brain
 } from 'lucide-react';
 import EditProfileModal from '../EditProfileModal';
 import { useProgressStore } from '../../store/progressStore';
@@ -32,6 +33,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     { name: 'Compare',     path: '/compare',      icon: BarChart3 },
     { name: 'Achievements', path: '/achievements', icon: Award },
     { name: 'Typing',      path: '/typing',       icon: Keyboard },
+    { name: 'Java Quiz',   path: '/quiz',         icon: Brain },
   ];
 
   if (profile?.is_admin) {

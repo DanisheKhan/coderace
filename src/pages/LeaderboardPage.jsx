@@ -5,11 +5,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { 
   Trophy, Flame, Calendar, Activity, Crown, Award, X, Zap, 
   Sparkles, BookOpen, Workflow, BookmarkCheck, Layers, Network, 
-  ExternalLink, CheckCircle2, Copy, Lightbulb, Eye, Search, RotateCcw, Circle, Filter, Medal, Star, Keyboard, TrendingUp
+  ExternalLink, CheckCircle2, Copy, Lightbulb, Eye, Search, RotateCcw, Circle, Filter, Medal, Star, Keyboard, TrendingUp,
+  Brain
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { calculateUserAchievements } from '../lib/achievements';
 import UserProfileModal, { SolveTags, DiffDot, formatRelativeTime } from '../components/UserProfileModal';
+import { fetchAllUsersQuizBest, fetchRecentQuizAttempts } from '../lib/quizService';
 
 const calculateUserStreak = (userId, progress) => {
   const doneDates = progress
@@ -142,6 +144,12 @@ const PodiumCard = ({ user, rank, questions, currentProfileId, onClick }) => {
           <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-violet-400" />
           <span>{user.unlockedCount}</span>
         </div>
+        {user.quiz && (
+          <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-zinc-400 font-extrabold z-10" title={`Best Quiz Score: ${user.quiz.score}/${user.quiz.total} (${user.quiz.attempts_count} attempts)`}>
+            <Brain className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-violet-400 shrink-0" />
+            <span>{Math.round(user.quiz.percentage)}%</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -183,6 +191,22 @@ const LeaderboardPage = () => {
   const { questions } = useQuestions();
   const { profile: currentProfile } = useAuth();
   const [selectedUser, setSelectedUser] = useState(null);
+  const [quizBests, setQuizBests] = useState({});
+  const [recentQuizAttempts, setRecentQuizAttempts] = useState([]);
+
+  useEffect(() => {
+    const loadQuizData = async () => {
+      try {
+        const bests = await fetchAllUsersQuizBest();
+        setQuizBests(bests);
+        const recents = await fetchRecentQuizAttempts();
+        setRecentQuizAttempts(recents);
+      } catch (err) {
+        console.error("Error loading quiz data for leaderboard:", err);
+      }
+    };
+    loadQuizData();
+  }, []);
 
   // Only show approved users
   const approvedProfiles = useMemo(() => {
@@ -197,13 +221,14 @@ const LeaderboardPage = () => {
       const solvedThisWeek = up.filter(pr => pr.status === 'done' && new Date(pr.updated_at).getTime() >= sevenAgo).length;
       const streak = calculateUserStreak(p.id, progress);
       const { unlockedCount } = calculateUserAchievements(p.id, progress, questions);
-      return { ...p, solved, solvedThisWeek, streak, unlockedCount };
+      const quiz = quizBests[p.id] || null;
+      return { ...p, solved, solvedThisWeek, streak, unlockedCount, quiz };
     }).sort((a, b) => b.solved !== a.solved ? b.solved - a.solved : b.streak - a.streak);
-  }, [approvedProfiles, progress, questions]);
+  }, [approvedProfiles, progress, questions, quizBests]);
 
   const recentActivities = useMemo(() => {
     const seen = new Set();
-    const list = [];
+    const dsaList = [];
     const sorted = progress
       .filter(p => p.status === 'done')
       .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
@@ -215,22 +240,27 @@ const LeaderboardPage = () => {
         const u = approvedProfiles.find(pr => pr.id === p.user_id);
         if (!u) continue; // Skip activities of unapproved users
         const q = questions.find(qn => qn.id === p.question_id);
-        list.push({
+        dsaList.push({
           id: p.id,
           userId: p.user_id,
           userName: u?.display_name || 'Racer',
           avatarColor: u?.avatar_color || '#6366f1',
           avatarUrl: u?.avatar_url || '',
+          type: 'dsa',
           problemName: q?.problem_name || 'a problem',
           topic: q?.topic || 'DSA',
           difficulty: q?.difficulty || 1,
           updatedAt: p.updated_at,
         });
-        if (list.length >= 8) break;
       }
     }
-    return list;
-  }, [progress, approvedProfiles, questions]);
+
+    // Combine with quiz attempts
+    const combined = [...dsaList, ...recentQuizAttempts];
+    combined.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+    return combined.slice(0, 10);
+  }, [progress, approvedProfiles, questions, recentQuizAttempts]);
 
   const top3 = leaderboard.slice(0, 3);
   const restList = leaderboard.slice(3);
@@ -365,6 +395,15 @@ const LeaderboardPage = () => {
                           <Calendar className="w-3 h-3 text-emerald-400" />
                           <span>+{user.solvedThisWeek}</span>
                         </div>
+                        {user.quiz && (
+                          <div 
+                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-violet-600/10 border border-violet-500/15 text-[10px] text-violet-400 font-bold font-mono"
+                            title={`Best quiz score: ${user.quiz.score}/${user.quiz.total} (${user.quiz.attempts_count} attempts)`}
+                          >
+                            <Brain className="w-3 h-3 text-violet-400" />
+                            <span>{Math.round(user.quiz.percentage)}%</span>
+                          </div>
+                        )}
                         <div className="text-right">
                           <span className="text-sm font-bold font-mono text-zinc-200">{user.solved}</span>
                           <span className="text-[10px] text-zinc-700 font-mono"> /{totalQ}</span>
@@ -457,15 +496,31 @@ const LeaderboardPage = () => {
                         </button>
                       </div>
                     </div>
-                    <p className="text-[10px] text-zinc-600 mt-0.5 truncate">
-                      Solved <span className="text-zinc-400 font-medium">{act.problemName}</span>
-                    </p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-zinc-600 border border-white/[0.04] font-medium">
-                        {act.topic}
-                      </span>
-                      <DiffDot d={act.difficulty} />
-                    </div>
+                    {act.type === 'quiz' ? (
+                      <>
+                        <p className="text-[10px] text-zinc-600 mt-0.5 truncate">
+                          Scored <span className="text-emerald-400 font-bold font-mono">{act.score}/{act.total}</span> ({act.percentage}%) on Java Quiz
+                        </p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-600/10 text-violet-400 border border-violet-500/15 font-semibold flex items-center gap-1">
+                            <Brain className="w-2.5 h-2.5" />
+                            Java Quiz
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[10px] text-zinc-600 mt-0.5 truncate">
+                          Solved <span className="text-zinc-400 font-medium">{act.problemName}</span>
+                        </p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-zinc-600 border border-white/[0.04] font-medium">
+                            {act.topic}
+                          </span>
+                          <DiffDot d={act.difficulty} />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
