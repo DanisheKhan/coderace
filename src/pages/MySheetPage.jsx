@@ -9,7 +9,7 @@ import {
   Bookmark, BookmarkCheck, FileText,
   Link2, Trash2, CheckCircle2,
   Clock, AlertCircle, RotateCcw, Circle,
-  Sparkles, Copy, Lightbulb, Eye, Plus
+  Sparkles, Copy, Lightbulb, Eye, Plus, User
 } from 'lucide-react';
 import AddQuestionModal from '../components/AddQuestionModal';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -191,7 +191,7 @@ const SOLVE_METHODS = [
 ];
 
 // ── Row Context Menu ──────────────────────────────────────────────────────────
-const RowMenu = ({ question, prog, onOpenNotes, onIncrementRevisit, onToggleRevisit, onSolveMethodChange, onClearProgress }) => {
+const RowMenu = ({ question, prog, onOpenNotes, onIncrementRevisit, onToggleRevisit, onSolveMethodChange, onClearProgress, onDeleteQuestion }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const solveMethod = prog?.solve_method || null;
@@ -287,9 +287,16 @@ const RowMenu = ({ question, prog, onOpenNotes, onIncrementRevisit, onToggleRevi
 
           <div className="h-px bg-white/[0.04] my-1" />
 
+          {question.is_custom && onDeleteQuestion && (
+            <button onClick={() => { onDeleteQuestion(question.id); setOpen(false); }}
+              className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer text-left font-semibold">
+              <Trash2 className="w-3.5 h-3.5" /> Delete Question
+            </button>
+          )}
+
           <button onClick={() => { onClearProgress(); setOpen(false); }}
             className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-rose-500/70 hover:bg-rose-500/[0.06] hover:text-rose-400 transition-colors cursor-pointer text-left">
-            <Trash2 className="w-3.5 h-3.5" /> Reset Progress
+            <RotateCcw className="w-3.5 h-3.5" /> Reset Progress
           </button>
         </div>
       </PortalDropdown>
@@ -358,7 +365,7 @@ const TH = ({ children, className = '' }) => (
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const MySheetPage = () => {
-  const { questions, loading: qLoading } = useQuestions();
+  const { questions, loading: qLoading, deleteQuestion } = useQuestions();
   const { profile } = useAuth();
   const { progress, upsertProgress } = useProgressStore();
 
@@ -397,10 +404,21 @@ const MySheetPage = () => {
   const groupedByTopic = useMemo(() => {
     const groups = {};
     filteredQuestions.forEach(q => {
-      if (!groups[q.topic]) groups[q.topic] = [];
-      groups[q.topic].push(q);
+      // Group all custom/newly added questions into 'Added Questions' section
+      const topicKey = (q.is_custom || q.topic === 'Added Questions') ? 'Added Questions' : q.topic;
+      if (!groups[topicKey]) groups[topicKey] = [];
+      groups[topicKey].push(q);
     });
-    return groups;
+
+    const topicKeys = Object.keys(groups).sort((a, b) => {
+      if (a === 'Added Questions') return -1;
+      if (b === 'Added Questions') return 1;
+      return 0;
+    });
+
+    const sortedGroups = {};
+    topicKeys.forEach(k => { sortedGroups[k] = groups[k]; });
+    return sortedGroups;
   }, [filteredQuestions]);
 
   const handleStatus   = (qId, ns)  => { if (profile) upsertProgress(profile.id, qId, { status: ns }); };
@@ -560,6 +578,7 @@ const MySheetPage = () => {
             const done   = topicQuestions.filter(q => progressMap[q.id]?.status === 'done').length;
             const total  = topicQuestions.length;
             const pct    = total ? Math.round((done / total) * 100) : 0;
+            const isCustomSection = topic === 'Added Questions' || topicQuestions.some(q => q.is_custom);
 
             const subtopicGroups = {};
             topicQuestions.forEach(q => {
@@ -570,7 +589,7 @@ const MySheetPage = () => {
 
             return (
               <div key={topic} id={`topic-${topic}`}
-                className="rounded-xl overflow-hidden border border-white/[0.05]"
+                className={`rounded-xl overflow-hidden border ${isCustomSection ? 'border-violet-500/20 shadow-lg shadow-violet-500/[0.03]' : 'border-white/[0.05]'}`}
                 style={{ background: '#0a0a0c' }}>
 
                 {/* Topic Header */}
@@ -579,7 +598,16 @@ const MySheetPage = () => {
                   className="w-full flex items-center justify-between px-5 py-3.5 text-left cursor-pointer hover:bg-white/[0.02] transition-colors group"
                 >
                   <div className="flex items-center gap-4 min-w-0 flex-1">
-                    <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest truncate">{topic}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`text-[10px] uppercase font-bold tracking-widest truncate ${isCustomSection ? 'text-violet-300' : 'text-zinc-500'}`}>
+                        {topic}
+                      </span>
+                      {isCustomSection && (
+                        <span className="px-1.5 py-0.5 rounded bg-violet-500/15 border border-violet-500/30 text-violet-400 text-[9px] font-mono font-semibold tracking-wider">
+                          USER ADDED
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2.5 shrink-0">
                       <div className="w-24 h-0.5 bg-zinc-900 rounded-full overflow-hidden">
                         <div
@@ -672,6 +700,17 @@ const MySheetPage = () => {
                                           <ExternalLink className="w-3 h-3" />
                                         </a>
                                       )}
+                                      {q.is_custom && q.topic && q.topic !== 'Added Questions' && (
+                                        <span className="px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/25 text-violet-300 text-[9px] font-mono font-medium">
+                                          {q.topic}
+                                        </span>
+                                      )}
+                                      {q.created_by_name && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] text-violet-300/90 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded-md font-mono select-none" title={`Added by ${q.created_by_name}`}>
+                                          <User className="w-2.5 h-2.5 text-violet-400" />
+                                          <span>Added by <strong className="text-violet-200">{q.created_by_name}</strong></span>
+                                        </span>
+                                      )}
                                       {(() => {
                                         const sm = SOLVE_METHODS.find(m => m.id === prog.solve_method);
                                         if (!sm) return null;
@@ -717,6 +756,7 @@ const MySheetPage = () => {
                                       onToggleRevisit={v => handleToggleRevisit(q.id, v)}
                                       onSolveMethodChange={m => handleSolveMethod(q.id, m)}
                                       onClearProgress={() => handleClearProgress(q.id)}
+                                      onDeleteQuestion={deleteQuestion}
                                     />
                                   </td>
                                 </tr>

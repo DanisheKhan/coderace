@@ -1,37 +1,50 @@
 import React, { useState } from 'react';
 import { useQuestions } from '../contexts/QuestionsContext';
+import { useAuth } from '../contexts/AuthContext';
 import { X, Plus, BookOpen, Link2, Layers, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { backdropVariants, modalVariants } from '../lib/animations';
 
 const TOPIC_SUGGESTIONS = [
+  'Added Questions',
   'Arrays',
+  '2D Arrays',
+  'Basic Maths',
   'Strings',
-  'Dynamic Programming',
-  'Trees',
-  'Graphs',
+  'Binary Search',
   'Recursion',
-  'Stack',
-  'Queue',
-  'Linked List',
-  'Math',
+  'Sorting',
+  'OOPS',
+  'Linkedlist',
+  'Stacks',
+  'Queues',
+  'Binary Trees',
+  'Binary Search Trees',
+  'Heaps / Priority Queues',
+  'Graphs',
+  'Dynamic Programming',
+  'Two Pointers & Sliding Window',
+  'Prefix Sum',
+  'Bit Manipulation',
+  'Tries',
+  'Hashmaps',
   'Greedy',
   'Backtracking',
+  '__CUSTOM__'
 ];
 
 const AddQuestionModal = ({ isOpen, onClose }) => {
   const { addQuestion } = useQuestions();
+  const { profile, user } = useAuth();
 
   const [problemName, setProblemName] = useState('');
-  const [topic, setTopic] = useState('Arrays');
+  const [topic, setTopic] = useState('Added Questions');
+  const [customTopic, setCustomTopic] = useState('');
   const [subtopic, setSubtopic] = useState('General');
   const [difficulty, setDifficulty] = useState('3');
   const [link, setLink] = useState('');
-  const [phase, setPhase] = useState('Phase 1');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,17 +53,25 @@ const AddQuestionModal = ({ isOpen, onClose }) => {
       return;
     }
 
+    const finalTopic = topic === '__CUSTOM__' 
+      ? (customTopic.trim() || 'Added Questions') 
+      : topic;
+
+    const creatorName = profile?.display_name || profile?.username || user?.email?.split('@')[0] || 'User';
+
     setLoading(true);
     setError('');
 
     try {
       const res = await addQuestion({
         problem_name: problemName.trim(),
-        topic: topic.trim() || 'General',
+        topic: finalTopic,
         subtopic: subtopic.trim() || 'General',
         difficulty: parseInt(difficulty, 10),
         link: link.trim() || null,
-        phase: phase.trim() || 'Phase 1',
+        phase: 'Phase 1',
+        is_custom: true,
+        created_by_name: creatorName,
       });
 
       if (res.error) throw res.error;
@@ -60,6 +81,8 @@ const AddQuestionModal = ({ isOpen, onClose }) => {
       setProblemName('');
       setLink('');
       setSubtopic('General');
+      setCustomTopic('');
+      setTopic('Added Questions');
     } catch (err) {
       setError(err.message || 'Failed to save question to Supabase.');
     } finally {
@@ -119,7 +142,7 @@ const AddQuestionModal = ({ isOpen, onClose }) => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="section-label block mb-1.5">Topic *</label>
+              <label className="section-label block mb-1.5">Topic / Section *</label>
               <select
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
@@ -127,52 +150,54 @@ const AddQuestionModal = ({ isOpen, onClose }) => {
                 disabled={loading}
               >
                 {TOPIC_SUGGESTIONS.map(t => (
-                  <option key={t} value={t} className="bg-[#111113] text-zinc-200">{t}</option>
+                  <option key={t} value={t} className="bg-[#111113] text-zinc-200">
+                    {t === '__CUSTOM__' ? '+ Custom Section / Topic...' : t}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="section-label block mb-1.5">Subtopic</label>
-              <input
-                type="text"
-                value={subtopic}
-                onChange={(e) => setSubtopic(e.target.value)}
-                placeholder="e.g. Two Pointers"
-                className="w-full px-3.5 py-2.5 rounded-xl glass-input text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-sm"
-                disabled={loading}
-              />
+              <label className="section-label block mb-1.5">
+                {topic === '__CUSTOM__' ? 'New Section Name *' : 'Subtopic'}
+              </label>
+              {topic === '__CUSTOM__' ? (
+                <input
+                  type="text"
+                  value={customTopic}
+                  onChange={(e) => setCustomTopic(e.target.value)}
+                  placeholder="e.g. Added Questions"
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-violet-300 placeholder:text-zinc-600 focus:outline-none text-sm border-violet-500/30"
+                  disabled={loading}
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={subtopic}
+                  onChange={(e) => setSubtopic(e.target.value)}
+                  placeholder="e.g. Two Pointers"
+                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-sm"
+                  disabled={loading}
+                />
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="section-label block mb-1.5">Difficulty</label>
-              <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl glass-input text-zinc-100 focus:outline-none text-sm bg-[#111113]"
-                disabled={loading}
-              >
-                <option value="1" className="bg-[#111113] text-emerald-400">★☆☆☆☆ Easy (1)</option>
-                <option value="2" className="bg-[#111113] text-emerald-300">★★☆☆☆ Easy+ (2)</option>
-                <option value="3" className="bg-[#111113] text-amber-400">★★★☆☆ Medium (3)</option>
-                <option value="4" className="bg-[#111113] text-orange-400">★★★★☆ Hard (4)</option>
-                <option value="5" className="bg-[#111113] text-rose-400">★★★★★ Expert (5)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="section-label block mb-1.5">Phase</label>
-              <input
-                type="text"
-                value={phase}
-                onChange={(e) => setPhase(e.target.value)}
-                placeholder="e.g. Phase 1"
-                className="w-full px-3.5 py-2.5 rounded-xl glass-input text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-sm"
-                disabled={loading}
-              />
-            </div>
+          <div>
+            <label className="section-label block mb-1.5">Difficulty</label>
+            <select
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl glass-input text-zinc-100 focus:outline-none text-sm bg-[#111113]"
+              disabled={loading}
+            >
+              <option value="1" className="bg-[#111113] text-emerald-400">★☆☆☆☆ Easy (1)</option>
+              <option value="2" className="bg-[#111113] text-emerald-300">★★☆☆☆ Easy+ (2)</option>
+              <option value="3" className="bg-[#111113] text-amber-400">★★★☆☆ Medium (3)</option>
+              <option value="4" className="bg-[#111113] text-orange-400">★★★★☆ Hard (4)</option>
+              <option value="5" className="bg-[#111113] text-rose-400">★★★★★ Expert (5)</option>
+            </select>
           </div>
 
           <div>

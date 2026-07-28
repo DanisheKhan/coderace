@@ -11,11 +11,6 @@ export const QuestionsProvider = ({ children }) => {
 
   useEffect(() => {
     const fetchQuestions = async () => {
-      if (!user) {
-        setQuestions([]);
-        return;
-      }
-      
       setLoading(true);
       try {
         const { data, error } = await supabase
@@ -33,8 +28,6 @@ export const QuestionsProvider = ({ children }) => {
     };
 
     fetchQuestions();
-
-    if (!user) return;
 
     const channel = supabase
       .channel('realtime-questions')
@@ -64,14 +57,18 @@ export const QuestionsProvider = ({ children }) => {
   const addQuestion = async (questionData) => {
     try {
       const maxSrNo = questions.length > 0 ? Math.max(...questions.map(q => q.sr_no || 0)) : 0;
+      const creatorName = questionData.created_by_name || profile?.display_name || profile?.username || user?.email?.split('@')[0] || 'User';
       const payload = {
         sr_no: maxSrNo + 1,
         phase: questionData.phase || 'Phase 1',
-        topic: questionData.topic || 'General',
+        topic: questionData.topic || 'Added Questions',
         subtopic: questionData.subtopic || 'General',
         problem_name: questionData.problem_name,
         link: questionData.link || null,
         difficulty: parseInt(questionData.difficulty, 10) || 1,
+        is_custom: questionData.is_custom !== undefined ? questionData.is_custom : true,
+        created_by: user?.id || profile?.id || null,
+        created_by_name: creatorName,
       };
 
       const { data, error } = await supabase
@@ -83,7 +80,10 @@ export const QuestionsProvider = ({ children }) => {
       if (error) throw error;
 
       if (data) {
-        setQuestions(prev => [...prev, data]);
+        setQuestions(prev => {
+          if (prev.some(q => q.id === data.id)) return prev;
+          return [...prev, data];
+        });
       }
       return { data, error: null };
     } catch (err) {
@@ -92,8 +92,25 @@ export const QuestionsProvider = ({ children }) => {
     }
   };
 
+  const deleteQuestion = async (questionId) => {
+    try {
+      const { error } = await supabase
+        .from('questions')
+        .delete()
+        .eq('id', questionId);
+
+      if (error) throw error;
+
+      setQuestions(prev => prev.filter(q => q.id !== questionId));
+      return { error: null };
+    } catch (err) {
+      console.error('Error deleting question:', err.message);
+      return { error: err };
+    }
+  };
+
   return (
-    <QuestionsContext.Provider value={{ questions, loading, addQuestion }}>
+    <QuestionsContext.Provider value={{ questions, loading, addQuestion, deleteQuestion }}>
       {children}
     </QuestionsContext.Provider>
   );
