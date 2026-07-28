@@ -134,7 +134,7 @@ const JavaCollectionsPage = () => {
         </div>
       </div>
 
-      {/* Responsive Filter & Search Control Panel */}
+      {/* Filter & Search Control Panel */}
       <div className="bg-[#0e0e11] border border-zinc-800/80 rounded-xl p-3.5 sm:p-4 space-y-3.5 sm:space-y-4 shadow-sm">
         {/* Search Box + Quick Jump */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -232,22 +232,25 @@ const JavaCollectionsPage = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="overflow-x-auto custom-scrollbar"
+              className="overflow-x-auto custom-scrollbar relative"
             >
-              <table className="w-full text-left border-collapse text-xs min-w-[1050px]">
+              <table className="w-full text-left border-collapse text-xs min-w-[1100px]">
                 <thead>
                   <tr className="border-b border-zinc-800 bg-[#09090b] text-zinc-400 font-mono text-[11px]">
-                    <th className="py-3 px-3.5 font-semibold whitespace-nowrap min-w-[160px]">Java Collection</th>
-                    <th className="py-3 px-3.5 font-semibold whitespace-nowrap min-w-[120px]">Interface / Type</th>
-                    <th className="py-3 px-3.5 font-semibold whitespace-nowrap min-w-[150px]">Internal Structure</th>
-                    <th className="py-3 px-3.5 font-semibold whitespace-nowrap">Add / Insert</th>
-                    <th className="py-3 px-3.5 font-semibold whitespace-nowrap">Get / Access</th>
-                    <th className="py-3 px-3.5 font-semibold whitespace-nowrap">Delete / Remove</th>
-                    <th className="py-3 px-3.5 font-semibold whitespace-nowrap">Search / Check</th>
-                    <th className="py-3 px-3.5 font-semibold whitespace-nowrap">Is Empty</th>
-                    <th className="py-3 px-3.5 font-semibold whitespace-nowrap">Size / Length</th>
-                    <th className="py-3 px-3.5 font-semibold whitespace-nowrap">Duplicates & Nulls</th>
-                    <th className="py-3 px-3.5 font-semibold whitespace-nowrap">Complexity</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap w-[200px] min-w-[200px] max-w-[200px] sticky left-0 z-20 bg-[#09090b] shadow-[6px_0_14px_-2px_rgba(0,0,0,0.9)] relative">
+                      Java Collection
+                      <div className="absolute right-0 top-0 bottom-0 w-[1px] bg-zinc-700/80 pointer-events-none" />
+                    </th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap min-w-[130px]">Interface / Type</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap min-w-[150px]">Internal Structure</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap">Add / Insert</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap">Get / Access</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap">Delete / Remove</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap">Search / Check</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap">Is Empty</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap">Size / Length</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap">Duplicates & Nulls</th>
+                    <th className="py-3 px-4 font-semibold whitespace-nowrap">Complexity</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/60 font-sans">
@@ -257,39 +260,40 @@ const JavaCollectionsPage = () => {
                       onClick={() => scrollToStructure(ds.id)}
                       className="hover:bg-zinc-900/60 transition-colors cursor-pointer group"
                     >
-                      <td className="py-3 px-3.5 whitespace-nowrap font-semibold text-white group-hover:text-violet-300 transition-colors text-xs sm:text-sm">
+                      <td className="py-3 px-4 whitespace-nowrap font-semibold text-white group-hover:text-violet-300 transition-colors text-xs sm:text-sm w-[200px] min-w-[200px] max-w-[200px] sticky left-0 z-10 bg-[#0e0e11] group-hover:bg-[#16161c] shadow-[6px_0_14px_-2px_rgba(0,0,0,0.9)] truncate relative">
                         {ds.name}
+                        <div className="absolute right-0 top-0 bottom-0 w-[1px] bg-zinc-800 group-hover:bg-zinc-700 transition-colors pointer-events-none" />
                       </td>
-                      <td className="py-3 px-3.5 whitespace-nowrap bg-zinc-950/20">
+                      <td className="py-3 px-4 whitespace-nowrap bg-zinc-950/20">
                         <span className="text-[11px] font-mono text-zinc-300 bg-zinc-900/90 px-2 py-0.5 rounded border border-zinc-800">
                           {ds.interface}
                         </span>
                       </td>
-                      <td className="py-3 px-3.5 text-xs text-zinc-300 whitespace-nowrap font-mono">
+                      <td className="py-3 px-4 text-xs text-zinc-300 whitespace-nowrap font-mono">
                         {ds.matrix?.internal || '-'}
                       </td>
-                      <td className="py-3 px-3.5 font-mono text-emerald-400 whitespace-nowrap bg-zinc-950/20">
+                      <td className="py-3 px-4 font-mono text-emerald-400 whitespace-nowrap bg-zinc-950/20">
                         {ds.matrix?.add || '-'}
                       </td>
-                      <td className="py-3 px-3.5 font-mono text-sky-300 whitespace-nowrap">
+                      <td className="py-3 px-4 font-mono text-sky-300 whitespace-nowrap">
                         {ds.matrix?.get || '-'}
                       </td>
-                      <td className="py-3 px-3.5 font-mono text-rose-300 whitespace-nowrap bg-zinc-950/20">
+                      <td className="py-3 px-4 font-mono text-rose-300 whitespace-nowrap bg-zinc-950/20">
                         {ds.matrix?.delete || '-'}
                       </td>
-                      <td className="py-3 px-3.5 font-mono text-violet-300 whitespace-nowrap">
+                      <td className="py-3 px-4 font-mono text-violet-300 whitespace-nowrap">
                         {ds.matrix?.search || '-'}
                       </td>
-                      <td className="py-3 px-3.5 font-mono text-zinc-400 whitespace-nowrap bg-zinc-950/20">
+                      <td className="py-3 px-4 font-mono text-zinc-400 whitespace-nowrap bg-zinc-950/20">
                         {ds.matrix?.isEmpty || '-'}
                       </td>
-                      <td className="py-3 px-3.5 font-mono text-amber-300 whitespace-nowrap">
+                      <td className="py-3 px-4 font-mono text-amber-300 whitespace-nowrap">
                         {ds.matrix?.size || '-'}
                       </td>
-                      <td className="py-3 px-3.5 text-[11px] text-zinc-400 whitespace-nowrap bg-zinc-950/20">
+                      <td className="py-3 px-4 text-[11px] text-zinc-400 whitespace-nowrap bg-zinc-950/20">
                         {ds.matrix?.duplicatesAndNulls || '-'}
                       </td>
-                      <td className="py-3 px-3.5 whitespace-nowrap">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <span className="text-[11px] font-mono text-zinc-300">
                           {ds.matrix?.complexity || ds.overallComplexity}
                         </span>
