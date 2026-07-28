@@ -143,10 +143,9 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
 
   const getColorClass = (count) => {
     if (!count || count === 0) return 'bg-[#161b22] border-white/[0.04] hover:border-zinc-500';
-    if (count === 1) return 'bg-[#0e4429] border-[#0e4429]';
-    if (count === 2 || count === 3) return 'bg-[#006d32] border-[#006d32]';
-    if (count === 4 || count === 5) return 'bg-[#26a641] border-[#26a641]';
-    return 'bg-[#39d353] border-[#39d353] shadow-sm shadow-[#39d353]/60';
+    if (count === 1) return 'bg-[#006d32] border-[#006d32]'; // Layer 1 (1 solved)
+    if (count === 2) return 'bg-[#26a641] border-[#26a641] shadow-sm shadow-[#26a641]/30'; // Layer 2 (2 solved)
+    return 'bg-[#39d353] border-[#39d353] shadow-md shadow-[#39d353]/70'; // Layer 3 (3+ solved - Goal Reached)
   };
 
   return (
@@ -243,22 +242,28 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
           <div className="flex items-center justify-between pt-3 text-[10px] font-mono text-zinc-500 flex-wrap gap-2 px-1">
             <div className="min-h-[16px] text-zinc-300">
               {hoveredDay ? (
-                <span>
-                  <strong className="text-emerald-400">{hoveredDay.count}</strong> {hoveredDay.count === 1 ? 'question' : 'questions'} solved on {hoveredDay.formattedDate} {hoveredDay.isToday ? '(Today)' : ''}
+                <span className="flex items-center gap-1.5">
+                  <span>
+                    <strong className="text-emerald-400">{hoveredDay.count}</strong> {hoveredDay.count === 1 ? 'question' : 'questions'} solved on {hoveredDay.formattedDate} {hoveredDay.isToday ? '(Today)' : ''}
+                  </span>
+                  {hoveredDay.count >= 3 && (
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                      Goal Reached 🎉
+                    </span>
+                  )}
                 </span>
               ) : (
                 <span className="text-zinc-600">Hover over any square for daily activity</span>
               )}
             </div>
 
-            {/* GitHub Legend */}
+            {/* GitHub Legend - 3 Activity Intensity Layers */}
             <div className="flex items-center gap-1.5 select-none">
               <span>Less</span>
-              <div className="w-[10px] h-[10px] rounded-[2px] bg-[#161b22] border border-white/[0.04]" />
-              <div className="w-[10px] h-[10px] rounded-[2px] bg-[#0e4429]" />
-              <div className="w-[10px] h-[10px] rounded-[2px] bg-[#006d32]" />
-              <div className="w-[10px] h-[10px] rounded-[2px] bg-[#26a641]" />
-              <div className="w-[10px] h-[10px] rounded-[2px] bg-[#39d353] shadow-sm shadow-[#39d353]/60" />
+              <div className="w-[10px] h-[10px] rounded-[2px] bg-[#161b22] border border-white/[0.04]" title="0 solved" />
+              <div className="w-[10px] h-[10px] rounded-[2px] bg-[#006d32]" title="Layer 1: 1 solved" />
+              <div className="w-[10px] h-[10px] rounded-[2px] bg-[#26a641]" title="Layer 2: 2 solved" />
+              <div className="w-[10px] h-[10px] rounded-[2px] bg-[#39d353] shadow-sm shadow-[#39d353]/60" title="Layer 3: 3+ solved (Goal Reached)" />
               <span>More</span>
             </div>
           </div>

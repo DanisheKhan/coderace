@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Trophy, Flame, Calendar, Activity, Crown, Award, X, Zap, 
   Sparkles, BookOpen, Workflow, BookmarkCheck, Layers, Network, 
@@ -81,13 +82,29 @@ export const SolveTags = ({ prog }) => {
   );
 };
 
+export const getDifficultyLabel = (difficulty) => {
+  if (typeof difficulty === 'string') {
+    const lower = difficulty.toLowerCase();
+    if (lower === 'easy') return 'Easy';
+    if (lower === 'medium') return 'Medium';
+    if (lower === 'hard') return 'Hard';
+  }
+  const num = parseInt(difficulty, 10);
+  if (isNaN(num)) return 'Easy';
+  if (num <= 2) return 'Easy';
+  if (num === 3) return 'Medium';
+  if (num >= 4) return 'Hard';
+  return 'Easy';
+};
+
 export const DiffDot = ({ difficulty }) => {
   const colors = {
     Easy: 'bg-emerald-400',
     Medium: 'bg-amber-400',
     Hard: 'bg-red-400',
   };
-  return <span className={`inline-block w-1.5 h-1.5 rounded-full ${colors[difficulty] || 'bg-zinc-500'}`} />;
+  const label = getDifficultyLabel(difficulty);
+  return <span className={`inline-block w-1.5 h-1.5 rounded-full ${colors[label] || 'bg-zinc-500'}`} />;
 };
 
 export const formatRelativeTime = (dateString) => {
@@ -112,6 +129,12 @@ export default function UserProfileModal({ user, progress, questions, onClose })
 
   const { currentUser } = useAuth();
   const isOwnProfile = currentUser?.id === user?.id;
+  const navigate = useNavigate();
+
+  const handleQuestionClick = (problemName) => {
+    if (onClose) onClose();
+    navigate(`/sheet?search=${encodeURIComponent(problemName)}`);
+  };
 
   const handleCopyId = (e) => {
     e.stopPropagation();
@@ -253,7 +276,7 @@ export default function UserProfileModal({ user, progress, questions, onClose })
         item.topic.toLowerCase().includes(solvedSearch.toLowerCase()) ||
         (item.subtopic || '').toLowerCase().includes(solvedSearch.toLowerCase());
 
-      const matchesDiff = solvedDiffFilter === 'all' || item.difficulty === solvedDiffFilter;
+      const matchesDiff = solvedDiffFilter === 'all' || getDifficultyLabel(item.difficulty) === solvedDiffFilter;
 
       return matchesSearch && matchesDiff;
     });
@@ -545,12 +568,10 @@ export default function UserProfileModal({ user, progress, questions, onClose })
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {recentlySolved.map(item => (
-                      <a
+                      <div
                         key={item.id}
-                        href={item.leetcode_link || '#'}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800/80 hover:border-zinc-700 transition-colors flex items-center justify-between group"
+                        onClick={() => handleQuestionClick(item.problem_name)}
+                        className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800/80 hover:border-zinc-700 transition-colors flex items-center justify-between group cursor-pointer"
                       >
                         <div className="min-w-0 flex-1 pr-2">
                           <p className="text-xs font-semibold text-zinc-200 truncate group-hover:text-amber-400 transition-colors">
@@ -563,7 +584,7 @@ export default function UserProfileModal({ user, progress, questions, onClose })
                         <span className="text-[9px] text-zinc-500 font-mono shrink-0">
                           {formatRelativeTime(item.solvedAt)}
                         </span>
-                      </a>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -616,14 +637,13 @@ export default function UserProfileModal({ user, progress, questions, onClose })
                         <span className="text-xs font-mono text-zinc-600 w-6 shrink-0 text-right">#{idx + 1}</span>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <a
-                              href={item.leetcode_link || '#'}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs font-semibold text-zinc-100 hover:text-amber-400 transition-colors truncate"
+                            <button
+                              type="button"
+                              onClick={() => handleQuestionClick(item.problem_name)}
+                              className="text-xs font-semibold text-zinc-100 hover:text-amber-400 transition-colors truncate text-left cursor-pointer"
                             >
                               {item.problem_name}
-                            </a>
+                            </button>
                             <DiffDot difficulty={item.difficulty} />
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
@@ -637,12 +657,13 @@ export default function UserProfileModal({ user, progress, questions, onClose })
                         <span className="text-[10px] font-mono text-zinc-500">
                           {formatRelativeTime(item.solvedAt)}
                         </span>
-                        {item.leetcode_link && (
+                        {(item.link || item.leetcode_link) && (
                           <a
-                            href={item.leetcode_link}
+                            href={item.link || item.leetcode_link}
                             target="_blank"
                             rel="noreferrer"
                             className="p-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                            title="Open question"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>

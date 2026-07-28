@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { useQuestions } from '../contexts/QuestionsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useProgressStore } from '../store/progressStore';
@@ -369,6 +370,9 @@ const MySheetPage = () => {
   const { profile } = useAuth();
   const { progress, upsertProgress } = useProgressStore();
 
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+
   const [search, setSearch] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
@@ -379,6 +383,13 @@ const MySheetPage = () => {
   const [activeNotes, setActiveNotes] = useState(null);
   const [notesText, setNotesText] = useState('');
   const [solutionLink, setSolutionLink] = useState('');
+
+  useEffect(() => {
+    const query = searchParams.get('search') || searchParams.get('q') || location.state?.search;
+    if (query) {
+      setSearch(query);
+    }
+  }, [searchParams, location]);
 
   const progressMap = useMemo(() => {
     const map = {};
@@ -573,7 +584,7 @@ const MySheetPage = () => {
       ) : (
         <div className="space-y-2">
           {Object.entries(groupedByTopic).map(([topic, topicQuestions]) => {
-            const isOpen = !!expandedTopics[topic];
+            const isOpen = expandedTopics[topic] !== undefined ? expandedTopics[topic] : (!!search.trim() || Object.keys(groupedByTopic).length === 1);
             const done   = topicQuestions.filter(q => progressMap[q.id]?.status === 'done').length;
             const total  = topicQuestions.length;
             const pct    = total ? Math.round((done / total) * 100) : 0;

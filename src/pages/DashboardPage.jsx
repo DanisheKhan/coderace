@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuestions } from '../contexts/QuestionsContext';
 import { useProgressStore } from '../store/progressStore';
-import { SolveTags, UserProfileModal } from '../components/UserProfileModal';
+import { SolveTags, UserProfileModal, getDifficultyLabel } from '../components/UserProfileModal';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area,
@@ -160,9 +161,18 @@ const DashboardPage = () => {
   const { profile } = useAuth();
   const { questions } = useQuestions();
   const { progress } = useProgressStore();
+  const navigate = useNavigate();
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [dailyGoal, setDailyGoal] = useState(() => Number(localStorage.getItem('coderace-daily-goal')) || 5);
+  const [dailyGoal, setDailyGoal] = useState(() => {
+    const saved = localStorage.getItem('coderace-daily-goal');
+    if (saved && saved !== '5') {
+      const parsed = Number(saved);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    localStorage.setItem('coderace-daily-goal', '3');
+    return 3;
+  });
   const [editingGoal, setEditingGoal] = useState(false);
   const [tempGoal, setTempGoal] = useState(dailyGoal);
 
@@ -234,7 +244,7 @@ const DashboardPage = () => {
     });
     userProgress.forEach(p => {
       if (p.status === 'done') {
-        const q = questions.find(qi => qi.id === p.question_id);
+        const q = questions.find(qi => String(qi.id) === String(p.question_id));
         if (q && topics[q.topic]) topics[q.topic].solved++;
       }
     });
@@ -249,8 +259,11 @@ const DashboardPage = () => {
     const map = { Easy: 0, Medium: 0, Hard: 0 };
     userProgress.forEach(p => {
       if (p.status === 'done') {
-        const q = questions.find(qi => qi.id === p.question_id);
-        if (q && map[q.difficulty] !== undefined) map[q.difficulty]++;
+        const q = questions.find(qi => String(qi.id) === String(p.question_id));
+        if (q && q.difficulty !== undefined && q.difficulty !== null) {
+          const label = getDifficultyLabel(q.difficulty);
+          if (map[label] !== undefined) map[label]++;
+        }
       }
     });
     return [
@@ -415,26 +428,62 @@ const DashboardPage = () => {
         <div className="flex flex-col gap-4 min-h-[482px]">
 
           {/* Daily Goal Ring */}
-          <div className={`${panelCls} p-4 flex flex-col flex-1 items-center text-center`} style={panelBg}>
-            <PanelHeader label="Daily Goal" icon={Zap} />
-            <div className="relative w-20 h-20 flex items-center justify-center">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 108 108">
-                <circle cx="54" cy="54" r="48" strokeWidth="5" className="stroke-zinc-900 fill-none" />
-                <circle cx="54" cy="54" r="48" strokeWidth="5"
-                  className={`fill-none transition-all duration-700 ${goalPct === 100 ? 'stroke-emerald-400' : 'stroke-violet-500'}`}
-                  strokeDasharray={totalGoalCircumference}
-                  strokeDashoffset={totalGoalCircumference * (1 - goalPct / 100)}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute flex flex-col items-center">
-                <span className="text-2xl font-black text-zinc-100 leading-none">{stats.solvedToday}</span>
-                <span className="text-[9px] text-zinc-600 uppercase tracking-widest mt-0.5 font-bold">/ {dailyGoal}</span>
+          <div className={`${panelCls} p-4 flex flex-col flex-1 items-center text-center justify-between`} style={panelBg}>
+            <PanelHeader label="Daily Goal" icon={Zap} extra={
+              <button
+                onClick={() => {
+                  setTempGoal(dailyGoal);
+                  setEditingGoal(!editingGoal);
+                }}
+                className="text-[10px] text-zinc-500 hover:text-zinc-300 font-mono transition-colors cursor-pointer"
+                title="Edit daily goal target"
+              >
+                {editingGoal ? 'cancel' : 'edit'}
+              </button>
+            } />
+
+            {editingGoal ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-2 py-2">
+                <p className="text-xs text-zinc-400 font-medium">Set Daily Target</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={tempGoal}
+                    onChange={(e) => setTempGoal(e.target.value)}
+                    className="w-16 px-2 py-1 bg-zinc-950 border border-zinc-700 rounded text-center text-sm text-white font-mono focus:outline-none focus:border-violet-500"
+                  />
+                  <button
+                    onClick={() => saveGoal(tempGoal)}
+                    className="px-2.5 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
-            </div>
-            <p className={`text-[10px] font-medium ${goalPct === 100 ? 'text-emerald-400' : 'text-zinc-600'}`}>
-              {goalPct === 100 ? '🎉 Daily goal reached!' : `${dailyGoal - stats.solvedToday} more to reach target`}
-            </p>
+            ) : (
+              <>
+                <div className="relative w-20 h-20 flex items-center justify-center cursor-pointer" onClick={() => { setTempGoal(dailyGoal); setEditingGoal(true); }}>
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 108 108">
+                    <circle cx="54" cy="54" r="48" strokeWidth="5" className="stroke-zinc-900 fill-none" />
+                    <circle cx="54" cy="54" r="48" strokeWidth="5"
+                      className={`fill-none transition-all duration-700 ${goalPct === 100 ? 'stroke-emerald-400' : 'stroke-violet-500'}`}
+                      strokeDasharray={totalGoalCircumference}
+                      strokeDashoffset={totalGoalCircumference * (1 - goalPct / 100)}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute flex flex-col items-center">
+                    <span className="text-2xl font-black text-zinc-100 leading-none">{stats.solvedToday}</span>
+                    <span className="text-[9px] text-zinc-600 uppercase tracking-widest mt-0.5 font-bold">/ {dailyGoal}</span>
+                  </div>
+                </div>
+                <p className={`text-[10px] font-medium ${goalPct === 100 ? 'text-emerald-400' : 'text-zinc-600'}`}>
+                  {goalPct === 100 ? '🎉 Daily goal reached!' : `${Math.max(0, dailyGoal - stats.solvedToday)} more to reach target`}
+                </p>
+              </>
+            )}
           </div>
 
           {/* Difficulty Breakdown */}
@@ -460,8 +509,8 @@ const DashboardPage = () => {
                         paddingAngle={3}
                         stroke="none"
                       >
-                        {difficultyData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        {difficultyData.filter(d => d.value > 0).map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
                         ))}
                       </Pie>
                     </PieChart>
@@ -569,12 +618,18 @@ const DashboardPage = () => {
               </div>
             ) : (
               recentSolved.map(q => (
-                <div key={q.id} className="p-2 rounded-lg bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between gap-2 text-xs">
+                <div
+                  key={q.id}
+                  onClick={() => navigate(`/sheet?search=${encodeURIComponent(q.problem_name)}`)}
+                  className="p-2 rounded-lg bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 flex items-center justify-between gap-2 text-xs group cursor-pointer transition-colors"
+                >
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-zinc-200 truncate">{q.problem_name}</p>
+                    <p className="font-semibold text-zinc-200 group-hover:text-amber-400 transition-colors truncate">{q.problem_name}</p>
                     <p className="text-[9px] text-zinc-500 truncate">{q.topic}</p>
                   </div>
-                  <span className="text-[9px] font-mono text-emerald-400 font-bold shrink-0">Done</span>
+                  <span className="text-[9px] font-mono text-emerald-400 font-bold shrink-0 flex items-center gap-1 group-hover:text-amber-400 transition-colors">
+                    Sheet ↗
+                  </span>
                 </div>
               ))
             )}

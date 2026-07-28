@@ -793,7 +793,7 @@ const ComparePage = () => {
                 {catchUpProblems.map(q => (
                   <a
                     key={q.id}
-                    href={q.leetcode_link || '#'}
+                    href={q.link || q.leetcode_link || '#'}
                     target="_blank"
                     rel="noreferrer"
                     className="p-3 rounded-xl border border-white/[0.04] bg-white/[0.02] hover:bg-white/[0.05] transition-all flex items-center justify-between group cursor-pointer"
