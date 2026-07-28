@@ -4,7 +4,7 @@ import {
   Trophy, Flame, Calendar, Activity, Crown, Award, X, Zap, 
   Sparkles, BookOpen, Workflow, BookmarkCheck, Layers, Network, 
   ExternalLink, CheckCircle2, Copy, Lightbulb, Eye, Search, Keyboard, TrendingUp, RefreshCw,
-  Brain, Target, Star, ChevronRight, BarChart2, Clock
+  Brain, Target, Star, ChevronRight, BarChart2, Clock, Circle, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar } from 'recharts';
@@ -118,10 +118,21 @@ export const formatRelativeTime = (dateString) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-export default function UserProfileModal({ user, progress, questions, onClose }) {
-  const [activeModalTab, setActiveModalTab] = useState('overview'); // 'overview' | 'solved' | 'speed' | 'quiz'
+export function UserProfileModal({ user, progress, questions, onClose }) {
+  // 1. Overview is default active tab
+  const [activeModalTab, setActiveModalTab] = useState('overview');
   const [solvedSearch, setSolvedSearch] = useState('');
   const [solvedDiffFilter, setSolvedDiffFilter] = useState('all');
+  
+  // DSA Sheet Tab States
+  const [sheetSearch, setSheetSearch] = useState('');
+  const [sheetStatusFilter, setSheetStatusFilter] = useState('all'); // 'all' | 'done' | 'attempted' | 'not_started'
+  const [sheetDiffFilter, setSheetDiffFilter] = useState('all'); // 'all' | 'Easy' | 'Medium' | 'Hard'
+  const [sheetTopicFilter, setSheetTopicFilter] = useState('all');
+  
+  // Topics are collapsed/closed by default
+  const [expandedTopics, setExpandedTopics] = useState({});
+
   const [typingProfile, setTypingProfile] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState('');
@@ -143,6 +154,13 @@ export default function UserProfileModal({ user, progress, questions, onClose })
       setCopiedId(true);
       setTimeout(() => setCopiedId(false), 2000);
     }
+  };
+
+  const toggleTopicExpand = (topicName) => {
+    setExpandedTopics(prev => ({
+      ...prev,
+      [topicName]: !prev[topicName]
+    }));
   };
 
   const userProgress = useMemo(() => {
@@ -246,6 +264,49 @@ export default function UserProfileModal({ user, progress, questions, onClose })
     });
   }, [questions, userProgress]);
 
+  const allTopicsList = useMemo(() => {
+    const set = new Set(questions.map(q => q.topic).filter(Boolean));
+    return Array.from(set);
+  }, [questions]);
+
+  // Grouped DSA Sheet Data for Sheet Tab
+  const groupedSheetData = useMemo(() => {
+    const map = {};
+    questions.forEach(q => {
+      const topicName = q.topic || 'General';
+      if (!map[topicName]) {
+        map[topicName] = { topic: topicName, total: 0, solved: 0, attempted: 0, questions: [] };
+      }
+      const prog = userProgress.find(p => p.question_id === q.id);
+      const status = prog?.status || 'not_started';
+      if (status === 'done') map[topicName].solved++;
+      if (status === 'attempted') map[topicName].attempted++;
+      map[topicName].total++;
+      map[topicName].questions.push({ ...q, prog, status });
+    });
+
+    return Object.values(map).map(group => {
+      const filtered = group.questions.filter(item => {
+        const matchesSearch = !sheetSearch.trim() ||
+          item.problem_name.toLowerCase().includes(sheetSearch.toLowerCase()) ||
+          (item.subtopic || '').toLowerCase().includes(sheetSearch.toLowerCase());
+
+        const matchesStatus = sheetStatusFilter === 'all' || item.status === sheetStatusFilter;
+        const matchesDiff = sheetDiffFilter === 'all' || getDifficultyLabel(item.difficulty) === sheetDiffFilter;
+
+        return matchesSearch && matchesStatus && matchesDiff;
+      });
+
+      return {
+        ...group,
+        filteredQuestions: filtered
+      };
+    }).filter(group => {
+      const matchesTopic = sheetTopicFilter === 'all' || group.topic === sheetTopicFilter;
+      return matchesTopic && (group.filteredQuestions.length > 0 || !sheetSearch);
+    });
+  }, [questions, userProgress, sheetSearch, sheetStatusFilter, sheetDiffFilter, sheetTopicFilter]);
+
   const recentlySolved = useMemo(() => {
     return userProgress
       .filter(p => p.status === 'done')
@@ -310,11 +371,13 @@ export default function UserProfileModal({ user, progress, questions, onClose })
     { label: '120s', wpm: typingProfile?.wpm_120, acc: typingProfile?.acc_120, consistency: typingProfile?.consistency_120 },
   ];
 
+  // Tab order requested: Overview -> Solved -> DSA Sheet -> Speed -> Quiz
   const TABS = [
-    { id: 'overview', label: 'Overview',                                         icon: BarChart2 },
-    { id: 'solved',   label: `Solved (${allSolvedList.length})`,                 icon: CheckCircle2 },
-    { id: 'speed',    label: `Speed${topWPM > 0 ? ` · ${topWPM}` : ''}`,          icon: Keyboard },
-    { id: 'quiz',     label: `Quiz${quizAttempts.length > 0 ? ` (${quizAttempts.length})` : ''}`,  icon: Brain },
+    { id: 'overview', label: 'Overview',                                           icon: BarChart2 },
+    { id: 'solved',   label: `Solved (${allSolvedList.length})`,                   icon: CheckCircle2 },
+    { id: 'sheet',    label: `DSA Sheet (${stats.solved}/${questions.length})`,     icon: BookOpen },
+    { id: 'speed',    label: `Speed${topWPM > 0 ? ` · ${topWPM}` : ''}`,            icon: Keyboard },
+    { id: 'quiz',     label: `Quiz${quizAttempts.length > 0 ? ` (${quizAttempts.length})` : ''}`, icon: Brain },
   ];
 
   return (
@@ -411,8 +474,8 @@ export default function UserProfileModal({ user, progress, questions, onClose })
           </div>
 
           {/* Second Row: Navigation Tabs */}
-          <div className="w-full">
-            <div className="grid grid-cols-4 gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 w-full">
+          <div className="w-full overflow-x-auto custom-scrollbar">
+            <div className="grid grid-cols-5 gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 w-full min-w-[500px] sm:min-w-0">
               {TABS.map(tab => {
                 const Icon = tab.icon;
                 const active = activeModalTab === tab.id;
@@ -420,7 +483,7 @@ export default function UserProfileModal({ user, progress, questions, onClose })
                   <button
                     key={tab.id}
                     onClick={() => setActiveModalTab(tab.id)}
-                    className={`flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition-colors cursor-pointer select-none truncate ${
+                    className={`flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-2.5 py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition-colors cursor-pointer select-none truncate ${
                       active
                         ? 'bg-white text-zinc-900 font-semibold shadow-sm'
                         : 'text-zinc-400 hover:text-zinc-200'
@@ -449,135 +512,77 @@ export default function UserProfileModal({ user, progress, questions, onClose })
                     <p className="text-lg sm:text-xl font-bold text-white font-mono mt-0.5">{stats.solved}</p>
                     <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{pct}% done</p>
                   </div>
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400 shrink-0">
-                    <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
-                  </div>
+                  <Trophy className="w-5 h-5 text-amber-400 opacity-80" />
                 </div>
-
                 <div className="p-3 sm:p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
                   <div>
                     <p className="text-[10px] text-zinc-500 uppercase font-mono font-bold">Streak</p>
-                    <p className="text-lg sm:text-xl font-bold text-white font-mono mt-0.5">{stats.streak}d</p>
-                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Active streak</p>
+                    <p className="text-lg sm:text-xl font-bold text-orange-400 font-mono mt-0.5">{stats.streak}d</p>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{stats.solvedThisWeek} this wk</p>
                   </div>
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400 shrink-0">
-                    <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-400" />
-                  </div>
+                  <Flame className="w-5 h-5 text-orange-400 opacity-80" />
                 </div>
-
-                <div className="p-3 sm:p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] text-zinc-500 uppercase font-mono font-bold">This Week</p>
-                    <p className="text-lg sm:text-xl font-bold text-emerald-400 font-mono mt-0.5">+{stats.solvedThisWeek}</p>
-                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Last 7 days</p>
-                  </div>
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400 shrink-0">
-                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
-                  </div>
-                </div>
-
                 <div className="p-3 sm:p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
                   <div>
                     <p className="text-[10px] text-zinc-500 uppercase font-mono font-bold">Badges</p>
-                    <p className="text-lg sm:text-xl font-bold text-white font-mono mt-0.5">{stats.unlockedCount}</p>
-                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">/ 13 total</p>
+                    <p className="text-lg sm:text-xl font-bold text-violet-400 font-mono mt-0.5">{stats.unlockedCount}</p>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">unlocked</p>
                   </div>
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400 shrink-0">
-                    <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-violet-400" />
+                  <Crown className="w-5 h-5 text-violet-400 opacity-80" />
+                </div>
+                <div className="p-3 sm:p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-zinc-500 uppercase font-mono font-bold">Typing WPM</p>
+                    <p className="text-lg sm:text-xl font-bold text-emerald-400 font-mono mt-0.5">{topWPM || '—'}</p>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">peak speed</p>
                   </div>
+                  <Keyboard className="w-5 h-5 text-emerald-400 opacity-80" />
                 </div>
               </div>
 
-              {/* GitHub Style Activity Streak Matrix */}
-              <div className="space-y-2 overflow-x-auto no-scrollbar pb-1">
-                <GitHubStreakTracker userId={user?.id} progress={progress} userName={user?.display_name} />
-              </div>
+              {/* GitHub Streak Heatmap */}
+              <GitHubStreakTracker user={user} progress={progress} />
 
-              {/* Topic Completion + Achievements */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Topic Breakdown */}
-                <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800/80 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-violet-400" />
-                      <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">Topic Completion</h4>
-                    </div>
-                    <span className="text-[10px] font-mono text-zinc-500">
-                      {topicData.filter(t => t.solved > 0).length}/{topicData.length} started
-                    </span>
-                  </div>
-
-                  <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
-                    {topicData.map(t => (
-                      <div key={t.name} className="space-y-1">
-                        <div className="flex justify-between text-xs font-semibold">
-                          <span className="text-zinc-300 truncate">{t.name}</span>
-                          <span className="text-zinc-500 font-mono text-[11px]">{t.solved}/{t.total} ({t.completed}%)</span>
-                        </div>
-                        <div className="w-full bg-zinc-950 h-1.5 rounded-full overflow-hidden border border-zinc-800">
-                          <div
-                            className="h-full bg-violet-500 rounded-full transition-all duration-500"
-                            style={{ width: `${t.completed}%` }}
-                          />
-                        </div>
+              {/* Topic Breakdown Progress Bars */}
+              <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 space-y-3">
+                <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">Topic Proficiency</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {topicData.map(topic => (
+                    <div key={topic.name} className="space-y-1">
+                      <div className="flex justify-between text-xs font-mono">
+                        <span className="text-zinc-300 truncate">{topic.name}</span>
+                        <span className="text-zinc-500">{topic.solved}/{topic.total} ({topic.completed}%)</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Achievements Showcase */}
-                <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800/80 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Award className="w-4 h-4 text-amber-400" />
-                      <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">Achievements</h4>
-                    </div>
-                    <span className="text-[10px] font-mono text-zinc-500">{stats.unlockedCount}/13</span>
-                  </div>
-
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
-                    {(stats.achievements || []).map(ach => {
-                      const IconComponent = IconMap[ach.icon] || Award;
-                      return (
+                      <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-800/80">
                         <div
-                          key={ach.id}
-                          className={`p-2.5 rounded-xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all ${
-                            ach.unlocked
-                              ? 'bg-violet-500/10 border-violet-500/25 text-zinc-100'
-                              : 'bg-zinc-950/60 border-zinc-800/60 text-zinc-600 opacity-50'
-                          }`}
-                          title={ach.description}
-                        >
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${ach.unlocked ? 'bg-violet-500/20 text-violet-300' : 'bg-zinc-900 text-zinc-600'}`}>
-                            <IconComponent className="w-3.5 h-3.5" />
-                          </div>
-                          <p className="text-[10px] font-semibold leading-tight line-clamp-1">{ach.title}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
+                          className="bg-violet-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${topic.completed}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {/* Recent Activity */}
               {recentlySolved.length > 0 && (
-                <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800/80 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-emerald-400" />
-                    <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">Recent Activity</h4>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 space-y-3">
+                  <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">Recently Solved</h4>
+                  <div className="divide-y divide-zinc-800/60 border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950/40">
                     {recentlySolved.map(item => (
-                      <div
-                        key={item.id}
-                        onClick={() => handleQuestionClick(item.problem_name)}
-                        className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800/80 hover:border-zinc-700 transition-colors flex items-center justify-between group cursor-pointer"
-                      >
-                        <div className="min-w-0 flex-1 pr-2">
-                          <p className="text-xs font-semibold text-zinc-200 truncate group-hover:text-amber-400 transition-colors">
-                            {item.problem_name}
-                          </p>
-                          <p className="text-[10px] text-zinc-500 font-mono mt-0.5 truncate">
+                      <div key={item.id} className="p-3 flex items-center justify-between hover:bg-zinc-900/40 transition-colors gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handleQuestionClick(item.problem_name)}
+                              className="text-xs font-semibold text-zinc-200 hover:text-amber-400 transition-colors truncate text-left cursor-pointer"
+                            >
+                              {item.problem_name}
+                            </button>
+                            <DiffDot difficulty={item.difficulty} />
+                          </div>
+                          <p className="text-[10px] text-zinc-500 font-mono truncate">
                             {item.topic} · {item.subtopic || 'General'}
                           </p>
                         </div>
@@ -676,7 +681,195 @@ export default function UserProfileModal({ user, progress, questions, onClose })
             </div>
           )}
 
-          {/* TAB 3: SPEED (MONKEYTYPE) */}
+          {/* TAB 3: DSA SHEET */}
+          {activeModalTab === 'sheet' && (
+            <div className="space-y-4 animate-fadeIn">
+              {/* Minimal Summary Progress Header */}
+              <div className="bg-[#0e0e11] border border-zinc-800/80 rounded-xl p-3.5 sm:p-4 space-y-2.5 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="space-y-0.5">
+                    <h4 className="text-xs font-bold text-white tracking-tight flex items-center gap-2">
+                      <BookOpen className="w-3.5 h-3.5 text-violet-400" />
+                      DSA Master Sheet Progress
+                    </h4>
+                    <p className="text-[11px] text-zinc-400">
+                      {user?.display_name}'s problem solving progress across all DSA categories.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm font-bold font-mono text-white">{stats.solved}</span>
+                    <span className="text-xs font-mono text-zinc-500">/ {questions.length} Solved ({pct}%)</span>
+                  </div>
+                </div>
+
+                {/* Minimal Overall Progress Bar */}
+                <div className="w-full bg-[#121215] h-1.5 rounded-full overflow-hidden border border-zinc-800/80">
+                  <div
+                    className="bg-emerald-400 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Minimal Filter Controls Bar */}
+              <div className="bg-[#0e0e11] border border-zinc-800/80 rounded-xl p-3 space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-3 shadow-sm">
+                {/* Search Box */}
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+                  <input
+                    type="text"
+                    value={sheetSearch}
+                    onChange={e => setSheetSearch(e.target.value)}
+                    placeholder="Search problem or subtopic in sheet..."
+                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-[#121215] border border-zinc-800 text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-700 transition-colors"
+                  />
+                </div>
+
+                {/* Topic Select */}
+                <div className="relative sm:w-48 shrink-0">
+                  <select
+                    value={sheetTopicFilter}
+                    onChange={e => setSheetTopicFilter(e.target.value)}
+                    className="w-full appearance-none px-3 py-1.5 bg-[#121215] border border-zinc-800 rounded-lg text-xs font-medium text-zinc-300 focus:outline-none cursor-pointer pr-8 focus:border-zinc-700 transition-colors"
+                  >
+                    <option value="all">All Topics ({allTopicsList.length})</option>
+                    {allTopicsList.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
+                </div>
+
+                {/* Status & Diff Filters */}
+                <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar shrink-0">
+                  {['all', 'done', 'attempted', 'not_started'].map(st => {
+                    const isActive = sheetStatusFilter === st;
+                    return (
+                      <button
+                        key={st}
+                        onClick={() => setSheetStatusFilter(st)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap border ${
+                          isActive
+                            ? 'bg-zinc-800 text-white border-zinc-700 shadow-sm'
+                            : 'bg-transparent text-zinc-400 border-transparent hover:bg-zinc-800/50 hover:text-zinc-200'
+                        }`}
+                      >
+                        {st === 'not_started' ? 'Todo' : st.charAt(0).toUpperCase() + st.slice(1)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Grouped Topics List */}
+              {groupedSheetData.length === 0 ? (
+                <div className="text-center py-12 border border-zinc-800/80 rounded-xl bg-[#0e0e11]">
+                  <BookOpen className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+                  <p className="text-xs text-zinc-500 font-mono">No problems in DSA Sheet match filter criteria.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {groupedSheetData.map(group => {
+                    // Closed/collapsed by default, click header to expand
+                    const isExpanded = expandedTopics[group.topic] === true;
+                    const topicPct = group.total > 0 ? Math.round((group.solved / group.total) * 100) : 0;
+                    return (
+                      <div key={group.topic} className="border border-zinc-800/80 rounded-xl overflow-hidden bg-[#0e0e11] shadow-sm">
+                        {/* Minimal Topic Header Accordion */}
+                        <div
+                          onClick={() => toggleTopicExpand(group.topic)}
+                          className="px-4 py-3 bg-[#121216] flex items-center justify-between cursor-pointer hover:bg-zinc-900/60 transition-colors select-none"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <h5 className="text-xs sm:text-sm font-semibold text-white tracking-tight truncate">
+                              {group.topic}
+                            </h5>
+                            <span className="text-[10px] font-mono text-zinc-400 bg-[#09090b] px-2 py-0.5 rounded border border-zinc-800/80">
+                              {group.solved} / {group.total} ({topicPct}%)
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="w-20 sm:w-28 bg-[#09090b] h-1.5 rounded-full overflow-hidden hidden sm:block border border-zinc-800/60">
+                              <div
+                                className="bg-emerald-400 h-full rounded-full transition-all"
+                                style={{ width: `${topicPct}%` }}
+                              />
+                            </div>
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-zinc-400" /> : <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />}
+                          </div>
+                        </div>
+
+                        {/* Questions List (only shown when expanded) */}
+                        {isExpanded && (
+                          <div className="divide-y divide-zinc-800/50 border-t border-zinc-800/60 bg-[#0a0a0c]">
+                            {group.filteredQuestions.map((item, qIdx) => (
+                              <div key={item.id} className="px-4 py-2.5 flex items-center justify-between hover:bg-zinc-900/40 transition-colors gap-3">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  {/* Minimal Status Icon */}
+                                  <div className="shrink-0">
+                                    {item.status === 'done' ? (
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                    ) : item.status === 'attempted' ? (
+                                      <Clock className="w-3.5 h-3.5 text-amber-400" />
+                                    ) : (
+                                      <Circle className="w-3.5 h-3.5 text-zinc-700" />
+                                    )}
+                                  </div>
+
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleQuestionClick(item.problem_name)}
+                                        className="text-xs font-medium text-zinc-200 hover:text-white transition-colors truncate text-left cursor-pointer"
+                                      >
+                                        {item.problem_name}
+                                      </button>
+                                      <DiffDot difficulty={item.difficulty} />
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      {item.subtopic && (
+                                        <span className="text-[10px] font-mono text-zinc-400 bg-[#121216] px-1.5 py-0.5 rounded border border-zinc-800/80">
+                                          {item.subtopic}
+                                        </span>
+                                      )}
+                                      <SolveTags prog={item.prog} />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {item.prog?.updated_at && item.status === 'done' && (
+                                    <span className="text-[10px] font-mono text-zinc-500 hidden xs:inline">
+                                      {formatRelativeTime(item.prog.updated_at)}
+                                    </span>
+                                  )}
+                                  {(item.link || item.leetcode_link) && (
+                                    <a
+                                      href={item.link || item.leetcode_link}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="p-1 rounded bg-[#121216] hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                                      title="Open question"
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: SPEED (MONKEYTYPE) */}
           {activeModalTab === 'speed' && (
             <div className="space-y-5 animate-fadeIn">
               {/* Top Banner */}
@@ -732,7 +925,7 @@ export default function UserProfileModal({ user, progress, questions, onClose })
             </div>
           )}
 
-          {/* TAB 4: JAVA QUIZ */}
+          {/* TAB 5: JAVA QUIZ */}
           {activeModalTab === 'quiz' && (
             <div className="space-y-4 animate-fadeIn">
               <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
@@ -748,29 +941,23 @@ export default function UserProfileModal({ user, progress, questions, onClose })
               ) : quizAttempts.length === 0 ? (
                 <div className="text-center py-12 border border-zinc-800 rounded-xl bg-zinc-950/40">
                   <Brain className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-                  <p className="text-xs text-zinc-500 font-mono">No quiz attempts logged yet.</p>
+                  <p className="text-xs text-zinc-500 font-mono">No quiz attempts recorded yet.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-zinc-800/60 border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950/40">
-                  {quizAttempts.map((attempt, idx) => {
+                  {quizAttempts.map(attempt => {
                     const scorePct = Math.round((attempt.score / attempt.total_questions) * 100);
                     return (
-                      <div key={attempt.id || idx} className="p-3 sm:p-3.5 flex items-center justify-between hover:bg-zinc-900/40 transition-colors gap-3">
-                        <div>
-                          <p className="text-xs font-semibold text-zinc-200">Attempt #{quizAttempts.length - idx}</p>
-                          <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                      <div key={attempt.id} className="p-3.5 flex items-center justify-between hover:bg-zinc-900/40 transition-colors">
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold text-zinc-200">{attempt.quiz_title || 'Java Quiz'}</p>
+                          <p className="text-[10px] text-zinc-500 font-mono">
                             {formatRelativeTime(attempt.created_at)}
                           </p>
                         </div>
-
-                        <div className="flex items-center gap-3 font-mono">
-                          <span className="text-xs text-zinc-300 font-bold">{attempt.score}/{attempt.total_questions}</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                            scorePct >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                            scorePct >= 50 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                            'bg-red-500/10 text-red-400 border-red-500/20'
-                          }`}>
-                            {scorePct}%
+                        <div className="text-right font-mono">
+                          <span className={`text-sm font-bold ${scorePct >= 80 ? 'text-emerald-400' : scorePct >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
+                            {attempt.score} / {attempt.total_questions} ({scorePct}%)
                           </span>
                         </div>
                       </div>
@@ -780,11 +967,10 @@ export default function UserProfileModal({ user, progress, questions, onClose })
               )}
             </div>
           )}
-
         </div>
       </motion.div>
     </motion.div>
   );
 }
 
-export { UserProfileModal };
+export default UserProfileModal;
