@@ -410,11 +410,10 @@ const MySheetPage = () => {
       groups[topicKey].push(q);
     });
 
-    const topicKeys = Object.keys(groups).sort((a, b) => {
-      if (a === 'Added Questions') return -1;
-      if (b === 'Added Questions') return 1;
-      return 0;
-    });
+    const keys = Object.keys(groups);
+    const topicKeys = keys.includes('Added Questions')
+      ? ['Added Questions', ...keys.filter(k => k !== 'Added Questions')]
+      : keys;
 
     const sortedGroups = {};
     topicKeys.forEach(k => { sortedGroups[k] = groups[k]; });
