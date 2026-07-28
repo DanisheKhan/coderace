@@ -15,7 +15,9 @@ import {
   Award,
   ShieldAlert,
   UserPlus,
-  Keyboard
+  Keyboard,
+  Brain,
+  BookOpen
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -89,6 +91,8 @@ const Layout = () => {
     { name: 'Compare',     path: '/compare',      icon: BarChart3 },
     { name: 'Achievements', path: '/achievements', icon: Award },
     { name: 'Typing',      path: '/typing',       icon: Keyboard },
+    { name: 'Java Quiz',   path: '/quiz',         icon: Brain },
+    { name: 'Java Collections', path: '/collections', icon: BookOpen },
   ];
 
   if (profile?.is_admin) {

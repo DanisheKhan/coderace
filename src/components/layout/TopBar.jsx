@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useQuestions } from '../../contexts/QuestionsContext';
 import { useProgressStore } from '../../store/progressStore';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Search, 
   Menu, 
@@ -29,6 +29,7 @@ const PAGE_TITLES = {
   '/achievements':'Achievements',
   '/typing':      'Typing',
   '/quiz':        'Java Quiz',
+  '/collections': 'Java Collections',
   '/admin':       'Approvals'
 };
 
@@ -37,6 +38,7 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
   const { questions } = useQuestions();
   const { progress, upsertProgress, profiles } = useProgressStore();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const pageTitle = PAGE_TITLES[location.pathname] ?? 'CodeRace';
 
@@ -106,6 +108,14 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
     setSearchResults({ questions: [], users: [] });
     setShowResults(false);
     setIsMobileSearchOpen(false);
+  };
+
+  const handleQuestionSelect = (problemName) => {
+    setSearchQuery('');
+    setSearchResults({ questions: [], users: [] });
+    setShowResults(false);
+    setIsMobileSearchOpen(false);
+    navigate(`/sheet?search=${encodeURIComponent(problemName)}`);
   };
 
   const openMobileSearch = () => {
@@ -223,17 +233,21 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                 return (
                   <div
                     key={q.id}
-                    className="flex items-center justify-between px-2.5 py-1.5 hover:bg-zinc-800/70 rounded-md transition-colors"
+                    onClick={() => handleQuestionSelect(q.problem_name)}
+                    className="flex items-center justify-between px-2.5 py-1.5 hover:bg-zinc-800/70 rounded-md transition-colors cursor-pointer group"
                   >
                     <div className="min-w-0 flex-1 pr-2">
                       <p className="text-[9px] text-zinc-500 truncate font-mono">{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ''}</p>
-                      <p className="text-xs text-zinc-200 font-medium truncate mt-0.5">{q.problem_name}</p>
+                      <p className="text-xs text-zinc-200 font-medium truncate mt-0.5 group-hover:text-amber-400 transition-colors">{q.problem_name}</p>
                     </div>
                     {done ? (
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                     ) : (
                       <button
-                        onClick={() => handleQuickSolve(q.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleQuickSolve(q.id);
+                        }}
                         className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center justify-center border border-zinc-700 shrink-0"
                         title="Mark Solved"
                       >

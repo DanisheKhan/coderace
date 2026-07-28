@@ -18,6 +18,7 @@ import PendingApprovalPage from './pages/PendingApprovalPage';
 import AdminPage from './pages/AdminPage';
 import TypingPage from './pages/TypingPage';
 import JavaQuizPage from './pages/JavaQuizPage';
+import JavaCollectionsPage from './pages/JavaCollectionsPage';
 
 // Layout
 import Layout from './components/layout/Layout';
@@ -210,6 +211,7 @@ function AppRoutes() {
         <Route path="achievements" element={<AchievementsPage />} />
         <Route path="typing" element={<TypingPage />} />
         <Route path="quiz" element={<JavaQuizPage />} />
+        <Route path="collections" element={<JavaCollectionsPage />} />
         <Route path="admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
       </Route>
 
