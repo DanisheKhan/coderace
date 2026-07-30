@@ -110,7 +110,7 @@ const JavaCollectionsPage = () => {
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight">
-              Java Collections Guide
+              Java Data Structures Guide
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono bg-violet-500/10 text-violet-400 border border-violet-500/20 font-medium">
               Reference Sheet

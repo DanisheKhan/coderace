@@ -32,7 +32,7 @@ const PAGE_TITLES = {
   '/achievements':'Achievements',
   '/typing':      'Typing',
   '/quiz':        'Java Quiz',
-  '/collections': 'Java Collections',
+  '/collections': 'Java Data Structures',
   '/connections': 'Connections',
   '/admin':       'Approvals'
 };
@@ -388,7 +388,7 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
 
             {/* Right: Search Icon (Mobile) + Streak + Avatar */}
             {profile && (
-              <div className="flex items-center gap-2.5 shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
                 {/* Mobile Search Button */}
                 <button
                   onClick={openMobileSearch}
@@ -402,19 +402,19 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                 {/* Follow Requests Notification Button */}
                 <button
                   onClick={() => setIsFollowRequestsOpen(true)}
-                  className="relative h-7 px-2 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white transition-colors text-xs font-mono flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  className="relative w-8 h-8 sm:h-7 sm:px-2 sm:w-auto rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white transition-colors text-xs font-mono flex items-center justify-center sm:gap-1.5 shrink-0 cursor-pointer"
                   title="Follow Requests"
                 >
                   <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
                   {pendingRequestsCount > 0 && (
-                    <span className="px-1.5 py-0.2 text-[9px] font-bold bg-indigo-500 text-white rounded-full leading-none">
+                    <span className="sm:relative absolute -top-1 -right-1 sm:top-auto sm:right-auto px-1 sm:px-1.5 py-0.5 text-[9px] font-bold bg-indigo-500 text-white rounded-full leading-none">
                       {pendingRequestsCount}
                     </span>
                   )}
                 </button>
 
-                {/* Streak Pill */}
-                <div className="h-7 px-2.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs font-mono font-medium flex items-center gap-1.5 shrink-0">
+                {/* Streak Pill — hidden on mobile */}
+                <div className="hidden sm:flex h-7 px-2.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs font-mono font-medium items-center gap-1.5 shrink-0">
                   <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
                   <span>{streak}d</span>
                 </div>

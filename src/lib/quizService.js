@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { FULL_QUIZ_QUESTIONS } from './quizQuestionsData';
 
 /**
  * Categorize a question based on its text/category attributes.
@@ -11,45 +10,25 @@ export const deriveQuestionCategory = (q) => {
 
   const text = `${q.question_text || q.question || ''} ${q.explanation || ''}`.toLowerCase();
 
-  if (/thread|runnable|synchroniz|volatile|lock|concurren|executor|deadlock/.test(text)) {
+  if (/thread|runnable|synchroniz|volatile|lock|concurren|executor|deadlock|countdownlatch|cyclicbarrier|semaphore|phaser|virtual thread/.test(text)) {
     return 'Multithreading & Concurrency';
   }
-  if (/list|map|set|hashmap|arraylist|collection|queue|deque|iterator|treemap|hashset/.test(text)) {
+  if (/list|map|set|hashmap|arraylist|collection|queue|deque|iterator|treemap|hashset|concurrenthashmap|copyonwrite|priorityqueue/.test(text)) {
     return 'Collections Framework';
   }
-  if (/class|interface|inherit|polymorph|abstract|encapsulat|super|override|overload|object/.test(text)) {
+  if (/class|interface|inherit|polymorph|abstract|encapsulat|super|override|overload|object|sealed|record|functionalinterface/.test(text)) {
     return 'OOP Concepts';
   }
-  if (/exception|throw|catch|finally|garbage|gc|heap|stack|nullpointer|memory/.test(text)) {
+  if (/exception|throw|catch|finally|garbage|gc|heap|stack|nullpointer|memory|metaspace|escape analysis|autocloseable/.test(text)) {
     return 'Exceptions & Memory';
   }
 
   return 'Core Java & Syntax';
 };
 
-// Map FULL_QUIZ_QUESTIONS to standard object shape
-const PREPARED_FULL_QUESTIONS = FULL_QUIZ_QUESTIONS.map((q, idx) => {
-  const qText = q.question_text || q.question || 'Java Question';
-  const cOpt = q.correct_option !== undefined && q.correct_option !== null 
-    ? q.correct_option 
-    : (q.correctAnswer !== undefined ? q.correctAnswer : 0);
-  let opts = [];
-  try {
-    opts = typeof q.options === 'string' ? JSON.parse(q.options) : (q.options || []);
-  } catch (e) {
-    opts = [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean);
-  }
-
-  return {
-    id: q.id || 2000 + idx,
-    question_text: qText,
-    correct_option: Number(cOpt),
-    options: opts.length > 0 ? opts : ["Option A", "Option B", "Option C", "Option D"],
-    explanation: q.explanation || "No explanation provided.",
-    category: deriveQuestionCategory({ question_text: qText, explanation: q.explanation, category: q.category }),
-  };
-});
-
+/**
+ * Fetch all quiz questions directly from Supabase database `java_quiz_questions` table.
+ */
 export const fetchQuizQuestions = async () => {
   try {
     const { data, error } = await supabase
@@ -57,11 +36,16 @@ export const fetchQuizQuestions = async () => {
       .select('*')
       .order('id', { ascending: true });
 
-    if (error || !data || data.length === 0) {
-      return PREPARED_FULL_QUESTIONS;
+    if (error) {
+      console.error('Database error fetching quiz questions:', error);
+      return [];
     }
 
-    const dbParsed = data.map(q => {
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    return data.map(q => {
       const qText = q.question_text || q.question || 'Java Question';
       const cOpt = q.correct_option !== undefined && q.correct_option !== null 
         ? q.correct_option 
@@ -75,6 +59,7 @@ export const fetchQuizQuestions = async () => {
 
       return {
         ...q,
+        id: q.id,
         question_text: qText,
         correct_option: Number(cOpt),
         options: opts.length > 0 ? opts : ["Option A", "Option B", "Option C", "Option D"],
@@ -82,17 +67,9 @@ export const fetchQuizQuestions = async () => {
         category: deriveQuestionCategory({ question_text: qText, explanation: q.explanation, category: q.category }),
       };
     });
-
-    // Merge database questions with prepared full questions (deduping by question text)
-    const existingTexts = new Set(dbParsed.map(q => q.question_text.trim().toLowerCase()));
-    const remainingFull = PREPARED_FULL_QUESTIONS.filter(
-      q => !existingTexts.has(q.question_text.trim().toLowerCase())
-    );
-
-    return [...dbParsed, ...remainingFull];
   } catch (err) {
-    console.error('Error fetching quiz questions, returning full question dataset:', err);
-    return PREPARED_FULL_QUESTIONS;
+    console.error('Failed to fetch quiz questions from DB:', err);
+    return [];
   }
 };
 
@@ -101,15 +78,21 @@ export const saveQuizAttempt = async (userId, score, total) => {
     const { data, error } = await supabase
       .from('java_quiz_attempts')
       .insert([
-        { user_id: userId, score, total }
+        {
+          user_id: userId,
+          score,
+          total_questions: total,
+          percentage: total > 0 ? Math.round((score / total) * 100) : 0,
+        }
       ])
-      .select();
+      .select()
+      .single();
 
     if (error) throw error;
-    return data[0];
+    return { data, error: null };
   } catch (err) {
     console.error('Error saving quiz attempt:', err);
-    return null;
+    return { data: null, error: err };
   }
 };
 
@@ -119,151 +102,150 @@ export const fetchUserAttempts = async (userId) => {
       .from('java_quiz_attempts')
       .select('*')
       .eq('user_id', userId)
-      .order('completed_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data;
+    return { data, error: null };
   } catch (err) {
-    console.error('Error fetching user attempts:', err);
-    return [];
+    return { data: [], error: err };
   }
 };
 
-export const fetchAllUsersQuizBest = async () => {
+export const fetchUserQuizBest = async (userId) => {
   try {
     const { data, error } = await supabase
       .from('java_quiz_attempts')
-      .select('user_id, score, total, percentage, completed_at')
-      .order('completed_at', { ascending: false });
+      .select('*')
+      .eq('user_id', userId)
+      .order('score', { ascending: false })
+      .order('percentage', { ascending: false })
+      .limit(1);
 
     if (error) throw error;
-
-    const bestAttempts = {};
-    (data || []).forEach(attempt => {
-      const existing = bestAttempts[attempt.user_id];
-      if (!existing) {
-        bestAttempts[attempt.user_id] = {
-          score: attempt.score,
-          total: attempt.total,
-          percentage: Number(attempt.percentage),
-          completed_at: attempt.completed_at,
-          attempts_count: 1
-        };
-      } else {
-        bestAttempts[attempt.user_id].attempts_count += 1;
-        if (Number(attempt.percentage) > existing.percentage) {
-          bestAttempts[attempt.user_id].score = attempt.score;
-          bestAttempts[attempt.user_id].total = attempt.total;
-          bestAttempts[attempt.user_id].percentage = Number(attempt.percentage);
-          bestAttempts[attempt.user_id].completed_at = attempt.completed_at;
-        }
-      }
-    });
-
-    return bestAttempts;
+    return data && data.length > 0 ? data[0] : null;
   } catch (err) {
-    console.error('Error fetching best attempts:', err);
-    return {};
+    return null;
   }
 };
 
-/**
- * Fetch global quiz leaderboard with user profile details.
- */
 export const fetchGlobalQuizLeaderboard = async () => {
   try {
-    const { data: attempts, error } = await supabase
+    const { data: attempts, error: attemptsError } = await supabase
       .from('java_quiz_attempts')
-      .select(`
-        id,
-        user_id,
-        score,
-        total,
-        percentage,
-        completed_at,
-        profiles (
-          id,
-          display_name,
-          username,
-          avatar_url,
-          avatar_color
-        )
-      `)
-      .order('completed_at', { ascending: false });
+      .select('user_id, score, total_questions, percentage, created_at');
 
-    if (error) throw error;
+    if (attemptsError) throw attemptsError;
     if (!attempts || attempts.length === 0) return [];
 
-    const userBestMap = new Map();
-
-    attempts.forEach(att => {
-      const uId = att.user_id;
-      const pct = Number(att.percentage || 0);
-      const existing = userBestMap.get(uId);
-
-      if (!existing) {
-        userBestMap.set(uId, {
-          userId: uId,
-          profile: att.profiles || { display_name: 'Unknown Racer' },
-          bestScore: att.score,
-          total: att.total,
-          bestPct: pct,
-          attemptsCount: 1,
-          lastAttempted: att.completed_at,
-        });
-      } else {
-        existing.attemptsCount += 1;
-        if (pct > existing.bestPct || (pct === existing.bestPct && att.score > existing.bestScore)) {
-          existing.bestScore = att.score;
-          existing.total = att.total;
-          existing.bestPct = pct;
-          existing.lastAttempted = att.completed_at;
-        }
+    const userBestMap = {};
+    attempts.forEach(item => {
+      const existing = userBestMap[item.user_id];
+      if (!existing || item.score > existing.score || (item.score === existing.score && item.percentage > existing.percentage)) {
+        userBestMap[item.user_id] = item;
       }
     });
 
-    return Array.from(userBestMap.values()).sort((a, b) => b.bestPct - a.bestPct || b.bestScore - a.bestScore);
+    const userIds = Object.keys(userBestMap);
+    if (userIds.length === 0) return [];
+
+    const { data: userProfiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, display_name, username, avatar_color, avatar_url')
+      .in('id', userIds);
+
+    if (profilesError) throw profilesError;
+
+    const profilesMap = {};
+    (userProfiles || []).forEach(p => {
+      profilesMap[p.id] = p;
+    });
+
+    const leaderboard = userIds.map(uid => {
+      const best = userBestMap[uid];
+      const userProfile = profilesMap[uid] || { display_name: 'Unknown Racer', username: 'unknown' };
+      return {
+        user_id: uid,
+        display_name: userProfile.display_name,
+        username: userProfile.username,
+        avatar_color: userProfile.avatar_color,
+        avatar_url: userProfile.avatar_url,
+        score: best.score,
+        total_questions: best.total_questions,
+        percentage: best.percentage,
+        created_at: best.created_at
+      };
+    });
+
+    leaderboard.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.percentage !== a.percentage) return b.percentage - a.percentage;
+      return new Date(a.created_at) - new Date(b.created_at);
+    });
+
+    return leaderboard;
   } catch (err) {
     console.error('Error fetching global quiz leaderboard:', err);
     return [];
   }
 };
 
+export const fetchAllUsersQuizBest = async () => {
+  try {
+    const { data: attempts, error } = await supabase
+      .from('java_quiz_attempts')
+      .select('user_id, score, total_questions, percentage, created_at');
+
+    if (error || !attempts) return {};
+
+    const userBestMap = {};
+    attempts.forEach(item => {
+      const existing = userBestMap[item.user_id];
+      if (!existing || item.score > existing.score || (item.score === existing.score && item.percentage > existing.percentage)) {
+        userBestMap[item.user_id] = item;
+      }
+    });
+
+    return userBestMap;
+  } catch (err) {
+    console.error('Error in fetchAllUsersQuizBest:', err);
+    return {};
+  }
+};
+
 export const fetchRecentQuizAttempts = async () => {
   try {
-    const { data, error } = await supabase
+    const { data: attempts, error } = await supabase
       .from('java_quiz_attempts')
-      .select(`
-        id,
-        user_id,
-        score,
-        total,
-        percentage,
-        completed_at,
-        profiles (
-          display_name,
-          avatar_url,
-          avatar_color
-        )
-      `)
-      .order('completed_at', { ascending: false })
+      .select('id, user_id, score, total_questions, percentage, created_at')
+      .order('created_at', { ascending: false })
       .limit(10);
 
     if (error) throw error;
-    if (!data) return [];
+    if (!attempts || attempts.length === 0) return [];
 
-    return data.map(item => ({
-      id: `quiz-${item.id}`,
-      userId: item.user_id,
-      userName: item.profiles?.display_name || 'Racer',
-      avatarUrl: item.profiles?.avatar_url || '',
-      avatarColor: item.profiles?.avatar_color || '#6366f1',
-      type: 'quiz',
-      score: item.score,
-      total: item.total,
-      percentage: Number(item.percentage),
-      updatedAt: item.completed_at
-    }));
+    const userIds = Array.from(new Set(attempts.map(a => a.user_id)));
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, display_name, username, avatar_color, avatar_url')
+      .in('id', userIds);
+
+    const profilesMap = {};
+    (profilesData || []).forEach(p => { profilesMap[p.id] = p; });
+
+    return attempts.map(item => {
+      const p = profilesMap[item.user_id] || { display_name: 'Unknown', username: 'unknown' };
+      return {
+        id: `quiz-${item.id}`,
+        user_id: item.user_id,
+        user_name: p.display_name,
+        username: p.username,
+        avatar_color: p.avatar_color,
+        avatar_url: p.avatar_url,
+        type: 'quiz',
+        details: `Scored ${item.score}/${item.total_questions} (${item.percentage}%) in Java Quiz`,
+        timestamp: item.created_at
+      };
+    });
   } catch (err) {
     console.error('Error fetching recent quiz attempts:', err);
     return [];

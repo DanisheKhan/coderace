@@ -105,7 +105,7 @@ const Layout = () => {
     { name: 'Achievements', path: '/achievements', icon: Award },
     { name: 'Typing',      path: '/typing',       icon: Keyboard },
     { name: 'Java Quiz',   path: '/quiz',         icon: Brain },
-    { name: 'Java Collections', path: '/collections', icon: BookOpen },
+    { name: 'Java Data Structures', path: '/collections', icon: BookOpen },
   ];
 
   return (

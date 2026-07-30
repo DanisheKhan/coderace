@@ -54,7 +54,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     { name: 'Achievements', path: '/achievements', icon: Award },
     { name: 'Typing',      path: '/typing',       icon: Keyboard },
     { name: 'Java Quiz',   path: '/quiz',         icon: Brain },
-    { name: 'Java Collections', path: '/collections', icon: BookOpen },
+    { name: 'Java Data Structures', path: '/collections', icon: BookOpen },
   ];
 
   return (
@@ -62,31 +62,38 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
       <motion.aside 
         animate={{ width: isCollapsed ? 72 : 232 }}
         transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-        className="bg-[#09090b] border-r border-zinc-800/80 flex flex-col h-screen sticky top-0 md:flex z-40 max-md:hidden relative font-sans transform-gpu"
+        className="hidden md:flex bg-[#09090b] border-r border-zinc-800/80 flex-col h-screen sticky top-0 z-40 relative font-sans transform-gpu"
       >
         {/* Brand Header */}
-        <div className={`h-14 flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-4'} border-b border-zinc-800/80 shrink-0`}>
-          <div className="flex items-center gap-2.5">
-            <motion.div 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-100 shrink-0 shadow-sm"
+        <div className="h-14 flex items-center justify-between px-3 border-b border-zinc-800/80 shrink-0">
+          {isCollapsed ? (
+            <button
+              onClick={() => setIsCollapsed(false)}
+              className="w-9 h-9 mx-auto rounded-lg bg-zinc-900 border border-zinc-700/80 flex items-center justify-center text-zinc-300 hover:text-white hover:border-zinc-500 transition-all cursor-pointer shadow-sm group"
+              title="Expand sidebar"
             >
-              <Code2 className="w-4 h-4 text-violet-400" />
-            </motion.div>
-            {!isCollapsed && (
-              <span className="font-bold text-base tracking-tight text-white whitespace-nowrap">
-                Code<span className="text-violet-400">Race</span>
-              </span>
-            )}
-          </div>
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer shrink-0 active:scale-95"
-            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
-          </button>
+              <Code2 className="w-4.5 h-4.5 text-violet-400 group-hover:hidden" />
+              <ChevronRight className="w-4.5 h-4.5 text-white hidden group-hover:block" />
+            </button>
+          ) : (
+            <>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-100 shrink-0 shadow-sm">
+                  <Code2 className="w-4 h-4 text-violet-400" />
+                </div>
+                <span className="font-bold text-base tracking-tight text-white whitespace-nowrap truncate font-mono">
+                  Code<span className="text-violet-400">Race</span>
+                </span>
+              </div>
+              <button
+                onClick={() => setIsCollapsed(true)}
+                className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer shrink-0 active:scale-95"
+                title="Collapse sidebar"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
         </div>
 
         {/* Navigation */}
