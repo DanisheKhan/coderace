@@ -541,7 +541,7 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
               </div>
 
               {/* GitHub Streak Heatmap */}
-              <GitHubStreakTracker user={user} progress={progress} />
+              <GitHubStreakTracker user={user} userId={user?.id} progress={progress} />
 
               {/* Topic Breakdown Progress Bars */}
               <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 space-y-3">

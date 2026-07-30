@@ -7,14 +7,14 @@ import {
   Trophy, Flame, Calendar, Activity, Crown, Award, X, Zap, 
   Sparkles, BookOpen, Workflow, BookmarkCheck, Layers, Network, 
   ExternalLink, CheckCircle2, Copy, Lightbulb, Eye, Search, RotateCcw, Circle, Filter, Medal, Star, Keyboard, TrendingUp,
-  Brain, Users, ArrowRight
+  Brain, Users, ArrowRight, ChevronRight
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { calculateUserAchievements } from '../lib/achievements';
 import UserProfileModal, { SolveTags, DiffDot, formatRelativeTime } from '../components/UserProfileModal';
 import { fetchAllUsersQuizBest, fetchRecentQuizAttempts } from '../lib/quizService';
 import { motion, AnimatePresence } from 'framer-motion';
-import { pageTransition, staggerContainer, fadeUp, slideInLeft } from '../lib/animations';
+import { pageTransition, staggerContainer, fadeUp, slideInLeft, backdropVariants, modalVariants } from '../lib/animations';
 
 const calculateUserStreak = (userId, progress) => {
   const doneDates = progress
@@ -36,6 +36,195 @@ const calculateUserStreak = (userId, progress) => {
     else break;
   }
   return streak;
+};
+
+// ── All Activities Modal ───────────────────────────────────────────────────────
+const AllActivitiesModal = ({ activities, profiles, leaderboard, onSelectUser, onClose }) => {
+  const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState('all'); // 'all' | 'dsa' | 'quiz'
+
+  const filteredActivities = useMemo(() => {
+    return activities.filter(act => {
+      const matchesSearch = !search.trim() ||
+        act.userName.toLowerCase().includes(search.toLowerCase()) ||
+        (act.problemName || '').toLowerCase().includes(search.toLowerCase()) ||
+        (act.topic || '').toLowerCase().includes(search.toLowerCase());
+
+      const matchesType = filterType === 'all' || act.type === filterType;
+
+      return matchesSearch && matchesType;
+    });
+  }, [activities, search, filterType]);
+
+  return (
+    <motion.div 
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      variants={backdropVariants}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md cursor-pointer font-sans"
+      onClick={onClose}
+    >
+      <motion.div
+        variants={modalVariants}
+        className="w-full max-w-2xl overflow-hidden flex flex-col h-[85vh] max-h-[750px] mx-auto relative cursor-default bg-[#09090b] rounded-xl border border-zinc-800 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex flex-col gap-3 px-5 pt-4 pb-3.5 shrink-0 border-b border-zinc-800/80">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                <Activity className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-base leading-tight tracking-tight flex items-center gap-2">
+                  All Platform Activities
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400">
+                    {filteredActivities.length} {filteredActivities.length === 1 ? 'activity' : 'activities'}
+                  </span>
+                </h3>
+                <p className="text-xs text-zinc-500 mt-0.5">Real-time activity log across all racers.</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80 transition-colors cursor-pointer shrink-0"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Search & Filter Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search racer, problem, or topic..."
+                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-700 transition-colors"
+              />
+            </div>
+
+            <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 shrink-0">
+              {[
+                { id: 'all',  label: 'All' },
+                { id: 'dsa',  label: 'DSA Solved' },
+                { id: 'quiz', label: 'Java Quizzes' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setFilterType(tab.id)}
+                  className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer ${
+                    filterType === tab.id
+                      ? 'bg-zinc-800 text-white font-semibold shadow-sm'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Body - Activity List */}
+        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-1">
+          {filteredActivities.length === 0 ? (
+            <div className="text-center py-16 border border-zinc-800/80 rounded-xl bg-zinc-950/40">
+              <Activity className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+              <p className="text-xs text-zinc-500 font-mono">No activity found matching filters.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-zinc-800/60 border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950/40">
+              {filteredActivities.map((act) => (
+                <div
+                  key={act.id}
+                  onClick={() => {
+                    const u = profiles.find(p => p.id === act.userId);
+                    if (u) {
+                      const leaderboardUser = leaderboard.find(lu => lu.id === u.id);
+                      onSelectUser(leaderboardUser || { ...u, solved: 0, solvedThisWeek: 0, streak: 0 });
+                      onClose();
+                    }
+                  }}
+                  className="flex items-start gap-3 p-3 sm:p-3.5 hover:bg-zinc-900/60 transition-colors cursor-pointer group"
+                >
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-xs uppercase shrink-0 overflow-hidden border border-zinc-700 mt-0.5"
+                    style={{ backgroundColor: act.avatarUrl ? 'transparent' : act.avatarColor }}
+                  >
+                    {act.avatarUrl ? (
+                      <img src={act.avatarUrl} alt={act.userName} className="w-full h-full object-cover" />
+                    ) : (
+                      act.userName.charAt(0)
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-zinc-200 group-hover:text-amber-400 transition-colors truncate">
+                        {act.userName}
+                      </p>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-zinc-500 font-mono">
+                          {formatRelativeTime(act.updatedAt)}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const u = profiles.find(p => p.id === act.userId);
+                            if (u) {
+                              const leaderboardUser = leaderboard.find(lu => lu.id === u.id);
+                              onSelectUser(leaderboardUser || { ...u, solved: 0, solvedThisWeek: 0, streak: 0 });
+                              onClose();
+                            }
+                          }}
+                          className="p-1 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-500 hover:text-white transition-colors shrink-0 flex items-center justify-center cursor-pointer"
+                          title="View Profile"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {act.type === 'quiz' ? (
+                      <>
+                        <p className="text-[11px] text-zinc-400 mt-0.5 truncate">
+                          Scored <span className="text-emerald-400 font-bold font-mono">{act.score}/{act.total}</span> ({act.percentage}%) on Java Quiz
+                        </p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold flex items-center gap-1 font-mono">
+                            <Brain className="w-2.5 h-2.5" />
+                            Java Quiz
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[11px] text-zinc-400 mt-0.5 truncate">
+                          Solved <span className="text-zinc-100 font-medium">{act.problemName}</span>
+                        </p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800 font-mono">
+                            {act.topic}
+                          </span>
+                          <DiffDot difficulty={act.difficulty} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
 };
 
 // ── Podium Card (Top 3) ────────────────────────────────────────────────────────
@@ -166,6 +355,7 @@ const LeaderboardPage = () => {
   const { profile: currentProfile } = useAuth();
   const [timeframe, setTimeframe] = useState('weekly'); // 'weekly' | 'alltime'
   const [selectedUser, setSelectedUser] = useState(null);
+  const [showAllActivitiesModal, setShowAllActivitiesModal] = useState(false);
   const [quizBests, setQuizBests] = useState({});
   const [recentQuizAttempts, setRecentQuizAttempts] = useState([]);
 
@@ -207,7 +397,7 @@ const LeaderboardPage = () => {
     return mapped.sort((a, b) => b.solved !== a.solved ? b.solved - a.solved : b.streak - a.streak);
   }, [approvedProfiles, progress, questions, quizBests, timeframe]);
 
-  const recentActivities = useMemo(() => {
+  const allActivities = useMemo(() => {
     const seen = new Set();
     const dsaList = [];
     const sorted = progress
@@ -239,8 +429,12 @@ const LeaderboardPage = () => {
     const combined = [...dsaList, ...recentQuizAttempts];
     combined.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
-    return combined.slice(0, 10);
+    return combined;
   }, [progress, approvedProfiles, questions, recentQuizAttempts]);
+
+  const recentActivities = useMemo(() => {
+    return allActivities.slice(0, 7);
+  }, [allActivities]);
 
   const top3 = leaderboard.slice(0, 3);
   const restList = leaderboard.slice(3);
@@ -252,196 +446,170 @@ const LeaderboardPage = () => {
       animate="show"
       exit="exit"
       variants={pageTransition}
-      className="space-y-6 max-w-7xl mx-auto pb-8 font-sans"
+      className="space-y-6 pb-12 font-sans"
     >
-      {/* ── Header Bar ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800/80">
+      {/* ── Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-800/80">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-lg font-bold tracking-tight text-white">Leaderboard</h1>
-            <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-bold uppercase tracking-wider flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              {timeframe === 'weekly' ? 'Weekly Standings' : 'All-Time Standings'}
-            </span>
-          </div>
-          <p className="text-zinc-500 text-xs mt-0.5">Real-time DSA problem-solving leaderboard across all registered racers.</p>
+          <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-amber-400" />
+            CodeRace Leaderboard
+          </h1>
+          <p className="text-zinc-500 text-xs mt-0.5">Top racers ranked by DSA problem solving speed and consistency.</p>
         </div>
 
-        {/* Timeframe Selector & Stats Badges */}
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Toggle Switch */}
-          <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
+        {/* Timeframe Filter Tabs */}
+        <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 text-xs">
+          {[
+            { id: 'weekly',  label: 'This Week' },
+            { id: 'alltime', label: 'All Time' },
+          ].map(tab => (
             <button
-              onClick={() => setTimeframe('weekly')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                timeframe === 'weekly'
-                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm'
+              key={tab.id}
+              onClick={() => setTimeframe(tab.id)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                timeframe === tab.id
+                  ? 'bg-white text-zinc-900 shadow-sm'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Weekly</span>
+              {tab.label}
             </button>
-            <button
-              onClick={() => setTimeframe('alltime')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                timeframe === 'alltime'
-                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <Trophy className="w-3.5 h-3.5" />
-              <span>All-Time</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/60 flex items-center gap-2">
-              <Trophy className="w-3.5 h-3.5 text-amber-400" />
-              <div>
-                <p className="text-[9px] text-zinc-500 uppercase font-mono font-bold">Racers</p>
-                <p className="text-xs font-bold text-zinc-100 leading-none">{leaderboard.length}</p>
-              </div>
-            </div>
-            <div className="px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/60 flex items-center gap-2">
-              <Flame className="w-3.5 h-3.5 text-orange-400" />
-              <div>
-                <p className="text-[9px] text-zinc-500 uppercase font-mono font-bold">Top Streak</p>
-                <p className="text-xs font-bold text-zinc-100 leading-none">{Math.max(...leaderboard.map(u => u.streak || 0), 0)}d</p>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
-
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+      {/* Main Content Grid: Leaderboard + Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         
-        {/* ── Left: Rankings ── */}
-        <div className="lg:col-span-2 space-y-4">
-
-          {/* Podium (Top 3) */}
-          {top3.length >= 2 && (
-            <div className="glass-panel rounded-xl border border-zinc-800/80 overflow-hidden">
-              <div className="px-4 py-3 border-b border-zinc-800/80 flex items-center justify-between">
-                <p className="text-xs font-bold text-zinc-300 font-mono uppercase tracking-wider">
-                  {timeframe === 'weekly' ? 'Top Performers This Week' : 'All-Time Champions'}
-                </p>
-                <span className="text-[10px] font-mono text-emerald-400">
-                  {timeframe === 'weekly' ? 'Updated live (last 7 days)' : 'All-time total'}
-                </span>
+        {/* ── Left 2 Columns: Top 3 Podium + Leaderboard Table ── */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* Top 3 Podium */}
+          {top3.length > 0 && (
+            <div className="glass-panel rounded-xl p-4 sm:p-6 border border-zinc-800/80 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-amber-400" />
+                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">
+                    {timeframe === 'weekly' ? 'Weekly Champions' : 'All-Time Champions'}
+                  </h3>
+                </div>
+                <span className="text-[10px] font-mono text-zinc-500">Top 3 Racers</span>
               </div>
-              <motion.div 
-                variants={staggerContainer}
-                initial="hidden"
-                animate="show"
-                className="flex items-end justify-center gap-2 sm:gap-4 px-2 sm:px-6 pt-6 pb-0"
-              >
-                {top3.map((user, idx) => (
+
+              {/* Podium row */}
+              <div className="flex items-end justify-center gap-2 sm:gap-4 pt-2">
+                {top3.map((u, i) => (
                   <PodiumCard
-                    key={user.id}
-                    user={user}
-                    rank={idx + 1}
+                    key={u.id}
+                    user={u}
+                    rank={i + 1}
                     questions={questions}
                     currentProfileId={currentProfile?.id}
-                    onClick={() => setSelectedUser(user)}
+                    onClick={() => setSelectedUser(u)}
                     timeframe={timeframe}
                   />
                 ))}
-              </motion.div>
+              </div>
             </div>
           )}
 
-          {/* Leaderboard List (4+) */}
+          {/* Full Leaderboard Table (Rank 4+) */}
           {restList.length > 0 && (
             <div className="glass-panel rounded-xl border border-zinc-800/80 overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-zinc-800/80 flex items-center justify-between">
-                <p className="text-[10px] text-zinc-500 uppercase font-mono font-bold tracking-wider">Rankings</p>
-                <p className="text-[10px] text-zinc-500 font-mono">{timeframe === 'weekly' ? 'Sorted by Weekly Solved' : 'Sorted by Total Solved'}</p>
+              <div className="px-4 py-3 border-b border-zinc-800/80 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-zinc-400" />
+                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-400">Racers Overview</h3>
+                </div>
+                <span className="text-[10px] font-mono text-zinc-500">{leaderboard.length} registered</span>
               </div>
+
               <motion.div 
                 variants={staggerContainer}
-                initial="hidden"
-                animate="show"
-                className="divide-y divide-zinc-800/50"
+                className="divide-y divide-zinc-800/60"
               >
-                {restList.map((user, idx) => {
+                {restList.map((u, idx) => {
                   const rank = idx + 4;
-                  const isCurrent = user.id === currentProfile?.id;
-                  const pct = Math.round((user.solved / totalQ) * 100);
+                  const isCurrent = u.id === currentProfile?.id;
+                  const pct = totalQ > 0 ? Math.round((u.solved / totalQ) * 100) : 0;
 
                   return (
                     <motion.div
-                      key={user.id}
+                      key={u.id}
                       variants={fadeUp}
-                      whileHover={{ scale: 1.002, x: 2, transition: { duration: 0.15 } }}
-                      onClick={() => setSelectedUser(user)}
-                      className={`flex items-center gap-2.5 sm:gap-4 px-3 sm:px-5 py-3 transition-all cursor-pointer group ${
+                      onClick={() => setSelectedUser(u)}
+                      className={`flex items-center justify-between gap-3 p-3 sm:p-4 transition-colors cursor-pointer ${
                         isCurrent
-                          ? 'bg-amber-500/[0.04] hover:bg-amber-500/[0.07]'
+                          ? 'bg-violet-500/[0.06] hover:bg-violet-500/[0.1] border-l-2 border-violet-500'
                           : 'hover:bg-zinc-800/40'
                       }`}
                     >
-                      {/* Rank */}
-                      <div className="w-8 text-center shrink-0">
-                        <span className="text-xs font-bold font-mono text-zinc-500">#{rank}</span>
-                      </div>
+                      {/* Left: Rank + Avatar + Name */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className="text-xs font-mono font-bold text-zinc-500 w-6 text-right shrink-0">
+                          #{rank}
+                        </span>
 
-                      {/* Avatar */}
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-xs uppercase shrink-0 overflow-hidden border border-zinc-700 group-hover:scale-105 transition-transform"
-                        style={{ backgroundColor: user.avatar_url ? 'transparent' : (user.avatar_color || '#6366f1') }}
-                      >
-                        {user.avatar_url ? (
-                          <img src={user.avatar_url} alt={user.display_name} className="w-full h-full object-cover" />
-                        ) : (
-                          user.display_name?.charAt(0) || '?'
-                        )}
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-semibold text-zinc-200 truncate group-hover:text-white transition-colors">
-                            {user.display_name}
-                          </span>
-                          {isCurrent && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] font-bold font-mono uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-                              YOU
-                            </span>
-                          )}
-                        </div>
-                        {/* Mini progress bar */}
-                        <div className="w-full bg-zinc-900 h-1 rounded-full overflow-hidden border border-zinc-800">
+                        <div className="relative shrink-0">
                           <div
-                            className={`h-full rounded-full transition-all duration-700 ${timeframe === 'weekly' ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                            style={{ width: `${Math.max(user.solved > 0 ? 2 : 0, pct)}%` }}
-                          />
+                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center font-bold text-white text-xs uppercase overflow-hidden border border-zinc-700"
+                            style={{ backgroundColor: u.avatar_url ? 'transparent' : (u.avatar_color || '#6366f1') }}
+                          >
+                            {u.avatar_url ? (
+                              <img src={u.avatar_url} alt={u.display_name} className="w-full h-full object-cover" />
+                            ) : (
+                              u.display_name?.charAt(0) || '?'
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs sm:text-sm font-semibold text-zinc-100 truncate">
+                              {u.display_name}
+                            </span>
+                            {u.username && (
+                              <span className="text-[10px] font-mono text-amber-400 truncate">
+                                @{u.username}
+                              </span>
+                            )}
+                            {isCurrent && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                                You
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-zinc-500 font-mono mt-0.5 truncate">
+                            {u.streak > 0 && <span className="text-orange-400 font-bold mr-2">🔥 {u.streak}d streak</span>}
+                            <span>{u.unlockedCount} badges</span>
+                          </p>
                         </div>
                       </div>
 
-                      {/* Stats */}
-                      <div className="flex items-center gap-4 shrink-0 font-mono">
-                        <div className="text-right">
-                          {timeframe === 'weekly' ? (
-                            <>
-                              <span className="text-xs font-bold text-emerald-400">+{user.solvedThisWeek}</span>
-                              <span className="text-[9px] text-zinc-500 block leading-tight">this week</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-xs font-bold text-zinc-200">{user.solved}</span>
-                              <span className="text-[9px] text-zinc-600"> /{totalQ}</span>
-                            </>
-                          )}
+                      {/* Right: Solved Metrics */}
+                      <div className="flex items-center gap-4 shrink-0 font-mono text-right">
+                        <div>
+                          <p className="text-xs sm:text-sm font-bold text-white">
+                            {timeframe === 'weekly' ? (
+                              <span className="text-emerald-400">+{u.solvedThisWeek}</span>
+                            ) : (
+                              <span>{u.solved}</span>
+                            )}
+                          </p>
+                          <p className="text-[9px] text-zinc-500">
+                            {timeframe === 'weekly' ? 'this wk' : `${pct}% done`}
+                          </p>
                         </div>
+
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedUser(user);
+                            setSelectedUser(u);
                           }}
-                          className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-all flex items-center justify-center cursor-pointer shrink-0"
+                          className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
                           title="View Profile"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -453,106 +621,125 @@ const LeaderboardPage = () => {
               </motion.div>
             </div>
           )}
-
-          {/* Empty state */}
-          {leaderboard.length === 0 && (
-            <div className="text-center py-16 rounded-xl border border-zinc-800 bg-zinc-900/40">
-              <Trophy className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
-              <p className="text-zinc-500 text-xs font-semibold">No racers registered yet.</p>
-            </div>
-          )}
         </div>
 
-        {/* ── Activity Feed ── */}
+        {/* ── Right Column: Activity Feed ── */}
         <div className="glass-panel rounded-xl border border-zinc-800/80 h-fit overflow-hidden">
           <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-zinc-800/80">
             <div className="flex items-center gap-2">
               <Activity className="w-3.5 h-3.5 text-amber-400" />
               <h3 className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400">Recent Activity</h3>
             </div>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Live stream" />
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Live stream" />
+              {allActivities.length > 7 && (
+                <button
+                  onClick={() => setShowAllActivitiesModal(true)}
+                  className="text-[10px] font-mono text-amber-400 hover:text-amber-300 font-semibold transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  <span>View All</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              )}
+            </div>
           </div>
 
           {recentActivities.length === 0 ? (
             <p className="text-xs text-zinc-600 py-8 text-center px-4 font-mono">No recent activity.</p>
           ) : (
-            <div className="divide-y divide-zinc-800/40">
-              {recentActivities.map((act) => (
-                <div
-                  key={act.id}
-                  onClick={() => {
-                    const u = profiles.find(p => p.id === act.userId);
-                    if (u) {
-                      const leaderboardUser = leaderboard.find(lu => lu.id === u.id);
-                      setSelectedUser(leaderboardUser || { ...u, solved: 0, solvedThisWeek: 0, streak: 0 });
-                    }
-                  }}
-                  className="flex items-start gap-3 px-4 py-3 hover:bg-zinc-800/40 transition-colors cursor-pointer group"
-                >
+            <>
+              <div className="divide-y divide-zinc-800/40">
+                {recentActivities.map((act) => (
                   <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white text-[11px] uppercase shrink-0 overflow-hidden border border-zinc-700 mt-0.5"
-                    style={{ backgroundColor: act.avatarUrl ? 'transparent' : act.avatarColor }}
+                    key={act.id}
+                    onClick={() => {
+                      const u = profiles.find(p => p.id === act.userId);
+                      if (u) {
+                        const leaderboardUser = leaderboard.find(lu => lu.id === u.id);
+                        setSelectedUser(leaderboardUser || { ...u, solved: 0, solvedThisWeek: 0, streak: 0 });
+                      }
+                    }}
+                    className="flex items-start gap-3 px-4 py-3 hover:bg-zinc-800/40 transition-colors cursor-pointer group"
                   >
-                    {act.avatarUrl ? (
-                      <img src={act.avatarUrl} alt={act.userName} className="w-full h-full object-cover" />
-                    ) : (
-                      act.userName.charAt(0)
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-1">
-                      <p className="text-xs font-semibold text-zinc-300 group-hover:text-amber-400 transition-colors truncate">
-                        {act.userName}
-                      </p>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[9px] text-zinc-500 shrink-0 font-mono">
-                          {formatRelativeTime(act.updatedAt)}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const u = profiles.find(p => p.id === act.userId);
-                            if (u) {
-                              const leaderboardUser = leaderboard.find(lu => lu.id === u.id);
-                              setSelectedUser(leaderboardUser || { ...u, solved: 0, solvedThisWeek: 0, streak: 0 });
-                            }
-                          }}
-                          className="p-1 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-500 hover:text-white transition-colors shrink-0 flex items-center justify-center cursor-pointer"
-                          title="View Profile"
-                        >
-                          <Eye className="w-3 h-3" />
-                        </button>
-                      </div>
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white text-[11px] uppercase shrink-0 overflow-hidden border border-zinc-700 mt-0.5"
+                      style={{ backgroundColor: act.avatarUrl ? 'transparent' : act.avatarColor }}
+                    >
+                      {act.avatarUrl ? (
+                        <img src={act.avatarUrl} alt={act.userName} className="w-full h-full object-cover" />
+                      ) : (
+                        act.userName.charAt(0)
+                      )}
                     </div>
-                    {act.type === 'quiz' ? (
-                      <>
-                        <p className="text-[10px] text-zinc-500 mt-0.5 truncate">
-                          Scored <span className="text-emerald-400 font-bold font-mono">{act.score}/{act.total}</span> ({act.percentage}%) on Java Quiz
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-xs font-semibold text-zinc-300 group-hover:text-amber-400 transition-colors truncate">
+                          {act.userName}
                         </p>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold flex items-center gap-1 font-mono">
-                            <Brain className="w-2.5 h-2.5" />
-                            Java Quiz
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[9px] text-zinc-500 shrink-0 font-mono">
+                            {formatRelativeTime(act.updatedAt)}
                           </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const u = profiles.find(p => p.id === act.userId);
+                              if (u) {
+                                const leaderboardUser = leaderboard.find(lu => lu.id === u.id);
+                                setSelectedUser(leaderboardUser || { ...u, solved: 0, solvedThisWeek: 0, streak: 0 });
+                              }
+                            }}
+                            className="p-1 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-500 hover:text-white transition-colors shrink-0 flex items-center justify-center cursor-pointer"
+                            title="View Profile"
+                          >
+                            <Eye className="w-3 h-3" />
+                          </button>
                         </div>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-[10px] text-zinc-500 mt-0.5 truncate">
-                          Solved <span className="text-zinc-300 font-medium">{act.problemName}</span>
-                        </p>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800 font-mono">
-                            {act.topic}
-                          </span>
-                          <DiffDot difficulty={act.difficulty} />
-                        </div>
-                      </>
-                    )}
+                      </div>
+                      {act.type === 'quiz' ? (
+                        <>
+                          <p className="text-[10px] text-zinc-500 mt-0.5 truncate">
+                            Scored <span className="text-emerald-400 font-bold font-mono">{act.score}/{act.total}</span> ({act.percentage}%) on Java Quiz
+                          </p>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold flex items-center gap-1 font-mono">
+                              <Brain className="w-2.5 h-2.5" />
+                              Java Quiz
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-[10px] text-zinc-500 mt-0.5 truncate">
+                            Solved <span className="text-zinc-300 font-medium">{act.problemName}</span>
+                          </p>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800 font-mono">
+                              {act.topic}
+                            </span>
+                            <DiffDot difficulty={act.difficulty} />
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
+                ))}
+              </div>
+
+              {/* Show All Activities Button Footer */}
+              {allActivities.length > 7 && (
+                <div className="p-3 border-t border-zinc-800/80 bg-zinc-950/60 text-center">
+                  <button
+                    onClick={() => setShowAllActivitiesModal(true)}
+                    className="w-full py-2 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-xs font-semibold font-mono transition-colors flex items-center justify-center gap-2 cursor-pointer group"
+                  >
+                    <Activity className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+                    <span>Show All Activities ({allActivities.length})</span>
+                    <ChevronRight className="w-3.5 h-3.5 text-zinc-500 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -564,6 +751,17 @@ const LeaderboardPage = () => {
           progress={progress}
           questions={questions}
           onClose={() => setSelectedUser(null)}
+        />
+      )}
+
+      {/* All Activities Modal */}
+      {showAllActivitiesModal && (
+        <AllActivitiesModal
+          activities={allActivities}
+          profiles={approvedProfiles}
+          leaderboard={leaderboard}
+          onSelectUser={(u) => setSelectedUser(u)}
+          onClose={() => setShowAllActivitiesModal(false)}
         />
       )}
     </motion.div>

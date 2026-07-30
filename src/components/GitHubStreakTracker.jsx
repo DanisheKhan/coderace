@@ -10,8 +10,10 @@ const getLocalDateStr = (d) => {
   return `${year}-${month}-${day}`;
 };
 
-export default function GitHubStreakTracker({ progress = [], userId = null, title = "Contribution Activity" }) {
+export default function GitHubStreakTracker({ progress = [], userId = null, user = null, title = "Contribution Activity" }) {
   const [hoveredDay, setHoveredDay] = useState(null);
+
+  const activeUserId = userId || user?.id;
 
   const now = useMemo(() => new Date(), []);
   const todayStr = useMemo(() => getLocalDateStr(now), [now]);
@@ -19,9 +21,9 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
 
   // Process progress data into date counts and streak metrics
   const { dateCounts, totalSolvedInYear, currentStreak, longestStreak } = useMemo(() => {
-    if (!userId) return { dateCounts: {}, totalSolvedInYear: 0, currentStreak: 0, longestStreak: 0 };
+    if (!activeUserId) return { dateCounts: {}, totalSolvedInYear: 0, currentStreak: 0, longestStreak: 0 };
 
-    const userDone = progress.filter(p => p.user_id === userId && p.status === 'done');
+    const userDone = progress.filter(p => p.user_id && String(p.user_id) === String(activeUserId) && p.status === 'done');
     const counts = {};
     let totalInYear = 0;
 
@@ -41,7 +43,7 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
     // Compute Streaks
     let maxStreak = 0;
     let tempStreak = 0;
-    let checkDate = new Date(todayTime - 365 * DAY_MS);
+    let checkDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 365);
 
     for (let i = 0; i <= 365; i++) {
       const key = getLocalDateStr(checkDate);
@@ -51,22 +53,22 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
       } else {
         tempStreak = 0;
       }
-      checkDate = new Date(checkDate.getTime() + DAY_MS);
+      checkDate = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate() + 1);
     }
 
     // Active Current Streak
-    const yesterday = new Date(todayTime - DAY_MS);
+    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
     const yesterdayKey = getLocalDateStr(yesterday);
 
     let activeStreak = 0;
-    let currCheck = counts[todayStr] ? new Date(todayTime) : (counts[yesterdayKey] ? yesterday : null);
+    let currCheck = counts[todayStr] ? new Date(now.getFullYear(), now.getMonth(), now.getDate()) : (counts[yesterdayKey] ? yesterday : null);
 
     if (currCheck) {
       while (true) {
         const key = getLocalDateStr(currCheck);
         if (counts[key] > 0) {
           activeStreak++;
-          currCheck = new Date(currCheck.getTime() - DAY_MS);
+          currCheck = new Date(currCheck.getFullYear(), currCheck.getMonth(), currCheck.getDate() - 1);
         } else {
           break;
         }
@@ -79,16 +81,16 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
       currentStreak: activeStreak,
       longestStreak: maxStreak,
     };
-  }, [progress, userId, todayTime, todayStr]);
+  }, [progress, activeUserId, todayTime, todayStr, now]);
 
   // Generate 52 weeks grid (ending on current week's Saturday)
   const weeksData = useMemo(() => {
     const dayOfWeek = now.getDay(); // 0 = Sun, 6 = Sat
-    const endDate = new Date(todayTime + (6 - dayOfWeek) * DAY_MS);
-    const startDate = new Date(endDate.getTime() - (52 * 7 - 1) * DAY_MS);
+    const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (6 - dayOfWeek));
+    const startDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() - (52 * 7 - 1));
 
     const weeks = [];
-    let currentDate = new Date(startDate.getTime());
+    let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
 
     for (let w = 0; w < 52; w++) {
       const days = [];
@@ -96,7 +98,7 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
       for (let d = 0; d < 7; d++) {
         const key = getLocalDateStr(currentDate);
         const count = dateCounts[key] || 0;
-        const dateTime = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()).getTime();
+        const dateTime = currentDate.getTime();
 
         days.push({
           date: new Date(currentDate.getTime()),
@@ -273,3 +275,4 @@ export default function GitHubStreakTracker({ progress = [], userId = null, titl
     </div>
   );
 }
+
