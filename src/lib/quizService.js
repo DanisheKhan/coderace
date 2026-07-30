@@ -65,6 +65,7 @@ export const fetchQuizQuestions = async () => {
         options: opts.length > 0 ? opts : ["Option A", "Option B", "Option C", "Option D"],
         explanation: q.explanation || "No explanation provided.",
         category: deriveQuestionCategory({ question_text: qText, explanation: q.explanation, category: q.category }),
+        difficulty: q.difficulty || 'Medium',
       };
     });
   } catch (err) {

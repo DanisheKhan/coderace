@@ -469,7 +469,7 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                           className="w-full px-3 py-1.5 text-left rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800/60 transition-colors flex items-center gap-2 cursor-pointer"
                         >
                           <Settings className="w-3.5 h-3.5 text-zinc-400" />
-                          <span>Edit Settings</span>
+                          <span>Edit Profile</span>
                         </button>
 
                         <div className="border-t border-zinc-800/80 my-1" />

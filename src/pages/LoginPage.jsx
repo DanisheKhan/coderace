@@ -9,6 +9,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { pageTransition } from '../lib/animations';
 
+import { compressImage } from '../utils/imageCompressor';
+
 const COLORS = [
   { name: 'Violet', value: '#8b5cf6' },
   { name: 'Emerald', value: '#10b981' },
@@ -106,12 +108,17 @@ const LoginPage = () => {
     return () => clearTimeout(timer);
   }, [username, isSignUp]);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setAvatarFile(file);
-      setAvatarPreview(URL.createObjectURL(file));
+    if (!file) return;
+
+    try {
+      const compressed = await compressImage(file);
+      setAvatarFile(compressed);
+      setAvatarPreview(URL.createObjectURL(compressed));
       setError('');
+    } catch (err) {
+      setError(err.message || 'Error processing image.');
     }
   };
 
@@ -185,7 +192,7 @@ const LoginPage = () => {
 
           const { error: uploadError } = await supabase.storage
             .from('avatars')
-            .upload(filePath, avatarFile);
+            .upload(filePath, avatarFile, { upsert: true });
 
           if (!uploadError) {
             const { data: urlData } = supabase.storage

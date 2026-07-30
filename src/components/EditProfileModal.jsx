@@ -5,6 +5,8 @@ import { X, User, AtSign, Camera, Check, Sparkles, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { backdropVariants, modalVariants } from '../lib/animations';
 
+import { compressImage } from '../utils/imageCompressor';
+
 const COLORS = [
   { name: 'Violet', value: '#8b5cf6' },
   { name: 'Emerald', value: '#10b981' },
@@ -85,12 +87,17 @@ const EditProfileModal = ({ isOpen, onClose }) => {
 
   if (!profile) return null;
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setAvatarFile(file);
-      setAvatarPreview(URL.createObjectURL(file));
+    if (!file) return;
+
+    try {
+      const compressed = await compressImage(file);
+      setAvatarFile(compressed);
+      setAvatarPreview(URL.createObjectURL(compressed));
       setError('');
+    } catch (err) {
+      setError(err.message || 'Error processing image.');
     }
   };
 
@@ -135,13 +142,25 @@ const EditProfileModal = ({ isOpen, onClose }) => {
       let avatarUrl = profile.avatar_url || '';
 
       if (avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop();
-        const fileName = `${user.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        // Delete old avatar file from bucket to prevent orphaned files
+        if (profile.avatar_url && profile.avatar_url.includes('/avatars/')) {
+          const oldPath = profile.avatar_url.split('/avatars/')[1];
+          if (oldPath) {
+            try {
+              await supabase.storage.from('avatars').remove([decodeURIComponent(oldPath)]);
+            } catch (err) {
+              console.warn('Could not remove old avatar file:', err);
+            }
+          }
+        }
+
+        const fileExt = avatarFile.name.split('.').pop() || 'jpg';
+        const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
         const filePath = `user_avatars/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('avatars')
-          .upload(filePath, avatarFile);
+          .upload(filePath, avatarFile, { upsert: true });
 
         if (uploadError) throw uploadError;
 

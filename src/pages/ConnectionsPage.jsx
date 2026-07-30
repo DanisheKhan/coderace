@@ -141,140 +141,154 @@ export default function ConnectionsPage() {
       animate="animate"
       exit="exit"
       variants={pageTransition}
-      className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 font-sans"
+      className="p-3.5 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6 font-sans"
     >
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-5">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800/80 pb-4 sm:pb-5">
+        <div className="space-y-1">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-violet-400">
+            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-violet-400 shrink-0">
               <Users className="w-4 h-4" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-mono">
+            <h1 className="text-lg sm:text-2xl font-extrabold text-white tracking-tight font-mono">
               RACERS & CONNECTIONS
             </h1>
           </div>
-          <p className="text-xs text-zinc-400 mt-1 ml-10">
+          <p className="text-xs text-zinc-400 leading-relaxed">
             Discover racers, manage follow requests, and connect with peers across CodeRace.
           </p>
         </div>
       </div>
 
       {/* Overview Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase">Discover</p>
-            <p className="text-xl font-bold text-white font-mono mt-0.5">{discoverUsers.length}</p>
-            <p className="text-[10px] text-zinc-500 font-mono mt-0.5">registered racers</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="p-3 sm:p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase truncate">Discover</p>
+            <p className="text-lg sm:text-xl font-bold text-white font-mono mt-0.5">{discoverUsers.length}</p>
+            <p className="text-[10px] text-zinc-500 font-mono mt-0.5 truncate">registered racers</p>
           </div>
-          <UserSearch className="w-5 h-5 text-indigo-400 opacity-80" />
+          <UserSearch className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400 opacity-80 shrink-0" />
         </div>
 
-        <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase">Followers</p>
-            <p className="text-xl font-bold text-white font-mono mt-0.5">{followers.length}</p>
-            <p className="text-[10px] text-zinc-500 font-mono mt-0.5">following you</p>
+        <div className="p-3 sm:p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase truncate">Followers</p>
+            <p className="text-lg sm:text-xl font-bold text-white font-mono mt-0.5">{followers.length}</p>
+            <p className="text-[10px] text-zinc-500 font-mono mt-0.5 truncate">following you</p>
           </div>
-          <Users className="w-5 h-5 text-emerald-400 opacity-80" />
+          <Users className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400 opacity-80 shrink-0" />
         </div>
 
-        <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase">Following</p>
-            <p className="text-xl font-bold text-white font-mono mt-0.5">{following.length}</p>
-            <p className="text-[10px] text-zinc-500 font-mono mt-0.5">you follow</p>
+        <div className="p-3 sm:p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase truncate">Following</p>
+            <p className="text-lg sm:text-xl font-bold text-white font-mono mt-0.5">{following.length}</p>
+            <p className="text-[10px] text-zinc-500 font-mono mt-0.5 truncate">you follow</p>
           </div>
-          <UserCheck className="w-5 h-5 text-violet-400 opacity-80" />
+          <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 text-violet-400 opacity-80 shrink-0" />
         </div>
 
-        <div className={`p-4 rounded-xl border flex items-center justify-between ${
+        <div className={`p-3 sm:p-4 rounded-xl border flex items-center justify-between gap-2 ${
           pendingRequests.length > 0
             ? 'bg-amber-500/10 border-amber-500/30'
             : 'bg-zinc-900/60 border-zinc-800/80'
         }`}>
-          <div>
-            <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase">Requests</p>
-            <p className={`text-xl font-bold font-mono mt-0.5 ${pendingRequests.length > 0 ? 'text-amber-400' : 'text-white'}`}>
+          <div className="min-w-0">
+            <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase truncate">Requests</p>
+            <p className={`text-lg sm:text-xl font-bold font-mono mt-0.5 ${pendingRequests.length > 0 ? 'text-amber-400' : 'text-white'}`}>
               {pendingRequests.length}
             </p>
-            <p className="text-[10px] text-zinc-500 font-mono mt-0.5">pending action</p>
+            <p className="text-[10px] text-zinc-500 font-mono mt-0.5 truncate">pending action</p>
           </div>
-          <Clock className={`w-5 h-5 opacity-80 ${pendingRequests.length > 0 ? 'text-amber-400' : 'text-zinc-500'}`} />
+          <Clock className={`w-4 h-4 sm:w-5 sm:h-5 opacity-80 shrink-0 ${pendingRequests.length > 0 ? 'text-amber-400' : 'text-zinc-500'}`} />
         </div>
       </div>
 
       {/* Tabs & Search Navigation Header */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-zinc-900/60 border border-zinc-800/80 p-2 rounded-xl">
-        {/* Segmented Control Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 shrink-0">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-zinc-900/40 border border-zinc-800/80 p-2 sm:p-2.5 rounded-2xl">
+        {/* Responsive Grid Tabs (2x2 on mobile, 4-col on desktop) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-zinc-950 p-1.5 rounded-xl border border-zinc-800/90 w-full sm:w-auto shrink-0">
           <button
+            type="button"
             onClick={() => setActiveTab('discover')}
-            className={`px-3 py-2 text-xs font-mono font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`px-3 py-2 text-xs font-mono font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 select-none ${
               activeTab === 'discover'
-                ? 'bg-white text-zinc-900 shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-white text-zinc-950 font-bold shadow-md shadow-white/5'
+                : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/50'
             }`}
           >
-            <UserSearch className="w-3.5 h-3.5" />
-            <span>Discover Racers</span>
+            <UserSearch className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Discover</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('followers')}
-            className={`px-3 py-2 text-xs font-mono font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`px-3 py-2 text-xs font-mono font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 select-none ${
               activeTab === 'followers'
-                ? 'bg-white text-zinc-900 shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-white text-zinc-950 font-bold shadow-md shadow-white/5'
+                : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/50'
             }`}
           >
-            <span>Followers</span>
-            <span className="px-1.5 py-0.2 text-[10px] bg-zinc-800/80 text-zinc-300 rounded font-mono">
+            <span className="truncate">Followers</span>
+            <span className={`px-1.5 py-0.2 text-[10px] rounded font-mono shrink-0 ${
+              activeTab === 'followers' ? 'bg-zinc-200 text-zinc-950 font-bold' : 'bg-zinc-900 text-zinc-400 border border-zinc-800'
+            }`}>
               {followers.length}
             </span>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('following')}
-            className={`px-3 py-2 text-xs font-mono font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`px-3 py-2 text-xs font-mono font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 select-none ${
               activeTab === 'following'
-                ? 'bg-white text-zinc-900 shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-white text-zinc-950 font-bold shadow-md shadow-white/5'
+                : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/50'
             }`}
           >
-            <span>Following</span>
-            <span className="px-1.5 py-0.2 text-[10px] bg-zinc-800/80 text-zinc-300 rounded font-mono">
+            <span className="truncate">Following</span>
+            <span className={`px-1.5 py-0.2 text-[10px] rounded font-mono shrink-0 ${
+              activeTab === 'following' ? 'bg-zinc-200 text-zinc-950 font-bold' : 'bg-zinc-900 text-zinc-400 border border-zinc-800'
+            }`}>
               {following.length}
             </span>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('requests')}
-            className={`px-3 py-2 text-xs font-mono font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`px-3 py-2 text-xs font-mono font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 select-none ${
               activeTab === 'requests'
-                ? 'bg-white text-zinc-900 shadow-sm'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-white text-zinc-950 font-bold shadow-md shadow-white/5'
+                : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/50'
             }`}
           >
-            <span>Requests</span>
-            {pendingRequests.length > 0 && (
-              <span className="px-1.5 py-0.2 text-[10px] bg-indigo-500 text-white rounded-full font-mono font-bold">
+            <span className="truncate">Requests</span>
+            {pendingRequests.length > 0 ? (
+              <span className="px-1.5 py-0.2 text-[10px] bg-indigo-500 text-white rounded-full font-mono font-bold shrink-0">
                 {pendingRequests.length}
+              </span>
+            ) : (
+              <span className={`px-1.5 py-0.2 text-[10px] rounded font-mono shrink-0 ${
+                activeTab === 'requests' ? 'bg-zinc-200 text-zinc-950 font-bold' : 'bg-zinc-900 text-zinc-400 border border-zinc-800'
+              }`}>
+                0
               </span>
             )}
           </button>
         </div>
 
         {/* Live Search Input */}
-        <div className="relative flex-1 max-w-sm">
-          <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+        <div className="relative flex-1 w-full sm:max-w-xs">
+          <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder={`Search ${activeTab === 'discover' ? 'all racers' : activeTab}...`}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-700 transition-colors"
+            className="w-full pl-9 pr-3 py-2 text-xs bg-zinc-950 border border-zinc-800/90 rounded-xl text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-700 transition-colors"
           />
         </div>
       </div>

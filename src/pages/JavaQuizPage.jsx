@@ -47,6 +47,13 @@ const TOPICS_CONFIG = [
   { id: 'Core Java & Syntax', name: 'Core Syntax', icon: BookOpen, color: '#3b82f6', desc: 'Generics, Modifiers, String Pool' },
 ];
 
+const DIFFICULTY_CONFIG = [
+  { id: 'all', label: 'All Levels' },
+  { id: 'Easy', label: 'Easy' },
+  { id: 'Medium', label: 'Medium' },
+  { id: 'Hard', label: 'Hard' },
+];
+
 const SPEED_BLITZ_SECONDS = 15; // 15 seconds per question in Speed Blitz mode
 
 export default function JavaQuizPage() {
@@ -63,6 +70,7 @@ export default function JavaQuizPage() {
 
   // Selected Quiz Configuration
   const [selectedTopic, setSelectedTopic] = useState('all');
+  const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [selectedMode, setSelectedMode] = useState('standard'); // 'standard' | 'speed'
 
   // Playing states
@@ -169,11 +177,14 @@ export default function JavaQuizPage() {
     return counts;
   }, [questions]);
 
-  // Filter questions by selected topic
+  // Filter questions by selected topic & difficulty
   const availableQuestionsForTopic = useMemo(() => {
-    if (selectedTopic === 'all') return questions;
-    return questions.filter(q => q.category === selectedTopic);
-  }, [questions, selectedTopic]);
+    return questions.filter(q => {
+      const matchTopic = selectedTopic === 'all' || q.category === selectedTopic;
+      const matchDiff = selectedDifficulty === 'all' || (q.difficulty && q.difficulty.toLowerCase() === selectedDifficulty.toLowerCase());
+      return matchTopic && matchDiff;
+    });
+  }, [questions, selectedTopic, selectedDifficulty]);
 
   // Speed Blitz Timer Interval Handler
   useEffect(() => {
@@ -416,6 +427,53 @@ export default function JavaQuizPage() {
             </div>
           </div>
 
+          {/* DIFFICULTY SELECTION GRID */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>Select Difficulty Level</span>
+              </h3>
+              <span className="text-[10px] font-mono text-zinc-500">Filter questions by target difficulty</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {DIFFICULTY_CONFIG.map(d => {
+                const isSelected = selectedDifficulty === d.id;
+                const count = questions.filter(q => {
+                  const matchTopic = selectedTopic === 'all' || q.category === selectedTopic;
+                  const matchDiff = d.id === 'all' || (q.difficulty && q.difficulty.toLowerCase() === d.id.toLowerCase());
+                  return matchTopic && matchDiff;
+                }).length;
+
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => setSelectedDifficulty(d.id)}
+                    className={`p-3 rounded-xl border text-xs font-mono transition-all flex items-center justify-between cursor-pointer ${
+                      isSelected 
+                        ? 'bg-zinc-900 border-zinc-700 text-white font-bold shadow-md ring-1 ring-zinc-700' 
+                        : 'bg-zinc-950/60 border-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${
+                        d.id === 'Easy' ? 'bg-emerald-400 shadow-sm shadow-emerald-500/50' :
+                        d.id === 'Medium' ? 'bg-amber-400 shadow-sm shadow-amber-500/50' :
+                        d.id === 'Hard' ? 'bg-rose-400 shadow-sm shadow-rose-500/50' : 'bg-violet-400'
+                      }`} />
+                      <span>{d.label}</span>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+                      {count} Qs
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* MODE SELECTION & CTA */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
             
@@ -426,7 +484,7 @@ export default function JavaQuizPage() {
                 </span>
                 <h2 className="text-xl font-bold text-white tracking-tight">Choose Your Battle Pace</h2>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Selected Topic: <span className="text-violet-300 font-bold">{TOPICS_CONFIG.find(t => t.id === selectedTopic)?.name}</span> ({availableQuestionsForTopic.length} Available Questions)
+                  Topic: <span className="text-violet-300 font-bold">{TOPICS_CONFIG.find(t => t.id === selectedTopic)?.name}</span> • Difficulty: <span className="text-amber-300 font-bold">{DIFFICULTY_CONFIG.find(d => d.id === selectedDifficulty)?.label}</span> ({availableQuestionsForTopic.length} Available Questions)
                 </p>
               </div>
 
@@ -695,9 +753,18 @@ export default function JavaQuizPage() {
             {/* Question Card */}
             <div className="glass-panel rounded-2xl p-6 space-y-6 shadow-2xl relative">
               <div className="flex items-start justify-between gap-3">
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-violet-500/10 text-violet-300 border border-violet-500/20">
-                  {currentQuestionsList[currentIndex].category || 'Java Concept'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                    {currentQuestionsList[currentIndex].category || 'Java Concept'}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${
+                    currentQuestionsList[currentIndex].difficulty?.toLowerCase() === 'easy' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                    currentQuestionsList[currentIndex].difficulty?.toLowerCase() === 'hard' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                    'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                  }`}>
+                    {currentQuestionsList[currentIndex].difficulty || 'Medium'}
+                  </span>
+                </div>
 
                 {/* Bookmark Toggle */}
                 <button
