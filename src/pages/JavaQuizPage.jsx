@@ -272,7 +272,9 @@ export default function JavaQuizPage() {
       // Finished!
       setGameState('result');
       if (profile?.id) {
-        await saveQuizAttempt(profile.id, score, currentQuestionsList.length);
+        const calculatedScore = userAnswersHistory.reduce((acc, curr) => acc + (curr.isCorrect ? 1 : 0), 0);
+        const finalScore = Math.max(score, calculatedScore);
+        await saveQuizAttempt(profile.id, finalScore, currentQuestionsList.length);
         loadHistoryAndLeaderboard();
       }
     }
@@ -601,36 +603,48 @@ export default function JavaQuizPage() {
             </div>
           ) : (
             <div className="divide-y divide-zinc-800/60 border border-zinc-800/80 rounded-xl overflow-hidden bg-zinc-950/40 font-mono">
-              {globalLeaderboard.map((item, idx) => (
-                <div key={item.userId} className="p-3.5 flex items-center justify-between hover:bg-zinc-900/40 transition-colors gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-xs text-zinc-600 w-5 shrink-0 text-right">#{idx + 1}</span>
-                    <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-sm uppercase shrink-0 border border-white/10"
-                      style={{ backgroundColor: item.profile.avatar_url ? 'transparent' : (item.profile.avatar_color || '#8b5cf6') }}
-                    >
-                      {item.profile.avatar_url ? (
-                        <img src={item.profile.avatar_url} alt={item.profile.display_name} className="w-full h-full object-cover rounded-xl" />
-                      ) : (
-                        item.profile.display_name?.charAt(0) || '?'
-                      )}
+              {globalLeaderboard.map((item, idx) => {
+                const displayName = item.profile?.display_name || item.display_name || 'Racer';
+                const username = item.profile?.username || item.username;
+                const avatarUrl = item.profile?.avatar_url || item.avatar_url;
+                const avatarColor = item.profile?.avatar_color || item.avatar_color || '#8b5cf6';
+                const uid = item.userId || item.user_id || '';
+                const bestPct = item.bestPct ?? item.percentage ?? 0;
+                const bestScore = item.bestScore ?? item.score ?? 0;
+                const total = item.total ?? item.total_questions ?? 0;
+                const attemptsCount = item.attemptsCount ?? 1;
+
+                return (
+                  <div key={uid || idx} className="p-3.5 flex items-center justify-between hover:bg-zinc-900/40 transition-colors gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-xs text-zinc-600 w-5 shrink-0 text-right">#{idx + 1}</span>
+                      <div
+                        className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-sm uppercase shrink-0 border border-white/10 overflow-hidden"
+                        style={{ backgroundColor: avatarUrl ? 'transparent' : avatarColor }}
+                      >
+                        {avatarUrl ? (
+                          <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover rounded-xl" />
+                        ) : (
+                          displayName.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-zinc-100 truncate">{displayName}</p>
+                        <p className="text-[10px] text-zinc-500 truncate">
+                          {username ? `@${username}` : `ID: ${uid.slice(0, 8)}...`}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-zinc-100 truncate">{item.profile.display_name}</p>
-                      <p className="text-[10px] text-zinc-500 truncate">
-                        {item.profile.username ? `@${item.profile.username}` : `ID: ${item.userId.slice(0, 8)}...`}
+
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-bold text-emerald-400">{bestPct}% Accuracy</p>
+                      <p className="text-[10px] text-zinc-500">
+                        Best: {bestScore}/{total} • {attemptsCount} {attemptsCount === 1 ? 'attempt' : 'attempts'}
                       </p>
                     </div>
                   </div>
-
-                  <div className="text-right shrink-0">
-                    <p className="text-xs font-bold text-emerald-400">{item.bestPct}% Accuracy</p>
-                    <p className="text-[10px] text-zinc-500">
-                      Best: {item.bestScore}/{item.total} • {item.attemptsCount} attempts
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

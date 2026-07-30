@@ -81,9 +81,8 @@ export const saveQuizAttempt = async (userId, score, total) => {
       .insert([
         {
           user_id: userId,
-          score,
-          total_questions: total,
-          percentage: total > 0 ? Math.round((score / total) * 100) : 0,
+          score: Number(score),
+          total: Number(total),
         }
       ])
       .select()
@@ -103,10 +102,15 @@ export const fetchUserAttempts = async (userId) => {
       .from('java_quiz_attempts')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('completed_at', { ascending: false });
 
     if (error) throw error;
-    return { data, error: null };
+    const normalized = (data || []).map(item => ({
+      ...item,
+      total_questions: item.total,
+      created_at: item.completed_at,
+    }));
+    return { data: normalized, error: null };
   } catch (err) {
     return { data: [], error: err };
   }
@@ -123,7 +127,15 @@ export const fetchUserQuizBest = async (userId) => {
       .limit(1);
 
     if (error) throw error;
-    return data && data.length > 0 ? data[0] : null;
+    if (data && data.length > 0) {
+      const item = data[0];
+      return {
+        ...item,
+        total_questions: item.total,
+        created_at: item.completed_at,
+      };
+    }
+    return null;
   } catch (err) {
     return null;
   }
@@ -133,16 +145,30 @@ export const fetchGlobalQuizLeaderboard = async () => {
   try {
     const { data: attempts, error: attemptsError } = await supabase
       .from('java_quiz_attempts')
-      .select('user_id, score, total_questions, percentage, created_at');
+      .select('user_id, score, total, percentage, completed_at');
 
     if (attemptsError) throw attemptsError;
     if (!attempts || attempts.length === 0) return [];
 
     const userBestMap = {};
+    const userAttemptsCountMap = {};
+
     attempts.forEach(item => {
+      userAttemptsCountMap[item.user_id] = (userAttemptsCountMap[item.user_id] || 0) + 1;
       const existing = userBestMap[item.user_id];
-      if (!existing || item.score > existing.score || (item.score === existing.score && item.percentage > existing.percentage)) {
-        userBestMap[item.user_id] = item;
+      const score = Number(item.score);
+      const pct = Number(item.percentage);
+
+      if (
+        !existing ||
+        score > existing.score ||
+        (score === existing.score && pct > existing.percentage)
+      ) {
+        userBestMap[item.user_id] = {
+          ...item,
+          score,
+          percentage: pct,
+        };
       }
     });
 
@@ -165,22 +191,34 @@ export const fetchGlobalQuizLeaderboard = async () => {
       const best = userBestMap[uid];
       const userProfile = profilesMap[uid] || { display_name: 'Unknown Racer', username: 'unknown' };
       return {
+        userId: uid,
         user_id: uid,
+        profile: {
+          display_name: userProfile.display_name,
+          username: userProfile.username,
+          avatar_color: userProfile.avatar_color,
+          avatar_url: userProfile.avatar_url,
+        },
         display_name: userProfile.display_name,
         username: userProfile.username,
         avatar_color: userProfile.avatar_color,
         avatar_url: userProfile.avatar_url,
+        bestScore: best.score,
         score: best.score,
-        total_questions: best.total_questions,
+        total: best.total,
+        total_questions: best.total,
+        bestPct: best.percentage,
         percentage: best.percentage,
-        created_at: best.created_at
+        attemptsCount: userAttemptsCountMap[uid] || 1,
+        created_at: best.completed_at,
+        completed_at: best.completed_at
       };
     });
 
     leaderboard.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      if (b.percentage !== a.percentage) return b.percentage - a.percentage;
-      return new Date(a.created_at) - new Date(b.created_at);
+      if (b.bestPct !== a.bestPct) return b.bestPct - a.bestPct;
+      if (b.bestScore !== a.bestScore) return b.bestScore - a.bestScore;
+      return new Date(a.completed_at) - new Date(b.completed_at);
     });
 
     return leaderboard;
@@ -194,15 +232,24 @@ export const fetchAllUsersQuizBest = async () => {
   try {
     const { data: attempts, error } = await supabase
       .from('java_quiz_attempts')
-      .select('user_id, score, total_questions, percentage, created_at');
+      .select('user_id, score, total, percentage, completed_at');
 
     if (error || !attempts) return {};
 
     const userBestMap = {};
     attempts.forEach(item => {
       const existing = userBestMap[item.user_id];
-      if (!existing || item.score > existing.score || (item.score === existing.score && item.percentage > existing.percentage)) {
-        userBestMap[item.user_id] = item;
+      const score = Number(item.score);
+      const pct = Number(item.percentage);
+
+      if (!existing || score > existing.score || (score === existing.score && pct > existing.percentage)) {
+        userBestMap[item.user_id] = {
+          ...item,
+          score,
+          percentage: pct,
+          total_questions: item.total,
+          created_at: item.completed_at,
+        };
       }
     });
 
@@ -217,8 +264,8 @@ export const fetchRecentQuizAttempts = async () => {
   try {
     const { data: attempts, error } = await supabase
       .from('java_quiz_attempts')
-      .select('id, user_id, score, total_questions, percentage, created_at')
-      .order('created_at', { ascending: false })
+      .select('id, user_id, score, total, percentage, completed_at')
+      .order('completed_at', { ascending: false })
       .limit(10);
 
     if (error) throw error;
@@ -235,16 +282,26 @@ export const fetchRecentQuizAttempts = async () => {
 
     return attempts.map(item => {
       const p = profilesMap[item.user_id] || { display_name: 'Unknown', username: 'unknown' };
+      const pct = Number(item.percentage);
       return {
         id: `quiz-${item.id}`,
+        userId: item.user_id,
         user_id: item.user_id,
+        userName: p.display_name,
         user_name: p.display_name,
         username: p.username,
+        avatarColor: p.avatar_color,
         avatar_color: p.avatar_color,
+        avatarUrl: p.avatar_url,
         avatar_url: p.avatar_url,
         type: 'quiz',
-        details: `Scored ${item.score}/${item.total_questions} (${item.percentage}%) in Java Quiz`,
-        timestamp: item.created_at
+        score: item.score,
+        total: item.total,
+        total_questions: item.total,
+        percentage: pct,
+        details: `Scored ${item.score}/${item.total} (${pct}%) in Java Quiz`,
+        updatedAt: item.completed_at,
+        timestamp: item.completed_at
       };
     });
   } catch (err) {

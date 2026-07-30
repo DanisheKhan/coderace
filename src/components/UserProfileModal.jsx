@@ -251,7 +251,8 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
     if (user?.id) {
       setLoadingAttempts(true);
       fetchUserAttempts(user.id)
-        .then(setQuizAttempts)
+        .then(res => setQuizAttempts(res?.data || (Array.isArray(res) ? res : [])))
+        .catch(() => setQuizAttempts([]))
         .finally(() => setLoadingAttempts(false));
     }
   }, [user?.id]);
@@ -1060,38 +1061,54 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
                   <Brain className="w-4 h-4 text-indigo-400" />
                   <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">Java Concept Quizzes</h4>
                 </div>
-                <span className="text-xs font-mono text-zinc-400">{quizAttempts.length} attempts</span>
+                <span className="text-xs font-mono text-zinc-400">
+                  {(Array.isArray(quizAttempts) ? quizAttempts : quizAttempts?.data || []).length} attempts
+                </span>
               </div>
 
-              {loadingAttempts ? (
-                <div className="py-12 text-center text-xs font-mono text-zinc-500">Loading quiz history…</div>
-              ) : quizAttempts.length === 0 ? (
-                <div className="text-center py-12 border border-zinc-800 rounded-xl bg-zinc-950/40">
-                  <Brain className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-                  <p className="text-xs text-zinc-500 font-mono">No quiz attempts recorded yet.</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-zinc-800/60 border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950/40">
-                  {quizAttempts.map(attempt => {
-                    const scorePct = Math.round((attempt.score / attempt.total_questions) * 100);
-                    return (
-                      <div key={attempt.id} className="p-3.5 flex items-center justify-between hover:bg-zinc-900/40 transition-colors">
-                        <div className="space-y-1">
-                          <p className="text-xs font-bold text-zinc-200">{attempt.quiz_title || 'Java Quiz'}</p>
-                          <p className="text-[10px] text-zinc-500 font-mono">
-                            {formatRelativeTime(attempt.created_at)}
-                          </p>
+              {(() => {
+                const attemptsList = Array.isArray(quizAttempts) ? quizAttempts : quizAttempts?.data || [];
+                if (loadingAttempts) {
+                  return <div className="py-12 text-center text-xs font-mono text-zinc-500">Loading quiz history…</div>;
+                }
+                if (attemptsList.length === 0) {
+                  return (
+                    <div className="text-center py-12 border border-zinc-800 rounded-xl bg-zinc-950/40">
+                      <Brain className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+                      <p className="text-xs text-zinc-500 font-mono">No quiz attempts recorded yet.</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="divide-y divide-zinc-800/60 border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950/40">
+                    {attemptsList.map((attempt, idx) => {
+                      const totalQs = attempt.total_questions || attempt.total || 0;
+                      const scorePct = attempt.percentage !== undefined && attempt.percentage !== null 
+                        ? Number(attempt.percentage)
+                        : (totalQs > 0 ? Math.round((attempt.score / totalQs) * 100) : 0);
+                      const timeStr = attempt.created_at || attempt.completed_at;
+
+                      return (
+                        <div key={attempt.id || idx} className="p-3.5 flex items-center justify-between hover:bg-zinc-900/40 transition-colors">
+                          <div className="space-y-1">
+                            <p className="text-xs font-bold text-zinc-200">{attempt.quiz_title || 'Java Quiz'}</p>
+                            {timeStr && (
+                              <p className="text-[10px] text-zinc-500 font-mono">
+                                {formatRelativeTime(timeStr)}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right font-mono">
+                            <span className={`text-sm font-bold ${scorePct >= 80 ? 'text-emerald-400' : scorePct >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
+                              {attempt.score} / {totalQs} ({scorePct}%)
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-right font-mono">
-                          <span className={`text-sm font-bold ${scorePct >= 80 ? 'text-emerald-400' : scorePct >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
-                            {attempt.score} / {attempt.total_questions} ({scorePct}%)
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

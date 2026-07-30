@@ -437,8 +437,11 @@ const LeaderboardPage = () => {
       }
     }
 
-    const combined = [...dsaList, ...recentQuizAttempts];
-    combined.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    const approvedUserIds = new Set(approvedProfiles.map(p => p.id));
+    const filteredQuizAttempts = recentQuizAttempts.filter(q => approvedUserIds.has(q.userId || q.user_id));
+
+    const combined = [...dsaList, ...filteredQuizAttempts];
+    combined.sort((a, b) => new Date(b.updatedAt || b.timestamp || 0) - new Date(a.updatedAt || a.timestamp || 0));
 
     return combined;
   }, [progress, approvedProfiles, questions, recentQuizAttempts]);
