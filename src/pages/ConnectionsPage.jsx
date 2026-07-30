@@ -16,6 +16,7 @@ import {
   getFollowStatus 
 } from '../lib/followService';
 import UserProfileModal from '../components/UserProfileModal';
+import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pageTransition, staggerContainer, fadeUp } from '../lib/animations';
 
@@ -39,32 +40,40 @@ export default function ConnectionsPage() {
 
   const loadData = async () => {
     if (!currentUserId) return;
-    setLoading(true);
     
-    const [followersData, followingData, pendingData] = await Promise.all([
-      getFollowersList(currentUserId),
-      getFollowingList(currentUserId),
-      getPendingRequests(currentUserId)
-    ]);
+    try {
+      const [followersData, followingData, pendingData, myFollowsRes] = await Promise.all([
+        getFollowersList(currentUserId),
+        getFollowingList(currentUserId),
+        getPendingRequests(currentUserId),
+        supabase
+          .from('follows')
+          .select('following_id, status')
+          .eq('follower_id', currentUserId)
+      ]);
 
-    setFollowers(Array.isArray(followersData) ? followersData : []);
-    setFollowing(Array.isArray(followingData) ? followingData : []);
-    setPendingRequests(Array.isArray(pendingData) ? pendingData : (pendingData?.data || []));
+      setFollowers(Array.isArray(followersData) ? followersData : []);
+      setFollowing(Array.isArray(followingData) ? followingData : []);
+      setPendingRequests(Array.isArray(pendingData) ? pendingData : (pendingData?.data || []));
 
-    // Load status for all other users
-    const statuses = {};
-    for (const u of profiles) {
-      if (u.id !== currentUserId) {
-        const st = await getFollowStatus(currentUserId, u.id);
-        statuses[u.id] = st;
+      const statuses = {};
+      if (myFollowsRes.data) {
+        myFollowsRes.data.forEach(f => {
+          statuses[f.following_id] = f.status;
+        });
       }
+      setFollowStatuses(statuses);
+    } catch (err) {
+      console.error('Error loading connections:', err);
+    } finally {
+      setLoading(false);
     }
-    setFollowStatuses(statuses);
-    setLoading(false);
   };
 
   useEffect(() => {
     loadData();
+    window.addEventListener('follow-system-changed', loadData);
+    return () => window.removeEventListener('follow-system-changed', loadData);
   }, [currentUserId, profiles.length]);
 
   const handleFollowAction = async (targetUserId, e) => {

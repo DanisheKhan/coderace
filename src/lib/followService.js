@@ -1,5 +1,11 @@
 import { supabase } from './supabase';
 
+const notifyFollowSystemChanged = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('follow-system-changed'));
+  }
+};
+
 /**
  * Send a follow request to a target user
  */
@@ -25,6 +31,7 @@ export async function sendFollowRequest(followerId, targetUserId) {
     return { data: null, error };
   }
 
+  notifyFollowSystemChanged();
   return { data, error: null };
 }
 
@@ -47,30 +54,18 @@ export async function cancelFollowRequest(followerId, targetUserId) {
     return { data: null, error };
   }
 
+  notifyFollowSystemChanged();
   return { data, error: null };
 }
 
 /**
  * Accept or decline an incoming follow request.
- * Accepting creates a mutual follow connection so both users follow each other.
+ * Accepting allows the requesting follower to view the user's profile (Instagram style).
  */
 export async function respondToFollowRequest(requestId, accept) {
   if (!requestId) return { error: new Error('Request ID is required') };
 
   if (accept) {
-    // 1. Fetch request details to get follower_id & following_id
-    const { data: reqData, error: fetchErr } = await supabase
-      .from('follows')
-      .select('follower_id, following_id')
-      .eq('id', requestId)
-      .single();
-
-    if (fetchErr || !reqData) {
-      console.error('Error fetching request details:', fetchErr);
-      return { data: null, error: fetchErr || new Error('Request not found') };
-    }
-
-    // 2. Mark incoming request as accepted
     const { data, error } = await supabase
       .from('follows')
       .update({ status: 'accepted', updated_at: new Date().toISOString() })
@@ -83,18 +78,7 @@ export async function respondToFollowRequest(requestId, accept) {
       return { data: null, error };
     }
 
-    // 3. Upsert reciprocal follow row so both users follow each other (mutual connection)
-    await supabase
-      .from('follows')
-      .upsert([
-        {
-          follower_id: reqData.following_id,
-          following_id: reqData.follower_id,
-          status: 'accepted',
-          updated_at: new Date().toISOString()
-        }
-      ], { onConflict: 'follower_id,following_id' });
-
+    notifyFollowSystemChanged();
     return { data, error: null };
   } else {
     const { data, error } = await supabase
@@ -106,36 +90,35 @@ export async function respondToFollowRequest(requestId, accept) {
       console.error('Error declining follow request:', error);
       return { data: null, error };
     }
+
+    notifyFollowSystemChanged();
     return { data, error: null };
   }
 }
 
 /**
- * Get list of user IDs who have mutual follow connections with the specified user
- * Always includes self ID.
+ * Get list of user IDs connected with specified user (following + followers + self)
  */
 export async function getConnectedUserIds(userId) {
   if (!userId) return [];
 
-  const { data: following } = await supabase
-    .from('follows')
-    .select('following_id')
-    .eq('follower_id', userId)
-    .eq('status', 'accepted');
+  const [followingRes, followersRes] = await Promise.all([
+    supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', userId)
+      .eq('status', 'accepted'),
+    supabase
+      .from('follows')
+      .select('follower_id')
+      .eq('following_id', userId)
+      .eq('status', 'accepted')
+  ]);
 
-  const { data: followers } = await supabase
-    .from('follows')
-    .select('follower_id')
-    .eq('following_id', userId)
-    .eq('status', 'accepted');
+  const followingIds = (followingRes.data || []).map(f => f.following_id);
+  const followerIds = (followersRes.data || []).map(f => f.follower_id);
 
-  const followingIds = (following || []).map(f => f.following_id);
-  const followerIds = (followers || []).map(f => f.follower_id);
-
-  // Mutual connection: user IDs that exist in both following AND followers
-  const mutualIds = followingIds.filter(id => followerIds.includes(id));
-
-  return Array.from(new Set([userId, ...mutualIds]));
+  return Array.from(new Set([userId, ...followingIds, ...followerIds]));
 }
 
 /**

@@ -7,7 +7,6 @@ import SmoothScroll from './components/SmoothScroll';
 // Pages
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
-import OnboardingPage from './pages/OnboardingPage';
 import MySheetPage from './pages/MySheetPage';
 import DashboardPage from './pages/DashboardPage';
 import LeaderboardPage from './pages/LeaderboardPage';
@@ -52,7 +51,7 @@ const LandingRoute = () => {
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }) => {
-  const { user, profile, loading, profileLoading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return <LoadingSpinner />;
@@ -60,11 +59,6 @@ const ProtectedRoute = ({ children }) => {
 
   if (!user) {
     return <Navigate to="/login" replace />;
-  }
-
-  // If user exists but has no profile, they must onboarding (unless they are already on the onboarding page)
-  if (!profile && !profileLoading) {
-    return <Navigate to="/onboarding" replace />;
   }
 
   return children;
@@ -72,35 +66,13 @@ const ProtectedRoute = ({ children }) => {
 
 // Anonymous Route Wrapper (for Login/Sign Up)
 const AnonRoute = ({ children }) => {
-  const { user, profile, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return <LoadingSpinner />;
   }
 
   if (user) {
-    if (!profile) {
-      return <Navigate to="/onboarding" replace />;
-    }
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return children;
-};
-
-// Onboarding Route Wrapper (requires login, but no profile yet)
-const OnboardingRoute = ({ children }) => {
-  const { user, profile, loading } = useAuth();
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (profile) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -119,11 +91,7 @@ const PendingApprovalRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (!profile) {
-    return <Navigate to="/onboarding" replace />;
-  }
-
-  if (profile.approved || profile.is_admin) {
+  if (profile?.approved || profile?.is_admin) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -142,11 +110,7 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (!profile) {
-    return <Navigate to="/onboarding" replace />;
-  }
-
-  if (!profile.is_admin) {
+  if (!profile?.is_admin) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -173,14 +137,6 @@ function AppRoutes() {
           <AnonRoute>
             <LoginPage />
           </AnonRoute>
-        }
-      />
-      <Route
-        path="/onboarding"
-        element={
-          <OnboardingRoute>
-            <OnboardingPage />
-          </OnboardingRoute>
         }
       />
       <Route

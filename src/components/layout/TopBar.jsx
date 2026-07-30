@@ -66,8 +66,12 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
 
   useEffect(() => {
     fetchPendingCount();
-    const interval = setInterval(fetchPendingCount, 15000);
-    return () => clearInterval(interval);
+    window.addEventListener('follow-system-changed', fetchPendingCount);
+    const interval = setInterval(fetchPendingCount, 10000);
+    return () => {
+      window.removeEventListener('follow-system-changed', fetchPendingCount);
+      clearInterval(interval);
+    };
   }, [profile?.id]);
 
   const dropdownRef = useRef(null);
@@ -488,9 +492,7 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
       </header>
 
       {/* Edit Profile Modal */}
-      {isEditProfileOpen && (
-        <EditProfileModal onClose={() => setIsEditProfileOpen(false)} />
-      )}
+      <EditProfileModal isOpen={isEditProfileOpen} onClose={() => setIsEditProfileOpen(false)} />
 
       {/* Current User Profile Modal */}
       {isProfileOpen && profile && (

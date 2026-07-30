@@ -1,34 +1,33 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { X, User, AtSign, Camera, Check, Sparkles } from 'lucide-react';
+import { X, User, AtSign, Camera, Check, Sparkles, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { backdropVariants, modalVariants } from '../lib/animations';
 
 const COLORS = [
-  { name: 'Indigo', value: '#6366f1' },
+  { name: 'Violet', value: '#8b5cf6' },
   { name: 'Emerald', value: '#10b981' },
   { name: 'Sky', value: '#0ea5e9' },
   { name: 'Rose', value: '#f43f5e' },
   { name: 'Orange', value: '#f97316' },
   { name: 'Amber', value: '#f59e0b' },
   { name: 'Fuchsia', value: '#d946ef' },
-  { name: 'Slate', value: '#64748b' }
+  { name: 'Cyan', value: '#06b6d4' }
 ];
 
 const EditProfileModal = ({ isOpen, onClose }) => {
   const { user, profile, updateProfile, refreshProfile } = useAuth();
 
-  const [displayName, setDisplayName] = useState(profile?.display_name || '');
-  const [username, setUsername] = useState(profile?.username || '');
-  const [selectedColor, setSelectedColor] = useState(profile?.avatar_color || COLORS[0].value);
+  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
+  const [selectedColor, setSelectedColor] = useState(COLORS[0].value);
   const [avatarFile, setAvatarFile] = useState(null);
-  const [avatarPreview, setAvatarPreview] = useState(profile?.avatar_url || '');
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const [usernameStatus, setUsernameStatus] = useState({ checking: false, available: null, msg: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
-
-  const [takenColors, setTakenColors] = useState([]);
 
   // Sync state whenever modal is opened or profile data updates
   useEffect(() => {
@@ -39,23 +38,50 @@ const EditProfileModal = ({ isOpen, onClose }) => {
       setAvatarPreview(profile.avatar_url || '');
       setAvatarFile(null);
       setError('');
-      
-      const fetchTakenColors = async () => {
-        try {
-          const { data } = await supabase
-            .from('profiles')
-            .select('avatar_color')
-            .neq('id', profile.id);
-          if (data) {
-            setTakenColors(data.map(p => p.avatar_color.toLowerCase()));
-          }
-        } catch (err) {
-          console.error('Error fetching taken colors:', err);
-        }
-      };
-      fetchTakenColors();
     }
   }, [isOpen, profile]);
+
+  // Live Username Availability Check
+  useEffect(() => {
+    if (!isOpen || !username.trim() || !profile) {
+      setUsernameStatus({ checking: false, available: null, msg: '' });
+      return;
+    }
+
+    const cleanUsername = username.trim().toLowerCase().replace(/^@/, '');
+
+    if (cleanUsername === profile.username?.toLowerCase()) {
+      setUsernameStatus({ checking: false, available: true, msg: 'Current handle' });
+      return;
+    }
+
+    if (cleanUsername.length < 3) {
+      setUsernameStatus({ checking: false, available: false, msg: 'Min 3 chars' });
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setUsernameStatus({ checking: true, available: null, msg: 'Checking...' });
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id')
+          .ilike('username', cleanUsername)
+          .neq('id', profile.id)
+          .maybeSingle();
+
+        if (data) {
+          setUsernameStatus({ checking: false, available: false, msg: 'Taken' });
+        } else {
+          setUsernameStatus({ checking: false, available: true, msg: 'Available!' });
+        }
+      } catch (err) {
+        setUsernameStatus({ checking: false, available: true, msg: '' });
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [username, isOpen, profile?.id, profile?.username]);
 
   if (!profile) return null;
 
@@ -74,62 +100,38 @@ const EditProfileModal = ({ isOpen, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+
     if (!displayName.trim()) {
-      setError('Please enter a display name.');
+      setError('Please enter a Full Name.');
       return;
     }
 
     const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-    if (!cleanUsername) {
-      setError('Please enter a unique username.');
-      return;
-    }
-    if (cleanUsername.length < 3) {
+    if (!cleanUsername || cleanUsername.length < 3) {
       setError('Username must be at least 3 characters.');
       return;
     }
 
-    if (!avatarFile && !avatarPreview) {
-      setError('Please upload your profile photo.');
-      return;
-    }
-
     setLoading(true);
-    setError('');
 
     try {
-      // Check username uniqueness (excluding self)
-      const { data: takenUser } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('username', cleanUsername)
-        .neq('id', profile.id)
-        .maybeSingle();
-
-      if (takenUser) {
-        setError(`Username '@${cleanUsername}' is already taken by another racer.`);
-        setLoading(false);
-        return;
-      }
-
-      // Check color uniqueness
-      const { data: takenCheck } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('avatar_color', selectedColor)
-        .neq('id', profile.id)
-        .maybeSingle();
-
-      if (takenCheck) {
-        setError('This color is already taken by another racer! Please choose or generate a different one.');
-        setLoading(false);
-        const { data: refreshColors } = await supabase
+      // Check username uniqueness if changed
+      if (cleanUsername !== profile.username?.toLowerCase()) {
+        const { data: takenUser } = await supabase
           .from('profiles')
-          .select('avatar_color')
-          .neq('id', profile.id);
-        if (refreshColors) setTakenColors(refreshColors.map(p => p.avatar_color.toLowerCase()));
-        return;
+          .select('id')
+          .ilike('username', cleanUsername)
+          .neq('id', profile.id)
+          .maybeSingle();
+
+        if (takenUser) {
+          setError(`Username '@${cleanUsername}' is already taken by another racer.`);
+          setLoading(false);
+          return;
+        }
       }
+
       let avatarUrl = profile.avatar_url || '';
 
       if (avatarFile) {
@@ -176,151 +178,187 @@ const EditProfileModal = ({ isOpen, onClose }) => {
           animate="show"
           exit="exit"
           variants={backdropVariants}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md cursor-pointer font-sans"
           onClick={onClose}
         >
           <motion.div
             variants={modalVariants}
-            className="w-full max-w-md glass-panel rounded-2xl p-4 sm:p-6 relative z-10 shadow-2xl shadow-black/80 border border-[#252528] max-h-[92vh] overflow-y-auto custom-scrollbar font-sans text-zinc-100"
+            className="w-full max-w-md bg-[#0d0d10] border border-zinc-800 rounded-xl p-5 sm:p-6 relative z-10 shadow-2xl overflow-hidden font-sans text-zinc-100 cursor-default"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3.5 sm:pb-4 border-b border-[#1f1f23] mb-4 sm:mb-5">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3.5 border-b border-zinc-800/80 mb-4">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-violet-400" />
-                <h2 className="text-base sm:text-lg font-bold text-zinc-100">Edit Profile</h2>
+                <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-100">
+                  <User className="w-4 h-4" />
+                </div>
+                <h2 className="text-sm font-bold text-white tracking-tight uppercase font-mono">
+                  Edit Profile
+                </h2>
               </div>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors touch-target flex items-center justify-center"
+                className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
                 aria-label="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
+            {/* Error Alert */}
             {error && (
-              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+              <div className="mb-4 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-mono">
                 {error}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Avatar Upload area */}
-              <div className="flex flex-col items-center gap-2">
-                <label className="section-label block text-center text-xs font-mono uppercase text-zinc-400">Profile Photo</label>
-                <div
-                  onClick={triggerFileInput}
-                  className={`w-20 h-20 rounded-full border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group transition-all duration-300 ${
-                    avatarPreview ? 'border-violet-500' : 'border-zinc-700 hover:border-violet-500 bg-zinc-900/40 hover:bg-zinc-900/60'
-                  }`}
-                  style={{ backgroundColor: avatarPreview ? 'transparent' : selectedColor }}
-                  title="Click to update photo"
-                >
-                  {avatarPreview ? (
-                    <>
-                      <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white text-[9px] font-bold uppercase tracking-wider gap-1">
-                        <Camera className="w-4 h-4 text-zinc-200" />
-                        <span>Change</span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center gap-1 text-white group-hover:text-zinc-200 transition-colors">
-                      <span className="text-xl font-bold uppercase">{displayName?.charAt(0) || '?'}</span>
-                    </div>
-                  )}
-                </div>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept="image/*"
-                  className="hidden"
-                  disabled={loading}
-                />
-              </div>
-
+              {/* Profile Avatar Upload */}
               <div>
-                <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1.5">Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Your Name"
-                    maxLength={25}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-xs"
+                <label className="block text-[10px] font-mono font-medium uppercase tracking-wider text-zinc-400 mb-1.5">
+                  Profile Avatar
+                </label>
+                <div className="flex items-center gap-3 bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80">
+                  <div 
+                    onClick={triggerFileInput}
+                    className="group relative w-12 h-12 rounded-full flex items-center justify-center overflow-hidden border border-zinc-700/80 cursor-pointer shrink-0 transition-all hover:border-zinc-500 shadow-sm"
+                    style={{ backgroundColor: avatarPreview ? 'transparent' : selectedColor }}
+                  >
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-6 h-6 text-white/90" />
+                    )}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <Camera className="w-3.5 h-3.5 text-white" />
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-zinc-200 truncate">
+                      {avatarPreview ? 'Photo Uploaded' : 'Upload Photo'}
+                    </p>
+                    <p className="text-[10px] text-zinc-500 font-mono truncate mt-0.5">
+                      {avatarFile ? avatarFile.name : 'PNG, JPG or WEBP'}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={triggerFileInput}
+                    className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white rounded-md text-[10px] font-mono transition-colors shrink-0 cursor-pointer"
+                  >
+                    {avatarPreview ? 'Change' : 'Browse'}
+                  </button>
+
+                  <input 
+                    type="file" 
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    className="hidden"
                     disabled={loading}
                   />
                 </div>
               </div>
 
+              {/* Full Name */}
               <div>
-                <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1.5">Unique Username (@handle)</label>
+                <label className="block text-[10px] font-mono font-medium uppercase tracking-wider text-zinc-400 mb-1">
+                  Full Name / Racer Name
+                </label>
                 <div className="relative">
-                  <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
                   <input
                     type="text"
+                    required
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Your Name"
+                    maxLength={30}
+                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 focus:border-zinc-600 text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-xs transition-colors font-sans"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              {/* Username (@handle) */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-[10px] font-mono font-medium uppercase tracking-wider text-zinc-400">
+                    Handle (@username)
+                  </label>
+                  {usernameStatus.msg && (
+                    <span className={`text-[9px] font-mono font-semibold ${
+                      usernameStatus.available ? 'text-emerald-400' : 'text-rose-400'
+                    }`}>
+                      {usernameStatus.msg}
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+                  <input
+                    type="text"
+                    required
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                     placeholder="danishkhan"
                     maxLength={20}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-xs font-mono"
+                    className="w-full pl-9 pr-7 py-2 rounded-lg bg-zinc-950 border border-zinc-800 focus:border-zinc-600 text-zinc-100 placeholder:text-zinc-600 focus:outline-none text-xs font-mono font-bold transition-colors"
                     disabled={loading}
                   />
+                  {usernameStatus.available === true && (
+                    <Check className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-400" />
+                  )}
                 </div>
               </div>
 
+              {/* Accent Color Palette */}
               <div>
-                <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-2">Avatar Fallback Color</label>
-                <div className="grid grid-cols-4 gap-2.5">
-                  {COLORS.filter(color => !takenColors.includes(color.value.toLowerCase())).map((color) => {
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400">Accent Color</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const randomHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+                      setSelectedColor(randomHex);
+                    }}
+                    disabled={loading}
+                    className="text-[9px] font-mono text-zinc-400 hover:text-zinc-200 flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-2.5 h-2.5" />
+                    <span>Random</span>
+                  </button>
+                </div>
+                <div className="grid grid-cols-8 gap-1">
+                  {COLORS.map((color) => {
                     const isSelected = selectedColor.toLowerCase() === color.value.toLowerCase();
                     return (
                       <button
                         key={color.name}
                         type="button"
                         onClick={() => setSelectedColor(color.value)}
-                        className="h-10 rounded-xl relative flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+                        className="h-6 rounded relative flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 border border-white/10"
                         style={{ backgroundColor: color.value }}
                         disabled={loading}
                         title={color.name}
                       >
                         {isSelected && (
-                          <span className="bg-black/30 w-5 h-5 rounded-full flex items-center justify-center text-white">
-                            <Check className="w-3.5 h-3.5" />
-                          </span>
+                          <Check className="w-3 h-3 text-white drop-shadow" />
                         )}
                       </button>
                     );
                   })}
                 </div>
-                
-                <button
-                  type="button"
-                  onClick={() => {
-                    let randomHex;
-                    let attempts = 0;
-                    do {
-                      randomHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
-                      attempts++;
-                    } while (takenColors.includes(randomHex.toLowerCase()) && attempts < 100);
-                    setSelectedColor(randomHex);
-                  }}
-                  disabled={loading}
-                  className="w-full mt-2.5 py-1.5 px-3 border border-dashed border-zinc-700 hover:border-violet-500/50 rounded-xl text-xxs font-semibold text-zinc-400 hover:text-zinc-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer bg-zinc-900/10 hover:bg-violet-500/5 active:scale-[0.99] select-none"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-violet-400 animate-pulse" />
-                  <span>Generate Custom Color</span>
-                </button>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#1f1f23]">
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800/80">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition-colors cursor-pointer"
+                  className="px-3.5 py-2 rounded-lg text-xs font-mono font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors cursor-pointer"
                   disabled={loading}
                 >
                   Cancel
@@ -328,12 +366,12 @@ const EditProfileModal = ({ isOpen, onClose }) => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="py-2 px-5 rounded-xl bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white text-xs font-semibold transition-all shadow-md shadow-violet-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="py-2 px-4 rounded-lg bg-white hover:bg-zinc-200 active:bg-zinc-300 text-zinc-900 text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {loading ? (
-                    <span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                    <span className="w-3.5 h-3.5 rounded-full border-2 border-zinc-400 border-t-zinc-900 animate-spin" />
                   ) : (
-                    'Save Settings'
+                    'Save Changes'
                   )}
                 </button>
               </div>

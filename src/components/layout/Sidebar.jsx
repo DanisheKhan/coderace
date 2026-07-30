@@ -33,11 +33,16 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
-    if (profile?.id) {
-      getPendingRequests(profile.id).then(({ data }) => {
-        setPendingCount(data ? data.length : 0);
-      });
-    }
+    const fetchCount = () => {
+      if (profile?.id) {
+        getPendingRequests(profile.id).then(({ data }) => {
+          setPendingCount(data ? data.length : 0);
+        });
+      }
+    };
+    fetchCount();
+    window.addEventListener('follow-system-changed', fetchCount);
+    return () => window.removeEventListener('follow-system-changed', fetchCount);
   }, [profile?.id]);
 
   const navItems = [
@@ -167,91 +172,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
             </NavLink>
           ))}
         </nav>
-
-        {/* Profile Footer */}
-        {profile && (
-          <div className="p-3 border-t border-zinc-800/80">
-            <AnimatePresence initial={false} mode="wait">
-              {isCollapsed ? (
-                <motion.div 
-                  key="collapsed"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.18, ease: APPLE_EASE }}
-                  className="flex flex-col items-center gap-3"
-                >
-                  <motion.div 
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setIsEditProfileOpen(true)}
-                    className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-white uppercase text-xs shrink-0 overflow-hidden cursor-pointer border border-zinc-700 hover:border-zinc-500 transition-colors shadow-sm"
-                    style={{ backgroundColor: profile.avatar_url ? 'transparent' : (profile.avatar_color || '#6366f1') }}
-                    title={`${profile.display_name} - Edit profile`}
-                  >
-                    {profile.avatar_url ? (
-                      <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
-                    ) : (
-                      profile.display_name?.charAt(0) || '?'
-                    )}
-                  </motion.div>
-                  <button
-                    onClick={() => signOut()}
-                    className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-colors cursor-pointer active:scale-95"
-                    title="Sign out"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </button>
-                </motion.div>
-              ) : (
-                <motion.div 
-                  key="expanded"
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -8 }}
-                  transition={{ duration: 0.18, ease: APPLE_EASE }}
-                >
-                  <motion.div 
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setIsEditProfileOpen(true)}
-                    className="flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-zinc-900/70 border border-transparent hover:border-zinc-800 cursor-pointer group transition-all select-none"
-                    title="Edit profile"
-                  >
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white uppercase text-xs shrink-0 overflow-hidden border border-zinc-700 shadow-sm"
-                      style={{ backgroundColor: profile.avatar_url ? 'transparent' : (profile.avatar_color || '#6366f1') }}
-                    >
-                      {profile.avatar_url ? (
-                        <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" />
-                      ) : (
-                        profile.display_name?.charAt(0) || '?'
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-zinc-100 truncate leading-tight group-hover:text-violet-400 transition-colors">{profile.display_name}</p>
-                      <p className="text-[10px] text-zinc-500 truncate mt-0.5">Edit profile ✎</p>
-                    </div>
-                    <Settings className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
-                  </motion.div>
-                  <button
-                    onClick={() => signOut()}
-                    className="w-full mt-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 text-xs font-medium cursor-pointer transition-colors active:scale-98"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>Sign out</span>
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
       </motion.aside>
-
-      <EditProfileModal
-        isOpen={isEditProfileOpen}
-        onClose={() => setIsEditProfileOpen(false)}
-      />
 
       <FollowersModal
         isOpen={isFollowersOpen}
