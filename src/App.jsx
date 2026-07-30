@@ -19,6 +19,7 @@ import AdminPage from './pages/AdminPage';
 import TypingPage from './pages/TypingPage';
 import JavaQuizPage from './pages/JavaQuizPage';
 import JavaCollectionsPage from './pages/JavaCollectionsPage';
+import ConnectionsPage from './pages/ConnectionsPage';
 
 // Layout
 import Layout from './components/layout/Layout';
@@ -64,11 +65,6 @@ const ProtectedRoute = ({ children }) => {
   // If user exists but has no profile, they must onboarding (unless they are already on the onboarding page)
   if (!profile && !profileLoading) {
     return <Navigate to="/onboarding" replace />;
-  }
-
-  // Redirect to pending approval if user profile is not approved and they are not admin
-  if (profile && !profile.approved && !profile.is_admin) {
-    return <Navigate to="/pending-approval" replace />;
   }
 
   return children;
@@ -212,6 +208,7 @@ function AppRoutes() {
         <Route path="typing" element={<TypingPage />} />
         <Route path="quiz" element={<JavaQuizPage />} />
         <Route path="collections" element={<JavaCollectionsPage />} />
+        <Route path="connections" element={<ConnectionsPage />} />
         <Route path="admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
       </Route>
 

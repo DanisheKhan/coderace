@@ -4,13 +4,16 @@ import {
   Trophy, Flame, Calendar, Activity, Crown, Award, X, Zap, 
   Sparkles, BookOpen, Workflow, BookmarkCheck, Layers, Network, 
   ExternalLink, CheckCircle2, Copy, Lightbulb, Eye, Search, Keyboard, TrendingUp, RefreshCw,
-  Brain, Target, Star, ChevronRight, BarChart2, Clock, Circle, ChevronDown, ChevronUp
+  Brain, Target, Star, ChevronRight, BarChart2, Clock, Circle, ChevronDown, ChevronUp,
+  Lock, UserPlus, UserCheck, UserX, Users
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar } from 'recharts';
 import { calculateUserAchievements } from '../lib/achievements';
 import { getTypingProfile, fetchMonkeytypeData, syncTypingProfileToSupabase } from '../lib/monkeytypeService';
 import { fetchUserAttempts } from '../lib/quizService';
+import { getFollowStatus, sendFollowRequest, cancelFollowRequest, getFollowCounts } from '../lib/followService';
+import FollowersModal from './FollowersModal';
 import GitHubStreakTracker from './GitHubStreakTracker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { backdropVariants, modalVariants } from '../lib/animations';
@@ -138,9 +141,55 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
   const [syncError, setSyncError] = useState('');
   const [copiedId, setCopiedId] = useState(false);
 
-  const { currentUser } = useAuth();
-  const isOwnProfile = currentUser?.id === user?.id;
+  const { user: authUser } = useAuth();
+  const currentUserId = authUser?.id;
+  const isOwnProfile = currentUserId === user?.id;
   const navigate = useNavigate();
+
+  const [followStatus, setFollowStatus] = useState(isOwnProfile ? 'self' : 'loading');
+  const [followLoading, setFollowLoading] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
+  const [followersModalTab, setFollowersModalTab] = useState('followers');
+
+  useEffect(() => {
+    if (user?.id) {
+      getFollowCounts(user.id).then(counts => {
+        setFollowersCount(counts.followersCount);
+        setFollowingCount(counts.followingCount);
+      });
+
+      if (!isOwnProfile && currentUserId) {
+        setFollowLoading(true);
+        getFollowStatus(currentUserId, user.id).then(status => {
+          setFollowStatus(status);
+          setFollowLoading(false);
+        });
+      } else if (isOwnProfile) {
+        setFollowStatus('self');
+      }
+    }
+  }, [user?.id, currentUserId, isOwnProfile]);
+
+  const handleFollowClick = async () => {
+    if (!currentUserId || !user?.id || followLoading) return;
+    setFollowLoading(true);
+
+    if (followStatus === 'none') {
+      const { error } = await sendFollowRequest(currentUserId, user.id);
+      if (!error) setFollowStatus('pending');
+    } else if (followStatus === 'pending' || followStatus === 'accepted') {
+      const { error } = await cancelFollowRequest(currentUserId, user.id);
+      if (!error) {
+        setFollowStatus('none');
+        if (followStatus === 'accepted') {
+          setFollowersCount(prev => Math.max(0, prev - 1));
+        }
+      }
+    }
+    setFollowLoading(false);
+  };
 
   const handleQuestionClick = (problemName) => {
     if (onClose) onClose();
@@ -429,8 +478,8 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
                   </span>
                 </div>
                 
-                {/* User ID Pill */}
-                <div className="flex items-center gap-2 mt-1">
+                {/* User ID Pill & Follower Counts */}
+                <div className="flex items-center gap-3 mt-1 flex-wrap">
                   <button
                     onClick={handleCopyId}
                     className="text-[10px] font-mono text-zinc-400 hover:text-zinc-200 bg-zinc-900/90 hover:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-800 flex items-center gap-1.5 cursor-pointer transition-colors max-w-full group"
@@ -446,12 +495,62 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
                       <Copy className="w-3 h-3 text-zinc-500 group-hover:text-zinc-300 shrink-0" />
                     )}
                   </button>
+
+                  {/* Followers / Following Counts */}
+                  <div className="flex items-center gap-2.5 text-[11px] font-mono">
+                    <button
+                      onClick={() => {
+                        setFollowersModalTab('followers');
+                        setIsFollowersModalOpen(true);
+                      }}
+                      className="hover:text-indigo-400 text-zinc-400 transition-colors cursor-pointer"
+                    >
+                      <span className="font-bold text-white">{followersCount}</span> followers
+                    </button>
+                    <span className="text-zinc-700">•</span>
+                    <button
+                      onClick={() => {
+                        setFollowersModalTab('following');
+                        setIsFollowersModalOpen(true);
+                      }}
+                      className="hover:text-indigo-400 text-zinc-400 transition-colors cursor-pointer"
+                    >
+                      <span className="font-bold text-white">{followingCount}</span> following
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Top Right Action Buttons (Sync + Close) */}
-            <div className="flex items-center gap-1.5 shrink-0">
+            {/* Top Right Action Buttons (Follow + Sync + Close) */}
+            <div className="flex items-center gap-2 shrink-0">
+              {!isOwnProfile && followStatus !== 'self' && (
+                <button
+                  onClick={handleFollowClick}
+                  disabled={followLoading}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50 ${
+                    followStatus === 'accepted'
+                      ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
+                      : followStatus === 'pending'
+                      ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  }`}
+                >
+                  {followStatus === 'accepted' ? (
+                    <>
+                      <UserCheck className="w-3.5 h-3.5 text-emerald-400" /> Following
+                    </>
+                  ) : followStatus === 'pending' ? (
+                    <>
+                      <Clock className="w-3.5 h-3.5" /> Requested
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-3.5 h-3.5" /> Follow
+                    </>
+                  )}
+                </button>
+              )}
               {isOwnProfile && (
                 <button
                   onClick={handleSync}
@@ -473,33 +572,61 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
             </div>
           </div>
 
-          {/* Second Row: Navigation Tabs */}
-          <div className="w-full overflow-x-auto custom-scrollbar">
-            <div className="grid grid-cols-5 gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 w-full min-w-[500px] sm:min-w-0">
-              {TABS.map(tab => {
-                const Icon = tab.icon;
-                const active = activeModalTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveModalTab(tab.id)}
-                    className={`flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-2.5 py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition-colors cursor-pointer select-none truncate ${
-                      active
-                        ? 'bg-white text-zinc-900 font-semibold shadow-sm'
-                        : 'text-zinc-400 hover:text-zinc-200'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{tab.label}</span>
-                  </button>
-                );
-              })}
+          {/* Second Row: Navigation Tabs (Only shown if own profile or accepted follower) */}
+          {(isOwnProfile || followStatus === 'accepted') && (
+            <div className="w-full overflow-x-auto custom-scrollbar">
+              <div className="grid grid-cols-5 gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 w-full min-w-[500px] sm:min-w-0">
+                {TABS.map(tab => {
+                  const Icon = tab.icon;
+                  const active = activeModalTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveModalTab(tab.id)}
+                      className={`flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-2.5 py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition-colors cursor-pointer select-none truncate ${
+                        active
+                          ? 'bg-white text-zinc-900 font-semibold shadow-sm'
+                          : 'text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* ── MODAL BODY CONTENT ────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar">
+        {/* ── MODAL BODY CONTENT / PRIVACY LOCK SCREEN ──────────────────────── */}
+        {(!isOwnProfile && followStatus !== 'accepted') ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 sm:p-12 text-center my-auto">
+            <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4 shadow-xl">
+              <Lock className="w-8 h-8 text-indigo-400" />
+            </div>
+            <h4 className="text-lg font-bold text-white mb-1.5">This Profile is Private</h4>
+            <p className="text-xs text-zinc-400 max-w-sm leading-relaxed mb-6">
+              Send a follow request to @{user?.username || user?.display_name} to view their problem solving stats, DSA progress sheet, typing speed, and achievements.
+            </p>
+
+            {followStatus === 'none' && (
+              <button
+                onClick={handleFollowClick}
+                disabled={followLoading}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/20 flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4" /> Send Follow Request
+              </button>
+            )}
+            {followStatus === 'pending' && (
+              <div className="px-4 py-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-medium flex items-center gap-2">
+                <Clock className="w-4 h-4" /> Request Sent (Pending Approval)
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar">
 
           {/* TAB 1: OVERVIEW */}
           {activeModalTab === 'overview' && (
@@ -968,7 +1095,16 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
             </div>
           )}
         </div>
+        )}
       </motion.div>
+
+      {/* Followers & Following List Modal */}
+      <FollowersModal
+        isOpen={isFollowersModalOpen}
+        onClose={() => setIsFollowersModalOpen(false)}
+        userId={user?.id}
+        initialTab={followersModalTab}
+      />
     </motion.div>
   );
 }

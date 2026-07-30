@@ -13,6 +13,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { calculateUserAchievements } from '../lib/achievements';
 import UserProfileModal, { SolveTags, DiffDot, formatRelativeTime } from '../components/UserProfileModal';
 import { fetchAllUsersQuizBest, fetchRecentQuizAttempts } from '../lib/quizService';
+import { getConnectedUserIds } from '../lib/followService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pageTransition, staggerContainer, fadeUp, slideInLeft, backdropVariants, modalVariants } from '../lib/animations';
 
@@ -373,10 +374,20 @@ const LeaderboardPage = () => {
     loadQuizData();
   }, []);
 
-  // Only show approved users
+  const { profile } = useAuth();
+  const [connectedIds, setConnectedIds] = useState([]);
+
+  useEffect(() => {
+    if (profile?.id) {
+      getConnectedUserIds(profile.id).then(setConnectedIds);
+    }
+  }, [profile?.id]);
+
+  // Only show mutual connections & self on leaderboard
   const approvedProfiles = useMemo(() => {
-    return profiles.filter(p => p.approved || p.is_admin);
-  }, [profiles]);
+    if (!connectedIds.length) return profiles.filter(p => p.id === profile?.id);
+    return profiles.filter(p => connectedIds.includes(p.id));
+  }, [profiles, connectedIds, profile?.id]);
 
   const leaderboard = useMemo(() => {
     const sevenAgo = Date.now() - 7 * 86400000;

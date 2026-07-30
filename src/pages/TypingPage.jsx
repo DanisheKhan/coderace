@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProgressStore } from '../store/progressStore';
 import { getAllTypingProfiles, getTypingProfile } from '../lib/monkeytypeService';
+import { getConnectedUserIds } from '../lib/followService';
 import MonkeytypePanel from '../components/MonkeytypePanel';
 import LinkMonkeytypeModal from '../components/LinkMonkeytypeModal';
 import {
@@ -137,9 +138,20 @@ export default function TypingPage() {
 
   useEffect(() => { loadTypingLeaderboard(); }, []);
 
+  const [connectedIds, setConnectedIds] = useState([]);
+
+  useEffect(() => {
+    if (profile?.id) {
+      getConnectedUserIds(profile.id).then(setConnectedIds);
+    }
+  }, [profile?.id]);
+
   const leaderboardData = useMemo(() => {
-    return profiles
-      .filter(p => p.approved || p.is_admin)
+    const availableProfiles = connectedIds.length
+      ? profiles.filter(p => connectedIds.includes(p.id))
+      : profiles.filter(p => p.id === profile?.id);
+
+    return availableProfiles
       .map(p => {
         const stats = typingStats.find(s => s.user_id === p.id) || {};
         const highestWPM = Math.max(
@@ -151,7 +163,7 @@ export default function TypingPage() {
         return { ...p, stats, highestWPM };
       })
       .sort((a, b) => b.highestWPM - a.highestWPM);
-  }, [profiles, typingStats]);
+  }, [profiles, typingStats, connectedIds, profile?.id]);
 
   const filteredLeaderboard = useMemo(() => {
     if (!searchTerm.trim()) return leaderboardData;

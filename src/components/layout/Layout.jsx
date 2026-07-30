@@ -17,8 +17,11 @@ import {
   UserPlus,
   Keyboard,
   Brain,
-  BookOpen
+  BookOpen,
+  Users
 } from 'lucide-react';
+import FollowersModal from '../FollowersModal';
+import { getPendingRequests } from '../../lib/followService';
 import { supabase } from '../../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -33,6 +36,17 @@ const Layout = () => {
   const mainRef = useRef(null);
   const { pathname } = useLocation();
   const outlet = useOutlet();
+
+  const [isFollowersOpen, setIsFollowersOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (profile?.id) {
+      getPendingRequests(profile.id).then(({ data }) => {
+        setPendingCount(data ? data.length : 0);
+      });
+    }
+  }, [profile?.id]);
 
   // Reset scroll position on route change
   useEffect(() => {
@@ -82,27 +96,17 @@ const Layout = () => {
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(v => !v);
 
-  const pendingCount = profiles.filter(p => !p.approved && !p.is_admin).length;
-
   const navItems = [
     { name: 'Dashboard',   path: '/dashboard',   icon: LayoutDashboard },
     { name: 'My Sheet',    path: '/sheet',        icon: TableProperties },
     { name: 'Leaderboard', path: '/leaderboard',  icon: Trophy },
     { name: 'Compare',     path: '/compare',      icon: BarChart3 },
+    { name: 'Connections', path: '/connections',  icon: Users, badge: pendingCount > 0 ? pendingCount : null },
     { name: 'Achievements', path: '/achievements', icon: Award },
     { name: 'Typing',      path: '/typing',       icon: Keyboard },
     { name: 'Java Quiz',   path: '/quiz',         icon: Brain },
     { name: 'Java Collections', path: '/collections', icon: BookOpen },
   ];
-
-  if (profile?.is_admin) {
-    navItems.push({
-      name: 'Approvals',
-      path: '/admin',
-      icon: ShieldAlert,
-      badge: pendingCount > 0 ? pendingCount : null
-    });
-  }
 
   return (
     <div className="min-h-screen bg-[#09090b] flex text-zinc-100 relative">
@@ -282,6 +286,12 @@ const Layout = () => {
           ))}
         </AnimatePresence>
       </div>
+
+      <FollowersModal
+        isOpen={isFollowersOpen}
+        onClose={() => setIsFollowersOpen(false)}
+        userId={profile?.id}
+      />
     </div>
   );
 };

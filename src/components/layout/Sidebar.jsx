@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -15,9 +15,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Brain,
-  BookOpen
+  BookOpen,
+  Users
 } from 'lucide-react';
 import EditProfileModal from '../EditProfileModal';
+import FollowersModal from '../FollowersModal';
+import { getPendingRequests } from '../../lib/followService';
 import { useProgressStore } from '../../store/progressStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { APPLE_EASE } from '../../lib/animations';
@@ -26,28 +29,28 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
   const { profile, signOut } = useAuth();
   const { profiles } = useProgressStore();
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isFollowersOpen, setIsFollowersOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
-  const pendingCount = profiles.filter(p => !p.approved && !p.is_admin).length;
+  useEffect(() => {
+    if (profile?.id) {
+      getPendingRequests(profile.id).then(({ data }) => {
+        setPendingCount(data ? data.length : 0);
+      });
+    }
+  }, [profile?.id]);
 
   const navItems = [
     { name: 'Dashboard',   path: '/dashboard',   icon: LayoutDashboard },
     { name: 'My Sheet',    path: '/sheet',        icon: TableProperties },
     { name: 'Leaderboard', path: '/leaderboard',  icon: Trophy },
     { name: 'Compare',     path: '/compare',      icon: BarChart3 },
+    { name: 'Connections', path: '/connections',  icon: Users, badge: pendingCount > 0 ? pendingCount : null },
     { name: 'Achievements', path: '/achievements', icon: Award },
     { name: 'Typing',      path: '/typing',       icon: Keyboard },
     { name: 'Java Quiz',   path: '/quiz',         icon: Brain },
     { name: 'Java Collections', path: '/collections', icon: BookOpen },
   ];
-
-  if (profile?.is_admin) {
-    navItems.push({
-      name: 'Approvals',
-      path: '/admin',
-      icon: ShieldAlert,
-      badge: pendingCount > 0 ? pendingCount : null
-    });
-  }
 
   return (
     <>
@@ -248,6 +251,12 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
       <EditProfileModal
         isOpen={isEditProfileOpen}
         onClose={() => setIsEditProfileOpen(false)}
+      />
+
+      <FollowersModal
+        isOpen={isFollowersOpen}
+        onClose={() => setIsFollowersOpen(false)}
+        userId={profile?.id}
       />
     </>
   );

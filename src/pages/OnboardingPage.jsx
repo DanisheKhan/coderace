@@ -160,7 +160,7 @@ const OnboardingPage = () => {
           avatar_color: selectedColor,
           avatar_url: avatarUrl,
           email: user.email,
-          approved: false, // Requires admin approval
+          approved: true, // Immediate access
         }, { onConflict: 'id' });
 
       if (upsertErr) throw upsertErr;
@@ -168,8 +168,8 @@ const OnboardingPage = () => {
       // Refresh local context
       await refreshProfile();
 
-      // Redirect to pending approval (admin must approve)
-      navigate('/pending-approval', { replace: true });
+      // Redirect directly to dashboard
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.message || 'Failed to save profile. Please try again.');
     } finally {

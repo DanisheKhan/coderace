@@ -8,6 +8,7 @@ import { calculateUserAchievements, calculateStreak } from '../lib/achievements'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Users, Award, Flame, Trophy, ExternalLink, Sparkles, BookOpen, Crown, ChevronDown, Swords, UserPlus, Plus, Check, Eye } from 'lucide-react';
 import UserProfileModal from '../components/UserProfileModal';
+import { getConnectedUserIds } from '../lib/followService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pageTransition, staggerContainer, fadeUp } from '../lib/animations';
 
@@ -200,10 +201,20 @@ const ComparePage = () => {
   const [selectedModalUser, setSelectedModalUser] = useState(null);
   const searchContainerRef = useRef(null);
 
-  // Approved profiles
+  const { profile } = useAuth();
+  const [connectedIds, setConnectedIds] = useState([]);
+
+  useEffect(() => {
+    if (profile?.id) {
+      getConnectedUserIds(profile.id).then(setConnectedIds);
+    }
+  }, [profile?.id]);
+
+  // Only show mutual connections & self in Compare
   const approvedProfiles = useMemo(() => {
-    return profiles.filter(p => p.approved || p.is_admin);
-  }, [profiles]);
+    if (!connectedIds.length) return profiles.filter(p => p.id === profile?.id);
+    return profiles.filter(p => connectedIds.includes(p.id));
+  }, [profiles, connectedIds, profile?.id]);
 
   // Combine approved profiles with any custom fetched profiles by User ID
   const allAvailableProfiles = useMemo(() => {

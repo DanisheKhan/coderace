@@ -13,11 +13,14 @@ import {
   Eye,
   Settings,
   LogOut,
-  User
+  User,
+  UserCheck
 } from 'lucide-react';
 
 import EditProfileModal from '../EditProfileModal';
 import UserProfileModal from '../UserProfileModal';
+import FollowRequestsModal from '../FollowRequestsModal';
+import { getPendingRequests } from '../../lib/followService';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Map routes → page titles
@@ -30,6 +33,7 @@ const PAGE_TITLES = {
   '/typing':      'Typing',
   '/quiz':        'Java Quiz',
   '/collections': 'Java Collections',
+  '/connections': 'Connections',
   '/admin':       'Approvals'
 };
 
@@ -50,6 +54,21 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [selectedSearchUser, setSelectedSearchUser] = useState(null);
+  const [isFollowRequestsOpen, setIsFollowRequestsOpen] = useState(false);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+
+  const fetchPendingCount = async () => {
+    if (profile?.id) {
+      const { data } = await getPendingRequests(profile.id);
+      setPendingRequestsCount(data ? data.length : 0);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 15000);
+    return () => clearInterval(interval);
+  }, [profile?.id]);
 
   const dropdownRef = useRef(null);
   const userMenuRef = useRef(null);
@@ -376,6 +395,20 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                   <Search className="w-3.5 h-3.5" />
                 </button>
 
+                {/* Follow Requests Notification Button */}
+                <button
+                  onClick={() => setIsFollowRequestsOpen(true)}
+                  className="relative h-7 px-2 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white transition-colors text-xs font-mono flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  title="Follow Requests"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+                  {pendingRequestsCount > 0 && (
+                    <span className="px-1.5 py-0.2 text-[9px] font-bold bg-indigo-500 text-white rounded-full leading-none">
+                      {pendingRequestsCount}
+                    </span>
+                  )}
+                </button>
+
                 {/* Streak Pill */}
                 <div className="h-7 px-2.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs font-mono font-medium flex items-center gap-1.5 shrink-0">
                   <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" />
@@ -478,6 +511,14 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
           onClose={() => setSelectedSearchUser(null)}
         />
       )}
+
+      {/* Follow Requests Modal */}
+      <FollowRequestsModal
+        isOpen={isFollowRequestsOpen}
+        onClose={() => setIsFollowRequestsOpen(false)}
+        userId={profile?.id}
+        onRequestHandled={fetchPendingCount}
+      />
     </>
   );
 };
