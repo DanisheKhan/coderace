@@ -192,17 +192,18 @@ const StatDuelCard = ({ label, icon: Icon, myValue, compValue, myLabel, compLabe
 const ComparePage = () => {
   const { profiles, progress } = useProgressStore();
   const { questions } = useQuestions();
-  const { profile: currentProfile } = useAuth();
+  const { profile, updateProfile } = useAuth();
+  const currentProfile = profile;
+
   const [activeTab, setActiveTab] = useState('group');
   const [userIdInput, setUserIdInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [addError, setAddError] = useState('');
-  const [customProfiles, setCustomProfiles] = useState([]);
   const [selectedModalUser, setSelectedModalUser] = useState(null);
   const searchContainerRef = useRef(null);
 
-  const { profile } = useAuth();
   const [connectedIds, setConnectedIds] = useState([]);
+  const hasLoadedSavedRef = useRef(false);
 
   useEffect(() => {
     if (profile?.id) {
@@ -210,13 +211,30 @@ const ComparePage = () => {
     }
   }, [profile?.id]);
 
+  // Load custom profiles from localStorage
+  const [customProfiles, setCustomProfiles] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`coderace_compare_custom_${profile?.id || 'guest'}`);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
+
+  // Save customProfiles to localStorage
+  useEffect(() => {
+    if (!profile?.id) return;
+    try {
+      localStorage.setItem(`coderace_compare_custom_${profile.id}`, JSON.stringify(customProfiles));
+    } catch (e) {}
+  }, [customProfiles, profile?.id]);
+
   // Only show mutual connections & self in Compare
   const approvedProfiles = useMemo(() => {
     if (!connectedIds.length) return profiles.filter(p => p.id === profile?.id);
     return profiles.filter(p => connectedIds.includes(p.id));
   }, [profiles, connectedIds, profile?.id]);
 
-  // Combine approved profiles with any custom fetched profiles by User ID
+  // Combine approved profiles with any custom fetched profiles by User ID (stably sorted)
   const allAvailableProfiles = useMemo(() => {
     const combined = [...approvedProfiles];
     customProfiles.forEach(cp => {
@@ -224,8 +242,131 @@ const ComparePage = () => {
         combined.push(cp);
       }
     });
-    return combined;
-  }, [approvedProfiles, customProfiles]);
+
+    return combined.sort((a, b) => {
+      // Current user always first
+      if (a.id === profile?.id) return -1;
+      if (b.id === profile?.id) return 1;
+      // Rest sorted alphabetically by display_name
+      return (a.display_name || '').localeCompare(b.display_name || '');
+    });
+  }, [approvedProfiles, customProfiles, profile?.id]);
+
+  // ── Group Arena: Selected Profiles ──
+  const isInitializedRef = useRef(false);
+
+  const [selectedProfileIds, setSelectedProfileIds] = useState(() => {
+    try {
+      if (profile?.compare_preferences?.selected_ids?.length) {
+        isInitializedRef.current = true;
+        return profile.compare_preferences.selected_ids;
+      }
+      const savedKey = `coderace_compare_selected_${profile?.id || 'guest'}`;
+      const saved = localStorage.getItem(savedKey);
+      if (saved !== null) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          isInitializedRef.current = true;
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  // ── 1v1 Duel Competitor ID ──
+  const duelCompetitors = useMemo(() => allAvailableProfiles.filter(p => p.id !== currentProfile?.id), [allAvailableProfiles, currentProfile]);
+  const [duelCompetitorId, setDuelCompetitorId] = useState(() => {
+    try {
+      if (profile?.compare_preferences?.duel_id) {
+        return profile.compare_preferences.duel_id;
+      }
+      const saved = localStorage.getItem(`coderace_compare_duel_${profile?.id || 'guest'}`);
+      if (saved) return saved;
+    } catch (e) {}
+    return '';
+  });
+
+  // Load preferences ONCE when profile data becomes ready (if not already initialized)
+  useEffect(() => {
+    if (!profile?.id || isInitializedRef.current) return;
+
+    const dbSelected = profile.compare_preferences?.selected_ids;
+    const dbDuel = profile.compare_preferences?.duel_id;
+
+    if (Array.isArray(dbSelected) && dbSelected.length > 0) {
+      setSelectedProfileIds(dbSelected);
+      isInitializedRef.current = true;
+    }
+
+    if (dbDuel) {
+      setDuelCompetitorId(dbDuel);
+    }
+  }, [profile?.id]);
+
+  // Fallback default to selecting all approved profiles if no saved preference was found
+  useEffect(() => {
+    if (approvedProfiles.length > 0 && !isInitializedRef.current) {
+      isInitializedRef.current = true;
+      setSelectedProfileIds(approvedProfiles.map(p => p.id));
+    }
+  }, [approvedProfiles]);
+
+  // Ensure duelCompetitorId points to a valid competitor
+  useEffect(() => {
+    if (duelCompetitors.length > 0) {
+      if (!duelCompetitorId || !duelCompetitors.some(p => p.id === duelCompetitorId)) {
+        setDuelCompetitorId(duelCompetitors[0].id);
+      }
+    }
+  }, [duelCompetitors, duelCompetitorId]);
+
+  // Save selectedProfileIds and duelCompetitorId to localStorage immediately & Supabase DB debounced
+  useEffect(() => {
+    if (!profile?.id || !isInitializedRef.current) return;
+
+    try {
+      localStorage.setItem(`coderace_compare_selected_${profile.id}`, JSON.stringify(selectedProfileIds));
+      if (duelCompetitorId) {
+        localStorage.setItem(`coderace_compare_duel_${profile.id}`, duelCompetitorId);
+      }
+    } catch (e) {}
+
+    const timer = setTimeout(() => {
+      if (updateProfile) {
+        updateProfile({
+          compare_preferences: {
+            selected_ids: selectedProfileIds,
+            duel_id: duelCompetitorId,
+          }
+        });
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [selectedProfileIds, duelCompetitorId, profile?.id, updateProfile]);
+
+  // Auto-fetch any missing profiles if selectedProfileIds contains IDs not in allAvailableProfiles
+  useEffect(() => {
+    const missingIds = selectedProfileIds.filter(
+      id => !allAvailableProfiles.some(p => p.id === id)
+    );
+
+    if (missingIds.length > 0) {
+      supabase
+        .from('profiles')
+        .select('*')
+        .in('id', missingIds)
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            setCustomProfiles(prev => {
+              const newProfiles = data.filter(d => !prev.some(cp => cp.id === d.id));
+              return [...prev, ...newProfiles];
+            });
+          }
+        });
+    }
+  }, [selectedProfileIds, allAvailableProfiles]);
 
   // Close suggestions on outside click
   useEffect(() => {
@@ -253,14 +394,6 @@ const ComparePage = () => {
 
   const uniqueTopics = useMemo(() => [...new Set(questions.map(q => q.topic))], [questions]);
   const [activeCompareTopic, setActiveCompareTopic] = useState(uniqueTopics[0] || '');
-
-  // ── Group Arena ──────────────────────────────────────────────────────────────
-  const [selectedProfileIds, setSelectedProfileIds] = useState([]);
-  useEffect(() => {
-    if (approvedProfiles.length > 0 && selectedProfileIds.length === 0) {
-      setSelectedProfileIds(approvedProfiles.map(p => p.id));
-    }
-  }, [approvedProfiles, selectedProfileIds]);
 
   const activeProfiles = useMemo(() => allAvailableProfiles.filter(p => selectedProfileIds.includes(p.id)), [allAvailableProfiles, selectedProfileIds]);
 
@@ -360,15 +493,6 @@ const ComparePage = () => {
   }, [activeProfiles, progress, questions]);
 
   // ── 1v1 Duel ────────────────────────────────────────────────────────────────
-  const duelCompetitors = useMemo(() => allAvailableProfiles.filter(p => p.id !== currentProfile?.id), [allAvailableProfiles, currentProfile]);
-  const [duelCompetitorId, setDuelCompetitorId] = useState('');
-
-  useEffect(() => {
-    if (duelCompetitors.length > 0 && !duelCompetitorId) {
-      setDuelCompetitorId(duelCompetitors[0].id);
-    }
-  }, [duelCompetitors, duelCompetitorId]);
-
   const competitorProfile = useMemo(() => allAvailableProfiles.find(p => p.id === duelCompetitorId), [allAvailableProfiles, duelCompetitorId]);
   const myProgress = useMemo(() => progress.filter(p => p.user_id === currentProfile?.id), [progress, currentProfile]);
   const compProgress = useMemo(() => progress.filter(p => p.user_id === duelCompetitorId), [progress, duelCompetitorId]);
