@@ -139,6 +139,11 @@ const LoginPage = () => {
 
     let cleanUsername = '';
     if (isSignUp) {
+      if (!avatarFile) {
+        setError('Please upload a profile avatar photo.');
+        return;
+      }
+
       if (!displayName.trim()) {
         setError('Please enter your Full Name.');
         return;
@@ -194,12 +199,12 @@ const LoginPage = () => {
             .from('avatars')
             .upload(filePath, avatarFile, { upsert: true });
 
-          if (!uploadError) {
-            const { data: urlData } = supabase.storage
-              .from('avatars')
-              .getPublicUrl(filePath);
-            avatarUrl = urlData?.publicUrl || '';
-          }
+          if (uploadError) throw uploadError;
+
+          const { data: urlData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+          avatarUrl = urlData?.publicUrl || '';
         }
 
         // 3. Upsert complete profile in profiles table
@@ -320,7 +325,7 @@ const LoginPage = () => {
               <div className="space-y-3.5 bg-zinc-950/60 p-3.5 rounded-lg border border-zinc-800/80 flex flex-col justify-between">
                 <div>
                   <label className="block text-[10px] font-mono font-medium uppercase tracking-wider text-zinc-400 mb-2">
-                    Profile Avatar
+                    PROFILE AVATAR <span className="text-zinc-500 font-bold">*</span>
                   </label>
 
                   {/* Clean Minimal Avatar Uploader */}

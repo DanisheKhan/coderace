@@ -109,6 +109,11 @@ const EditProfileModal = ({ isOpen, onClose }) => {
     e.preventDefault();
     setError('');
 
+    if (!avatarFile && !avatarPreview) {
+      setError('Please upload a profile avatar photo.');
+      return;
+    }
+
     if (!displayName.trim()) {
       setError('Please enter a Full Name.');
       return;
@@ -235,7 +240,7 @@ const EditProfileModal = ({ isOpen, onClose }) => {
               {/* Profile Avatar Upload */}
               <div>
                 <label className="block text-[10px] font-mono font-medium uppercase tracking-wider text-zinc-400 mb-1.5">
-                  Profile Avatar
+                  PROFILE AVATAR <span className="text-zinc-500 font-bold">*</span>
                 </label>
                 <div className="flex items-center gap-3 bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80">
                   <div 
