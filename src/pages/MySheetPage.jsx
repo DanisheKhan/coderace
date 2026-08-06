@@ -87,54 +87,110 @@ const STATUS_OPTIONS = [
 ];
 
 const statusPillStyles = {
-  not_started: 'bg-zinc-900 text-zinc-500 border-white/[0.06] hover:border-zinc-600/40',
+  not_started: 'bg-[#0f0f11] text-zinc-500 border-white/[0.07] hover:border-zinc-500/40 hover:text-zinc-400',
   attempted:   'bg-amber-500/[0.08] text-amber-400 border-amber-500/20 hover:border-amber-500/40',
-  done:        'bg-emerald-500/[0.08] text-emerald-400 border-emerald-500/20 hover:border-emerald-500/40',
+  done:        'bg-emerald-500/[0.07] text-emerald-400 border-emerald-500/25 hover:border-emerald-400/50 shadow-[0_0_12px_rgba(52,211,153,0.06)]',
 };
 
-const StatusCell = ({ status, onChange, onOpenSubmitCode }) => {
+const StatusCell = ({ status, onChange, onOpenSubmitCode, onOpenViewCode, hasCode, attemptsCount }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const cur = STATUS_OPTIONS.find(o => o.value === status) || STATUS_OPTIONS[0];
+  const isDone = status === 'done';
 
   return (
-    <div ref={ref} className="relative inline-block">
+    <div ref={ref} className="relative inline-flex items-center gap-2">
+      {/* Status pill */}
       <button
         onClick={() => setOpen(v => !v)}
-        className={`inline-flex items-center justify-between w-[148px] px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer select-none ${statusPillStyles[status] || statusPillStyles.not_started}`}
+        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px] font-semibold tracking-wide transition-all duration-200 cursor-pointer select-none whitespace-nowrap ${
+          isDone
+            ? 'bg-emerald-500/[0.08] text-emerald-400 border-emerald-500/25 hover:border-emerald-400/50 hover:bg-emerald-500/[0.13] shadow-[0_0_14px_rgba(52,211,153,0.07)]'
+            : 'bg-[#0f0f11] text-zinc-500 border-white/[0.07] hover:border-zinc-500/40 hover:text-zinc-300'
+        }`}
       >
-        <span className="flex items-center gap-1.5 min-w-0">
-          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cur.dot}`} />
-          <span className="truncate">{cur.label}</span>
-        </span>
-        <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        {isDone ? (
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] shrink-0" />
+        ) : (
+          <span className="w-1.5 h-1.5 rounded-full bg-zinc-600 shrink-0" />
+        )}
+        <span>{isDone ? 'Solved' : 'Not Attempted'}</span>
+        <ChevronDown className={`w-3 h-3 shrink-0 opacity-60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
+
+      {/* Code icon button — shown only when solved & code exists */}
+      {isDone && hasCode && (
+        <button
+          type="button"
+          onClick={() => { if (onOpenViewCode) onOpenViewCode(); }}
+          className="w-7 h-7 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.07] hover:bg-emerald-500/[0.18] hover:border-emerald-400/50 text-emerald-400 transition-all duration-200 cursor-pointer flex items-center justify-center shrink-0 active:scale-90 shadow-[0_0_10px_rgba(52,211,153,0.05)]"
+          title={`View solution${attemptsCount > 1 ? ` · ${attemptsCount} attempts` : ''}`}
+        >
+          <Code className="w-3.5 h-3.5" />
+        </button>
+      )}
+
       <PortalDropdown anchor={ref.current} open={open} onClose={() => setOpen(false)}>
-        <div className={dropdownPanelCls} style={{ ...dropdownPanelBg, minWidth: 144 }}>
-          {STATUS_OPTIONS.map(opt => {
-            const Icon = opt.icon;
-            const isActive = opt.value === status;
-            return (
+        <div
+          className="rounded-xl border border-white/[0.07] overflow-hidden py-1"
+          style={{
+            background: 'rgba(10,10,13,0.97)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            boxShadow: '0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)',
+            minWidth: 176,
+          }}
+        >
+          {isDone ? (
+            <>
+              {hasCode && (
+                <button
+                  onClick={() => { setOpen(false); if (onOpenViewCode) onOpenViewCode(); }}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/[0.08] cursor-pointer transition-all duration-150 text-left"
+                >
+                  <span className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <Code className="w-3 h-3" />
+                  </span>
+                  <div className="flex flex-col gap-0.5">
+                    <span>View Code</span>
+                    {attemptsCount > 1 && <span className="text-[10px] font-normal text-emerald-500/60">{attemptsCount} attempts</span>}
+                  </div>
+                </button>
+              )}
+              <div className="h-px bg-white/[0.04] mx-2 my-1" />
               <button
-                key={opt.value}
-                onClick={() => {
-                  setOpen(false);
-                  if (opt.value === 'done' && onOpenSubmitCode) {
-                    onOpenSubmitCode();
-                  } else {
-                    onChange(opt.value);
-                  }
-                }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors text-left ${
-                  isActive ? `${opt.color} bg-white/[0.04]` : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
-                }`}
+                onClick={() => { setOpen(false); if (onOpenSubmitCode) onOpenSubmitCode(); }}
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold text-violet-300 hover:bg-violet-500/[0.08] cursor-pointer transition-all duration-150 text-left"
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? opt.color : 'text-zinc-700'}`} />
-                {opt.label}
-                {isActive && <span className="ml-auto text-zinc-700 text-[10px]">✓</span>}
+                <span className="w-6 h-6 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
+                  <RotateCcw className="w-3 h-3 text-violet-400" />
+                </span>
+                <span>Re-attempt</span>
               </button>
-            );
-          })}
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setOpen(false)}
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 text-xs text-zinc-400 bg-white/[0.03] cursor-default transition-all duration-150 text-left"
+              >
+                <span className="w-6 h-6 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0">
+                  <Circle className="w-3 h-3 text-zinc-600" />
+                </span>
+                <span className="font-medium">Not Attempted</span>
+                <span className="ml-auto text-[9px] text-zinc-600 font-mono">NOW</span>
+              </button>
+              <div className="h-px bg-white/[0.04] mx-2 my-1" />
+              <button
+                onClick={() => { setOpen(false); if (onOpenSubmitCode) onOpenSubmitCode(); }}
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/[0.08] cursor-pointer transition-all duration-150 text-left"
+              >
+                <span className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-3 h-3" />
+                </span>
+                <span>Mark Solved</span>
+              </button>
+            </>
+          )}
         </div>
       </PortalDropdown>
     </div>
@@ -200,112 +256,94 @@ const SOLVE_METHODS = [
 ];
 
 // ── Row Context Menu ──────────────────────────────────────────────────────────
-const RowMenu = ({ question, prog, onOpenNotes, onIncrementRevisit, onToggleRevisit, onSolveMethodChange, onClearProgress, onDeleteQuestion }) => {
+const RowMenu = ({ question, prog, onViewCode, onOpenSubmitCode, onOpenNotes, onIncrementRevisit, onToggleRevisit, onClearProgress, onDeleteQuestion }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const solveMethod = prog?.solve_method || null;
-  const hasNotes = !!(prog?.notes || prog?.solution_link);
+
+  const isDone = prog?.status === 'done';
+  const isRevisit = prog?.revisit;
+  const revisitCount = prog?.revisit_count || 0;
 
   return (
     <div className="relative inline-block" ref={ref}>
       <button
         onClick={() => setOpen(v => !v)}
         className={`p-1.5 rounded-lg cursor-pointer transition-all ${open ? 'text-zinc-200 bg-white/[0.06]' : 'text-zinc-700 hover:text-zinc-300 hover:bg-white/[0.04]'}`}
-        title="More options"
       >
         <MoreHorizontal className="w-4 h-4" />
       </button>
 
       <PortalDropdown anchor={ref.current} open={open} onClose={() => setOpen(false)} align="right">
-        <div className="w-56 border border-white/[0.06] rounded-xl shadow-2xl shadow-black/90 overflow-hidden py-1.5 animate-fadeIn" style={{ background: '#0d0d0f' }}>
-          {/* How Solved */}
-          <div className="px-3 py-2.5 border-b border-white/[0.04] mb-1">
-            <span className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest block mb-2">How Solved?</span>
-            <div className="grid grid-cols-2 gap-1.5">
-              {SOLVE_METHODS.map(m => {
-                const Icon = m.icon;
-                const isActive = solveMethod === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => onSolveMethodChange(isActive ? null : m.id)}
-                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-[10px] font-semibold transition-all cursor-pointer select-none active:scale-95 ${
-                      isActive
-                        ? `${m.activeBg} ${m.color}`
-                        : 'border-white/[0.05] bg-white/[0.02] text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04]'
-                    }`}
-                  >
-                    <Icon className={`w-3 h-3 ${isActive ? m.color : 'text-zinc-700'}`} />
-                    <span>{m.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Revisit */}
-          <div className="px-3 py-2.5 border-b border-white/[0.04] mb-1">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] text-zinc-600 uppercase font-bold tracking-widest">Revisit Tracker</span>
-              {(prog?.revisit_count || 0) > 0 && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-rose-500/[0.08] border border-rose-500/20 text-[9px] font-mono font-bold text-rose-400">
-                  ↺ {prog.revisit_count}×
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => { onIncrementRevisit(); setOpen(false); }}
-                className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/[0.08] border border-rose-500/20 text-rose-400 hover:bg-rose-500/[0.15] hover:border-rose-500/35 transition-all cursor-pointer active:scale-95"
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>Mark Revisited (+1)</span>
-              </button>
-              {prog?.revisit && (
-                <button
-                  onClick={() => { onToggleRevisit(false); setOpen(false); }}
-                  className="px-2 py-1.5 text-xs rounded-lg border border-white/[0.06] text-zinc-600 hover:text-rose-400 hover:border-rose-500/25 hover:bg-rose-500/[0.06] transition-colors cursor-pointer"
-                  title="Remove Revisit Flag"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          <button onClick={() => { onOpenNotes(); setOpen(false); }}
-            className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-200 transition-colors cursor-pointer text-left">
-            <FileText className={`w-3.5 h-3.5 ${hasNotes ? 'text-violet-400' : 'text-zinc-700'}`} />
-            {hasNotes ? 'Edit Notes / Solution' : 'Add Notes / Solution'}
-            {hasNotes && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-500" />}
-          </button>
-
-          {prog?.solution_link && (
-            <a href={prog.solution_link} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}
-              className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-200 transition-colors cursor-pointer">
-              <Link2 className="w-3.5 h-3.5 text-zinc-700" /> Open My Solution
-            </a>
-          )}
-
-          {question.link && (
-            <a href={question.link} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}
-              className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-200 transition-colors cursor-pointer">
-              <ExternalLink className="w-3.5 h-3.5 text-zinc-700" /> Open Problem ↗
-            </a>
-          )}
-
-          <div className="h-px bg-white/[0.04] my-1" />
-
-          {question.is_custom && onDeleteQuestion && (
-            <button onClick={() => { onDeleteQuestion(question.id); setOpen(false); }}
-              className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer text-left font-semibold">
-              <Trash2 className="w-3.5 h-3.5" /> Delete Question
+        <div className="w-52 border border-white/[0.08] rounded-xl shadow-2xl shadow-black/90 overflow-hidden py-1 animate-fadeIn bg-[#111113]/95 backdrop-blur-xl">
+          {/* Re-attempt Option */}
+          {isDone && (
+            <button
+              onClick={() => { onOpenSubmitCode(); setOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-violet-300 hover:bg-violet-500/10 transition-colors cursor-pointer text-left border-b border-white/[0.05]"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+              <span>Re-attempt Problem</span>
             </button>
           )}
 
-          <button onClick={() => { onClearProgress(); setOpen(false); }}
-            className="w-full flex items-center gap-3 px-3.5 py-2 text-xs text-rose-500/70 hover:bg-rose-500/[0.06] hover:text-rose-400 transition-colors cursor-pointer text-left">
-            <RotateCcw className="w-3.5 h-3.5" /> Reset Progress
+          {/* Mark / Increment Revisit */}
+          <button
+            onClick={() => { onIncrementRevisit(); setOpen(false); }}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer text-left font-medium"
+          >
+            <span className="flex items-center gap-2.5">
+              <Bookmark className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <span>{isRevisit ? 'Revisited (+1)' : 'Mark for Revisit'}</span>
+            </span>
+            {revisitCount > 0 && (
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/25 text-rose-300">
+                {revisitCount}×
+              </span>
+            )}
+          </button>
+
+          {/* Clear Revisit flag if set */}
+          {isRevisit && (
+            <button
+              onClick={() => { onToggleRevisit(false); setOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04] transition-colors cursor-pointer text-left"
+            >
+              <X className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+              <span>Remove Revisit Flag</span>
+            </button>
+          )}
+
+          {question.link && (
+            <a
+              href={question.link}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setOpen(false)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04] transition-colors cursor-pointer"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+              <span>Open Problem Link</span>
+            </a>
+          )}
+
+          <div className="h-px bg-white/[0.06] my-1" />
+
+          {question.is_custom && onDeleteQuestion && (
+            <button
+              onClick={() => { onDeleteQuestion(question.id); setOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer text-left font-semibold"
+            >
+              <Trash2 className="w-3.5 h-3.5 shrink-0" />
+              <span>Delete Problem</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => { onClearProgress(); setOpen(false); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer text-left"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
+            <span>Reset Progress</span>
           </button>
         </div>
       </PortalDropdown>
@@ -578,8 +616,17 @@ const MySheetPage = () => {
           <input
             type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search problem, topic…"
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-zinc-900/80 border border-zinc-800 focus:border-zinc-700 text-zinc-200 placeholder:text-zinc-500 focus:outline-none transition-colors"
+            className="w-full pl-9 pr-8 py-1.5 text-xs rounded-lg bg-zinc-900/80 border border-zinc-800 focus:border-zinc-700 text-zinc-200 placeholder:text-zinc-500 focus:outline-none transition-colors"
           />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200 transition-colors p-0.5 rounded-full hover:bg-zinc-800 cursor-pointer"
+              title="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
         <FilterSelect value={selectedDifficulty} onChange={setSelectedDifficulty} options={DIFFICULTY_OPTIONS} placeholder="All Difficulties" />
         <FilterSelect value={selectedStatus}     onChange={setSelectedStatus}     options={STATUS_FILTER_OPTIONS} placeholder="All Statuses" />
@@ -770,6 +817,9 @@ const MySheetPage = () => {
                                       status={status}
                                       onChange={ns => handleStatus(q.id, ns)}
                                       onOpenSubmitCode={() => setSubmitCodeQuestion(q)}
+                                      onOpenViewCode={() => setViewSolutionData({ question: q, prog, user: profile })}
+                                      hasCode={!!prog?.notes}
+                                      attemptsCount={Array.isArray(prog?.attempts) ? prog.attempts.length : 0}
                                     />
                                   </td>
 
@@ -777,6 +827,8 @@ const MySheetPage = () => {
                                   <td className="px-2 py-2.5 text-center">
                                     <RowMenu
                                       question={q} prog={prog}
+                                      onViewCode={() => setViewSolutionData({ question: q, prog, user: profile })}
+                                      onOpenSubmitCode={() => setSubmitCodeQuestion(q)}
                                       onOpenNotes={() => openNotes(q)}
                                       onIncrementRevisit={() => handleIncrementRevisit(q.id)}
                                       onToggleRevisit={v => handleToggleRevisit(q.id, v)}

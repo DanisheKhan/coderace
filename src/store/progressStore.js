@@ -94,6 +94,7 @@ export const useProgressStore = create((set, get) => ({
         optimized:   newRow.optimized,
         notes:       newRow.notes,
         solution_link: newRow.solution_link,
+        attempts:    newRow.attempts || [],
         updated_at:  newRow.updated_at,
       };
 

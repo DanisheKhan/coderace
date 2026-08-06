@@ -367,8 +367,17 @@ const TopBar = ({ toggleMobileMenu, isMobileMenuOpen }) => {
                   value={searchQuery}
                   onChange={handleSearchChange}
                   placeholder="Search problem, @username, or User ID..."
-                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-zinc-900/80 border border-zinc-800 focus:border-zinc-700 text-zinc-200 placeholder:text-zinc-500 focus:outline-none truncate transition-colors"
+                  className="w-full pl-9 pr-8 py-1.5 text-xs rounded-lg bg-zinc-900/80 border border-zinc-800 focus:border-zinc-700 text-zinc-200 placeholder:text-zinc-500 focus:outline-none truncate transition-colors"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => handleSearchChange({ target: { value: '' } })}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200 transition-colors p-0.5 rounded-full hover:bg-zinc-800 cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
               <AnimatePresence>

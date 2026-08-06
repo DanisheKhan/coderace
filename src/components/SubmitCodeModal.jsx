@@ -80,10 +80,30 @@ const SubmitCodeModal = ({ isOpen, onClose, question, currentProgress, onSubmit 
     } else {
       finalNotes = optimalCode.trim();
     }
+
+    const existingAttempts = Array.isArray(currentProgress?.attempts) ? currentProgress.attempts : [];
+    const newAttempt = {
+      id: Date.now(),
+      attempt_number: existingAttempts.length + 1,
+      submitted_at: new Date().toISOString(),
+      notes: finalNotes,
+      solve_method: solveMethod,
+      brute_force: bruteForce,
+      optimized: optimized,
+    };
+    const updatedAttempts = [newAttempt, ...existingAttempts];
+
     setErrorMsg('');
     setIsSubmitting(true);
     try {
-      await onSubmit({ status: 'done', notes: finalNotes, solve_method: solveMethod, brute_force: bruteForce, optimized });
+      await onSubmit({
+        status: 'done',
+        notes: finalNotes,
+        solve_method: solveMethod,
+        brute_force: bruteForce,
+        optimized: optimized,
+        attempts: updatedAttempts,
+      });
       onClose();
     } catch (err) {
       console.error('Error submitting solution:', err);
@@ -91,6 +111,8 @@ const SubmitCodeModal = ({ isOpen, onClose, question, currentProgress, onSubmit 
       setIsSubmitting(false);
     }
   };
+
+  const attemptCount = (currentProgress?.attempts?.length || 0) + 1;
 
   return (
     <AnimatePresence>
@@ -111,6 +133,9 @@ const SubmitCodeModal = ({ isOpen, onClose, question, currentProgress, onSubmit 
               <div className="flex items-center gap-2 flex-wrap mb-0.5">
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                   Submit Solution
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-violet-500/10 border border-violet-500/20 text-violet-300">
+                  Attempt #{attemptCount}
                 </span>
                 <span className="text-[10px] text-zinc-600 font-mono">
                   {question.topic} · {question.subtopic}
