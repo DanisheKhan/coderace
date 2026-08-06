@@ -790,15 +790,14 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        {(item.prog?.notes || item.prog?.solution_link) && (
+                        {(item.prog?.notes || item.prog?.solution_link || (Array.isArray(item.prog?.attempts) && item.prog.attempts.length > 0)) && (
                           <button
                             type="button"
                             onClick={() => setViewSolutionData({ question: item, prog: item.prog, user })}
-                            className="p-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-emerald-400 transition-colors cursor-pointer flex items-center gap-1 text-[10px] font-mono font-semibold"
-                            title="View solution code"
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 hover:border-emerald-400/50 text-emerald-400 transition-all cursor-pointer active:scale-90"
+                            title={`View solution code${Array.isArray(item.prog?.attempts) && item.prog.attempts.length > 1 ? ` · ${item.prog.attempts.length} attempts` : ''}`}
                           >
                             <Code className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Code</span>
                           </button>
                         )}
                         <span className="text-[10px] font-mono text-zinc-500">
@@ -809,7 +808,7 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
                             href={item.link || item.leetcode_link}
                             target="_blank"
                             rel="noreferrer"
-                            className="p-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
                             title="Open question"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
