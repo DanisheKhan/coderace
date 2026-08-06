@@ -208,8 +208,17 @@ const DashboardPage = () => {
     const solved = done.length;
     const pct = total > 0 ? Math.round((solved / total) * 100) : 0;
     const remaining = total - solved;
-    const sevenAgo = Date.now() - 7 * 86400000;
-    const solvedThisWeek = done.filter(p => new Date(p.updated_at).getTime() >= sevenAgo).length;
+    const now = new Date();
+    const sundayStart = new Date(now);
+    sundayStart.setHours(0, 0, 0, 0);
+    sundayStart.setDate(now.getDate() - now.getDay());
+    const sundayEnd = new Date(sundayStart);
+    sundayEnd.setDate(sundayStart.getDate() + 7);
+
+    const solvedThisWeek = done.filter(p => {
+      const t = new Date(p.updated_at).getTime();
+      return t >= sundayStart.getTime() && t < sundayEnd.getTime();
+    }).length;
     const midnight = new Date();
     midnight.setHours(0, 0, 0, 0);
     const solvedToday = done.filter(p => new Date(p.updated_at).getTime() >= midnight.getTime()).length;

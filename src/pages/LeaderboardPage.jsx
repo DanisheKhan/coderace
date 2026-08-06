@@ -7,7 +7,7 @@ import {
   Trophy, Flame, Calendar, Activity, Crown, Award, X, Zap, 
   Sparkles, BookOpen, Workflow, BookmarkCheck, Layers, Network, 
   ExternalLink, CheckCircle2, Copy, Lightbulb, Eye, Search, RotateCcw, Circle, Filter, Medal, Star, Keyboard, TrendingUp,
-  Brain, Users, ArrowRight, ChevronRight
+  Brain, Users, ArrowRight, ChevronRight, Clock
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { calculateUserAchievements } from '../lib/achievements';
@@ -389,12 +389,38 @@ const LeaderboardPage = () => {
     return profiles.filter(p => connectedIds.includes(p.id));
   }, [profiles, connectedIds, profile?.id]);
 
+  // Calculate current week range (Sunday 00:00:00 to Sunday 00:00:00) & countdown
+  const weekInfo = useMemo(() => {
+    const now = new Date();
+    const sundayStart = new Date(now);
+    sundayStart.setHours(0, 0, 0, 0);
+    sundayStart.setDate(now.getDate() - now.getDay());
+
+    const sundayEnd = new Date(sundayStart);
+    sundayEnd.setDate(sundayStart.getDate() + 7);
+
+    const diffMs = sundayEnd.getTime() - now.getTime();
+    const daysLeft = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    const hoursLeft = Math.max(0, Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)));
+
+    const formatD = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const rangeText = `${formatD(sundayStart)} – ${formatD(sundayEnd)}`;
+
+    return { sundayStart, sundayEnd, rangeText, daysLeft, hoursLeft };
+  }, []);
+
   const leaderboard = useMemo(() => {
-    const sevenAgo = Date.now() - 7 * 86400000;
+    const sundayStartMs = weekInfo.sundayStart.getTime();
+    const sundayEndMs = weekInfo.sundayEnd.getTime();
+
     const mapped = approvedProfiles.map(p => {
       const up = progress.filter(pr => pr.user_id === p.id);
       const solved = up.filter(pr => pr.status === 'done').length;
-      const solvedThisWeek = up.filter(pr => pr.status === 'done' && new Date(pr.updated_at).getTime() >= sevenAgo).length;
+      const solvedThisWeek = up.filter(pr => {
+        if (pr.status !== 'done') return false;
+        const t = new Date(pr.updated_at).getTime();
+        return t >= sundayStartMs && t < sundayEndMs;
+      }).length;
       const streak = calculateUserStreak(p.id, progress);
       const { unlockedCount } = calculateUserAchievements(p.id, progress, questions);
       const quiz = quizBests[p.id] || null;
@@ -406,7 +432,7 @@ const LeaderboardPage = () => {
     }
 
     return mapped.sort((a, b) => b.solved !== a.solved ? b.solved - a.solved : b.streak - a.streak);
-  }, [approvedProfiles, progress, questions, quizBests, timeframe]);
+  }, [approvedProfiles, progress, questions, quizBests, timeframe, weekInfo]);
 
   const allActivities = useMemo(() => {
     const seen = new Set();
@@ -469,13 +495,21 @@ const LeaderboardPage = () => {
             <Trophy className="w-5 h-5 text-amber-400" />
             CodeRace Leaderboard
           </h1>
-          <p className="text-zinc-500 text-xs mt-0.5">Top racers ranked by DSA problem solving speed and consistency.</p>
+          <div className="flex items-center gap-2 flex-wrap mt-0.5">
+            <p className="text-zinc-500 text-xs">Top racers ranked by DSA problem solving speed and consistency.</p>
+            {timeframe === 'weekly' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                <Calendar className="w-3 h-3 text-amber-400" />
+                Sun - Sun ({weekInfo.rangeText})
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Timeframe Filter Tabs */}
         <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800 text-xs">
           {[
-            { id: 'weekly',  label: 'This Week' },
+            { id: 'weekly',  label: 'This Week (Sun-Sun)' },
             { id: 'alltime', label: 'All Time' },
           ].map(tab => (
             <button
@@ -503,14 +537,21 @@ const LeaderboardPage = () => {
           {top3.length > 0 && (
             <div className="glass-panel rounded-xl p-4 sm:p-6 border border-zinc-800/80 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
-              <div className="flex items-center justify-between gap-2 mb-4">
+              <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
                 <div className="flex items-center gap-2">
                   <Crown className="w-4 h-4 text-amber-400" />
                   <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">
                     {timeframe === 'weekly' ? 'Weekly Champions' : 'All-Time Champions'}
                   </h3>
                 </div>
-                <span className="text-[10px] font-mono text-zinc-500">Top 3 Racers</span>
+                {timeframe === 'weekly' ? (
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800 text-zinc-400">
+                    <Clock className="w-3 h-3 text-amber-400 animate-pulse" />
+                    <span>Resets in <strong className="text-amber-400 font-bold">{weekInfo.daysLeft}d {weekInfo.hoursLeft}h</strong> (Sunday 00:00)</span>
+                  </div>
+                ) : (
+                  <span className="text-[10px] font-mono text-zinc-500">Top 3 Racers</span>
+                )}
               </div>
 
               {/* Podium row */}
