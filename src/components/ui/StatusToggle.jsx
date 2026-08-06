@@ -2,9 +2,8 @@ import React from 'react';
 
 const StatusToggle = ({ status, onChange, disabled }) => {
   const states = [
-    { value: 'not_started', label: 'Todo', color: 'hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300' },
-    { value: 'attempted', label: 'Attempted', color: 'text-amber-500/80 bg-amber-500/5 hover:bg-amber-500/15 border-amber-500/25' },
-    { value: 'done', label: 'Done', color: 'text-emerald-500/80 bg-emerald-500/5 hover:bg-emerald-500/15 border-emerald-500/25' }
+    { value: 'not_started', label: 'Not Attempted', color: 'hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300' },
+    { value: 'done', label: 'Solved', color: 'text-emerald-500/80 bg-emerald-500/5 hover:bg-emerald-500/15 border-emerald-500/25' }
   ];
 
   return (

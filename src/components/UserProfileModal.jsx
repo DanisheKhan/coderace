@@ -5,8 +5,9 @@ import {
   Sparkles, BookOpen, Workflow, BookmarkCheck, Layers, Network, 
   ExternalLink, CheckCircle2, Copy, Lightbulb, Eye, Search, Keyboard, TrendingUp, RefreshCw,
   Brain, Target, Star, ChevronRight, BarChart2, Clock, Circle, ChevronDown, ChevronUp,
-  Lock, UserPlus, UserCheck, UserX, Users
+  Lock, UserPlus, UserCheck, UserX, Users, Code
 } from 'lucide-react';
+import SolutionViewModal from './SolutionViewModal';
 import { useAuth } from '../contexts/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar } from 'recharts';
 import { calculateUserAchievements } from '../lib/achievements';
@@ -135,6 +136,8 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
   
   // Topics are collapsed/closed by default
   const [expandedTopics, setExpandedTopics] = useState({});
+
+  const [viewSolutionData, setViewSolutionData] = useState(null);
 
   const [typingProfile, setTypingProfile] = useState(null);
   const [syncing, setSyncing] = useState(false);
@@ -787,6 +790,17 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
+                        {(item.prog?.notes || item.prog?.solution_link) && (
+                          <button
+                            type="button"
+                            onClick={() => setViewSolutionData({ question: item, prog: item.prog, user })}
+                            className="p-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-emerald-400 transition-colors cursor-pointer flex items-center gap-1 text-[10px] font-mono font-semibold"
+                            title="View solution code"
+                          >
+                            <Code className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Code</span>
+                          </button>
+                        )}
                         <span className="text-[10px] font-mono text-zinc-500">
                           {formatRelativeTime(item.solvedAt)}
                         </span>
@@ -870,7 +884,7 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
 
                 {/* Status & Diff Filters */}
                 <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar shrink-0">
-                  {['all', 'done', 'attempted', 'not_started'].map(st => {
+                  {['all', 'done', 'not_started'].map(st => {
                     const isActive = sheetStatusFilter === st;
                     return (
                       <button
@@ -882,7 +896,7 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
                             : 'bg-transparent text-zinc-400 border-transparent hover:bg-zinc-800/50 hover:text-zinc-200'
                         }`}
                       >
-                        {st === 'not_started' ? 'Todo' : st.charAt(0).toUpperCase() + st.slice(1)}
+                        {st === 'not_started' ? 'Not Attempted' : st === 'done' ? 'Solved' : st.charAt(0).toUpperCase() + st.slice(1)}
                       </button>
                     );
                   })}
@@ -968,6 +982,17 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
+                                  {(item.prog?.notes || item.prog?.solution_link) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setViewSolutionData({ question: item, prog: item.prog, user })}
+                                      className="p-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-emerald-400 transition-colors cursor-pointer flex items-center gap-1 text-[10px] font-mono font-semibold"
+                                      title="View solution code"
+                                    >
+                                      <Code className="w-3 h-3" />
+                                      <span className="hidden sm:inline">Code</span>
+                                    </button>
+                                  )}
                                   {item.prog?.updated_at && item.status === 'done' && (
                                     <span className="text-[10px] font-mono text-zinc-500 hidden xs:inline">
                                       {formatRelativeTime(item.prog.updated_at)}
@@ -1121,6 +1146,15 @@ export function UserProfileModal({ user, progress, questions, onClose }) {
         onClose={() => setIsFollowersModalOpen(false)}
         userId={user?.id}
         initialTab={followersModalTab}
+      />
+
+      {/* Solution Code View Modal */}
+      <SolutionViewModal
+        isOpen={!!viewSolutionData}
+        onClose={() => setViewSolutionData(null)}
+        question={viewSolutionData?.question}
+        prog={viewSolutionData?.prog}
+        user={viewSolutionData?.user}
       />
     </motion.div>
   );

@@ -13,6 +13,8 @@ import {
   Sparkles, Copy, Lightbulb, Eye, Plus, User
 } from 'lucide-react';
 import AddQuestionModal from '../components/AddQuestionModal';
+import SubmitCodeModal from '../components/SubmitCodeModal';
+import SolutionViewModal from '../components/SolutionViewModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pageTransition, staggerContainer, fadeUp, backdropVariants, modalVariants } from '../lib/animations';
 
@@ -80,9 +82,8 @@ const dropdownPanelBg  = { background: '#0d0d0f' };
 
 // ── Status Dropdown ──────────────────────────────────────────────────────────
 const STATUS_OPTIONS = [
-  { value: 'not_started', label: 'Todo',      icon: Circle,       color: 'text-zinc-400',    dot: 'bg-zinc-600' },
-  { value: 'attempted',   label: 'Attempted', icon: Clock,        color: 'text-amber-400',   dot: 'bg-amber-400' },
-  { value: 'done',        label: 'Done',      icon: CheckCircle2, color: 'text-emerald-400', dot: 'bg-emerald-400' },
+  { value: 'not_started', label: 'Not Attempted', icon: Circle,       color: 'text-zinc-400',    dot: 'bg-zinc-600' },
+  { value: 'done',        label: 'Solved',        icon: CheckCircle2, color: 'text-emerald-400', dot: 'bg-emerald-400' },
 ];
 
 const statusPillStyles = {
@@ -91,7 +92,7 @@ const statusPillStyles = {
   done:        'bg-emerald-500/[0.08] text-emerald-400 border-emerald-500/20 hover:border-emerald-500/40',
 };
 
-const StatusCell = ({ status, onChange }) => {
+const StatusCell = ({ status, onChange, onOpenSubmitCode }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const cur = STATUS_OPTIONS.find(o => o.value === status) || STATUS_OPTIONS[0];
@@ -100,7 +101,7 @@ const StatusCell = ({ status, onChange }) => {
     <div ref={ref} className="relative inline-block">
       <button
         onClick={() => setOpen(v => !v)}
-        className={`inline-flex items-center justify-between w-[112px] px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer select-none ${statusPillStyles[status] || statusPillStyles.not_started}`}
+        className={`inline-flex items-center justify-between w-[148px] px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer select-none ${statusPillStyles[status] || statusPillStyles.not_started}`}
       >
         <span className="flex items-center gap-1.5 min-w-0">
           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cur.dot}`} />
@@ -116,7 +117,14 @@ const StatusCell = ({ status, onChange }) => {
             return (
               <button
                 key={opt.value}
-                onClick={() => { onChange(opt.value); setOpen(false); }}
+                onClick={() => {
+                  setOpen(false);
+                  if (opt.value === 'done' && onOpenSubmitCode) {
+                    onOpenSubmitCode();
+                  } else {
+                    onChange(opt.value);
+                  }
+                }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs cursor-pointer transition-colors text-left ${
                   isActive ? `${opt.color} bg-white/[0.04]` : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
                 }`}
@@ -135,7 +143,7 @@ const StatusCell = ({ status, onChange }) => {
 
 // ── Approach Dropdown ─────────────────────────────────────────────────────────
 const APPROACH_OPTIONS = [
-  { value: 'none',        label: 'Todo',        dot: 'bg-zinc-600',    pill: 'bg-zinc-900 text-zinc-500 border-white/[0.06] hover:border-zinc-600/40' },
+  { value: 'none',        label: 'None',        dot: 'bg-zinc-600',    pill: 'bg-zinc-900 text-zinc-500 border-white/[0.06] hover:border-zinc-600/40' },
   { value: 'brute_force', label: 'Brute Force', dot: 'bg-amber-400',   pill: 'bg-amber-500/[0.08] text-amber-400 border-amber-500/20 hover:border-amber-500/40' },
   { value: 'optimized',   label: 'Optimal',     dot: 'bg-emerald-400', pill: 'bg-emerald-500/[0.08] text-emerald-400 border-emerald-500/20 hover:border-emerald-500/40' },
   { value: 'both',        label: 'Both',        dot: 'bg-violet-400',  pill: 'bg-violet-500/[0.08] text-violet-400 border-violet-500/20 hover:border-violet-500/40' },
@@ -352,9 +360,8 @@ const DIFFICULTY_OPTIONS = [
 
 const STATUS_FILTER_OPTIONS = [
   { value: 'All',         label: 'All Statuses' },
-  { value: 'not_started', label: 'Todo',      dot: 'bg-zinc-600' },
-  { value: 'attempted',   label: 'Attempted', dot: 'bg-amber-400' },
-  { value: 'done',        label: 'Done',      dot: 'bg-emerald-400' },
+  { value: 'not_started', label: 'Not Attempted', dot: 'bg-zinc-600' },
+  { value: 'done',        label: 'Solved',        dot: 'bg-emerald-400' },
 ];
 
 // ── Table header cell ─────────────────────────────────────────────────────────
@@ -383,6 +390,9 @@ const MySheetPage = () => {
   const [activeNotes, setActiveNotes] = useState(null);
   const [notesText, setNotesText] = useState('');
   const [solutionLink, setSolutionLink] = useState('');
+
+  const [submitCodeQuestion, setSubmitCodeQuestion] = useState(null);
+  const [viewSolutionData, setViewSolutionData] = useState(null);
 
   useEffect(() => {
     const query = searchParams.get('search') || searchParams.get('q') || location.state?.search;
@@ -431,7 +441,15 @@ const MySheetPage = () => {
     return sortedGroups;
   }, [filteredQuestions]);
 
-  const handleStatus   = (qId, ns)  => { if (profile) upsertProgress(profile.id, qId, { status: ns }); };
+  const handleStatus = (qId, ns) => {
+    if (!profile) return;
+    const q = questions.find(item => item.id === qId);
+    if (ns === 'done' && q) {
+      setSubmitCodeQuestion(q);
+    } else {
+      upsertProgress(profile.id, qId, { status: ns });
+    }
+  };
   const handleApproach = (qId, val) => {
     if (!profile) return;
     if (val === 'none')             upsertProgress(profile.id, qId, { brute_force: false, optimized: false });
@@ -644,7 +662,6 @@ const MySheetPage = () => {
                           <TH className="w-44 text-left">Subtopic</TH>
                           <TH className="text-left">Problem</TH>
                           <TH className="w-28 text-center">Difficulty</TH>
-                          <TH className="w-32 text-center">Approach</TH>
                           <TH className="w-32 text-center">Status</TH>
                           <th className="px-3 py-3 w-10 text-center text-[9px] text-zinc-700 uppercase tracking-widest">···</th>
                         </tr>
@@ -747,14 +764,13 @@ const MySheetPage = () => {
                                     <Stars n={q.difficulty} />
                                   </td>
 
-                                  {/* Approach */}
-                                  <td className="px-3 py-2.5 text-center border-r border-white/[0.03] whitespace-nowrap">
-                                    <ApproachCell bruteForce={bruteForce} optimized={optimized} onChange={val => handleApproach(q.id, val)} />
-                                  </td>
-
                                   {/* Status */}
                                   <td className="px-3 py-2.5 text-center border-r border-white/[0.03]">
-                                    <StatusCell status={status} onChange={ns => handleStatus(q.id, ns)} />
+                                    <StatusCell
+                                      status={status}
+                                      onChange={ns => handleStatus(q.id, ns)}
+                                      onOpenSubmitCode={() => setSubmitCodeQuestion(q)}
+                                    />
                                   </td>
 
                                   {/* Menu */}
@@ -784,6 +800,28 @@ const MySheetPage = () => {
           })}
         </div>
       )}
+
+      {/* ── Submit Code Modal ── */}
+      <SubmitCodeModal
+        isOpen={!!submitCodeQuestion}
+        onClose={() => setSubmitCodeQuestion(null)}
+        question={submitCodeQuestion}
+        currentProgress={submitCodeQuestion ? (progressMap[submitCodeQuestion.id] || {}) : null}
+        onSubmit={async (updates) => {
+          if (profile && submitCodeQuestion) {
+            await upsertProgress(profile.id, submitCodeQuestion.id, updates);
+          }
+        }}
+      />
+
+      {/* ── View Solution Modal ── */}
+      <SolutionViewModal
+        isOpen={!!viewSolutionData}
+        onClose={() => setViewSolutionData(null)}
+        question={viewSolutionData?.question}
+        prog={viewSolutionData?.prog}
+        user={viewSolutionData?.user || profile}
+      />
 
       {/* ── Notes Modal ── */}
       <AnimatePresence>
