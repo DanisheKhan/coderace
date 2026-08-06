@@ -105,13 +105,13 @@ const StatusCell = ({ status, onChange, onOpenSubmitCode, onOpenViewCode, hasCod
         className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px] font-semibold tracking-wide transition-all duration-200 cursor-pointer select-none whitespace-nowrap ${
           isDone
             ? 'bg-emerald-500/[0.08] text-emerald-400 border-emerald-500/25 hover:border-emerald-400/50 hover:bg-emerald-500/[0.13] shadow-[0_0_14px_rgba(52,211,153,0.07)]'
-            : 'bg-[#0f0f11] text-zinc-500 border-white/[0.07] hover:border-zinc-500/40 hover:text-zinc-300'
+            : 'bg-[#0f0f11] text-zinc-400 border-white/[0.08] hover:border-zinc-500/40 hover:text-zinc-200 hover:bg-zinc-900'
         }`}
       >
         {isDone ? (
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] shrink-0" />
         ) : (
-          <span className="w-1.5 h-1.5 rounded-full bg-zinc-600 shrink-0" />
+          <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 shrink-0" />
         )}
         <span>{isDone ? 'Solved' : 'Not Attempted'}</span>
         <ChevronDown className={`w-3 h-3 shrink-0 opacity-60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
@@ -131,65 +131,55 @@ const StatusCell = ({ status, onChange, onOpenSubmitCode, onOpenViewCode, hasCod
 
       <PortalDropdown anchor={ref.current} open={open} onClose={() => setOpen(false)}>
         <div
-          className="rounded-xl border border-white/[0.07] overflow-hidden py-1"
-          style={{
-            background: 'rgba(10,10,13,0.97)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
-            boxShadow: '0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)',
-            minWidth: 176,
-          }}
+          className="rounded-xl border border-zinc-800 shadow-2xl shadow-black overflow-hidden p-1.5 min-w-[180px] bg-[#0d0d0f] animate-fadeIn"
         >
           {isDone ? (
-            <>
+            <div className="space-y-1">
+              {/* Solved Header Badge */}
+              <div className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>Solved</span>
+              </div>
+
               {hasCode && (
                 <button
                   onClick={() => { setOpen(false); if (onOpenViewCode) onOpenViewCode(); }}
-                  className="w-full flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/[0.08] cursor-pointer transition-all duration-150 text-left"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/10 rounded-lg cursor-pointer transition-colors text-left"
                 >
-                  <span className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                    <Code className="w-3 h-3" />
-                  </span>
+                  <Code className="w-4 h-4 text-emerald-400 shrink-0" />
                   <div className="flex flex-col gap-0.5">
-                    <span>View Code</span>
+                    <span>View Solution</span>
                     {attemptsCount > 1 && <span className="text-[10px] font-normal text-emerald-500/60">{attemptsCount} attempts</span>}
                   </div>
                 </button>
               )}
-              <div className="h-px bg-white/[0.04] mx-2 my-1" />
+
               <button
                 onClick={() => { setOpen(false); if (onOpenSubmitCode) onOpenSubmitCode(); }}
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold text-violet-300 hover:bg-violet-500/[0.08] cursor-pointer transition-all duration-150 text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-violet-300 hover:bg-violet-500/10 rounded-lg cursor-pointer transition-colors text-left"
               >
-                <span className="w-6 h-6 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-                  <RotateCcw className="w-3 h-3 text-violet-400" />
-                </span>
+                <RotateCcw className="w-4 h-4 text-violet-400 shrink-0" />
                 <span>Re-attempt</span>
               </button>
-            </>
+            </div>
           ) : (
-            <>
-              <button
-                onClick={() => setOpen(false)}
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 text-xs text-zinc-400 bg-white/[0.03] cursor-default transition-all duration-150 text-left"
-              >
-                <span className="w-6 h-6 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0">
-                  <Circle className="w-3 h-3 text-zinc-600" />
-                </span>
-                <span className="font-medium">Not Attempted</span>
-                <span className="ml-auto text-[9px] text-zinc-600 font-mono">NOW</span>
-              </button>
-              <div className="h-px bg-white/[0.04] mx-2 my-1" />
+            <div className="space-y-1">
+              {/* Not Attempted Header Badge */}
+              <div className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-zinc-300 bg-zinc-800/50 rounded-lg">
+                <Circle className="w-4 h-4 text-zinc-500 shrink-0" />
+                <span>Not Attempted</span>
+              </div>
+
+              <div className="h-px bg-zinc-800/80 mx-1 my-1" />
+
               <button
                 onClick={() => { setOpen(false); if (onOpenSubmitCode) onOpenSubmitCode(); }}
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/[0.08] cursor-pointer transition-all duration-150 text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 rounded-lg cursor-pointer transition-colors text-left"
               >
-                <span className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-3 h-3" />
-                </span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>Mark Solved</span>
               </button>
-            </>
+            </div>
           )}
         </div>
       </PortalDropdown>
@@ -274,7 +264,7 @@ const RowMenu = ({ question, prog, onViewCode, onOpenSubmitCode, onOpenNotes, on
       </button>
 
       <PortalDropdown anchor={ref.current} open={open} onClose={() => setOpen(false)} align="right">
-        <div className="w-52 border border-white/[0.08] rounded-xl shadow-2xl shadow-black/90 overflow-hidden py-1 animate-fadeIn bg-[#111113]/95 backdrop-blur-xl">
+        <div className="w-52 border border-zinc-800 rounded-xl shadow-2xl shadow-black overflow-hidden py-1 animate-fadeIn bg-[#0d0d0f]">
           {/* Re-attempt Option */}
           {isDone && (
             <button

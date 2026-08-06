@@ -72,6 +72,14 @@ const SubmitCodeModal = ({ isOpen, onClose, question, currentProgress, onSubmit 
       setErrorMsg('Please enable at least one approach to submit your solution.');
       return;
     }
+    if (bruteForce && !bruteCode.trim()) {
+      setErrorMsg('Please enter your brute force code.');
+      return;
+    }
+    if (optimized && !optimalCode.trim()) {
+      setErrorMsg('Please enter your optimal code.');
+      return;
+    }
     let finalNotes = '';
     if (bruteForce && optimized) {
       finalNotes = `=== ⚡ BRUTE FORCE SOLUTION ===\n${bruteCode.trim()}\n\n=== 🚀 OPTIMAL SOLUTION ===\n${optimalCode.trim()}`;
@@ -220,7 +228,7 @@ const SubmitCodeModal = ({ isOpen, onClose, question, currentProgress, onSubmit 
                 <div className="flex items-center justify-between">
                   <span className="section-label flex items-center gap-1.5" style={{ color: 'rgba(251,191,36,0.7)' }}>
                     <Zap className="w-3 h-3" />
-                    Brute Force Code
+                    Brute Force Code <span className="text-rose-400 ml-0.5">*</span>
                   </span>
                   <span className="text-[10px] text-zinc-600 font-mono">Tab to indent</span>
                 </div>
@@ -254,7 +262,7 @@ const SubmitCodeModal = ({ isOpen, onClose, question, currentProgress, onSubmit 
                 <div className="flex items-center justify-between">
                   <span className="section-label flex items-center gap-1.5" style={{ color: 'rgba(52,211,153,0.7)' }}>
                     <Rocket className="w-3 h-3" />
-                    Optimal Code
+                    Optimal Code <span className="text-rose-400 ml-0.5">*</span>
                   </span>
                   <span className="text-[10px] text-zinc-600 font-mono">Tab to indent</span>
                 </div>
